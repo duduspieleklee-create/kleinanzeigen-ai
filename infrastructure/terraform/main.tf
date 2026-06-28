@@ -1,4 +1,4 @@
-# Get current Azure configuration
+# Get current Azure client configuration
 data "azurerm_client_config" "current" {}
 
 # Resource Group
@@ -33,7 +33,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     type = "SystemAssigned"
   }
 
-  # Enable Key Vault CSI Driver
+  # Enable Key Vault CSI Driver (ready for Milestone 2)
   key_vault_secrets_provider {
     secret_rotation_enabled  = true
     secret_rotation_interval = "2m"
@@ -61,25 +61,4 @@ resource "azurerm_redis_cache" "redis" {
   family              = "C"
   sku_name            = "Basic"
   enable_non_ssl_port = false
-  minimum_tls_version = "1.2"
-}
-
-# Azure Key Vault
-resource "azurerm_key_vault" "main" {
-  name                        = var.key_vault_name
-  location                    = azurerm_resource_group.main.location
-  resource_group_name         = azurerm_resource_group.main.name
-  tenant_id                   = data.azurerm_client_config.current.tenant_id
-  sku_name                    = "standard"
-  soft_delete_retention_days  = 7
-  purge_protection_enabled    = false
-
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azurerm_client_config.current.object_id
-
-    secret_permissions = [
-      "Get", "List", "Set", "Delete", "Purge", "Recover"
-    ]
-  }
-}
+  minimum_tls_version = "1.2
