@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrape Results - kleinanzeigen-ai</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:hover { background-color: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <h2>Your Scrape Results</h2>
+
+    <p><a href="/dashboard">← Back to Dashboard</a></p>
+
+    {% if results %}
+        <table>
+            <tr>
+                <th>Title</th>
+                <th>Price</th>
+                <th>Location</th>
+                <th>URL</th>
+                <th>Date</th>
+            </tr>
+            {% for result in results %}
+            <tr>
+                <td>{{ result.title or "N/A" }}</td>
+                <td>{{ result.price or "N/A" }}</td>
+                <td>{{ result.location or "N/A" }}</td>
+                <td>
+                    {% if result.url %}
+                        <a href="{{ result.url }}" target="_blank">View</a>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>{{ result.created_at.strftime("%Y-%m-%d %H:%M") if result.created_at else "N/A" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No results found yet. Start a new scrape from the <a href="/dashboard">dashboard</a>.</p>
+    {% endif %}
+</body>
+</html>
