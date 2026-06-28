@@ -109,3 +109,13 @@ Things that need to be completed before this project is production-ready.
 - [ ] Call scrape_kleinanzeigen.delay(url) from the scrapes router instead of returning a placeholder
 - [ ] Add error handling and retry logic for failed requests
 - [ ] Respect rate limits (add delays between requests)
+
+=============================================================================
+13. URL BUILDER (app/shared/url_builder.py)
+=============================================================================
+- [ ] Implement full URL construction logic in build_kleinanzeigen_url()
+- [ ] Support all relevant search parameters (keywords, price_min, price_max, radius, sorting)
+- [ ] Add URL encoding for special characters in category and location
+- [ ] Add pagination support (page number in URL)
+- [ ] Wire build_kleinanzeigen_url() into scrapes router and worker task
+- [ ] Add unit tests to cover URL variations
