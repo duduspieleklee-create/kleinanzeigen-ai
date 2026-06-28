@@ -123,7 +123,7 @@ Things that need to be completed before this project is production-ready.
 =============================================================================
 14. REQUIREMENTS & DOCKERFILES
 =============================================================================
-- [ ] Create requirements.txt in the repo root with all production dependencies
+- [x] Create requirements.txt in the repo root with all production dependencies
       (fastapi, uvicorn, celery, redis, httpx, pydantic, sqlalchemy, alembic, beautifulsoup4, requests)
 - [ ] Create requirements-dev.txt for development dependencies (pytest, ruff, mypy)
 - [ ] Update app/beat/Dockerfile to also use requirements.txt (currently uses pyproject.toml)
