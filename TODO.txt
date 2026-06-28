@@ -235,3 +235,8 @@ cd infrastructure/terraform
 terraform init
 terraform plan
 terraform apply
+
+pip install -r requirements.txt
+# or
+uv pip install authlib
+
