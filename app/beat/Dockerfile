@@ -2,10 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir .
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/shared ./app/shared
-COPY app/beat ./app/beat
+COPY . .
 
-CMD ["celery", "-A", "app.beat.celery_app", "beat", "--loglevel=info"]
+CMD ["celery", "-A", "app.beat.celery_beat", "beat", "--loglevel=info"]
