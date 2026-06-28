@@ -2,8 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 
+from app.api.config import settings
 from app.api.routers import auth, scrapes
 from app.shared.database import Base, engine
 from app.shared.logging_config import logger
@@ -15,9 +17,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="kleinanzeigen-ai")
 
+# SessionMiddleware must be added before any route that uses the session (e.g. OAuth)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+
 app.add_middleware(
     CORSMiddleware,
-    # TODO: Restrict to specific origins in production
+    # TODO: Restrict allow_origins to specific domains in production
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
