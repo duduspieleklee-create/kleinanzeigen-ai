@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-beat
+  labels:
+    app: {{ .Release.Name }}-beat
+spec:
+  # Beat MUST run as a single replica — multiple beat instances will fire
+  # every scheduled task multiple times, causing duplicate scrape jobs.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-beat
+  strategy:
+    # Recreate (not RollingUpdate) ensures no overlap between old and new beat pods
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-beat
+    spec:
+      containers:
+        - name: beat
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - celery
+            - -A
+            - app.beat.celery_beat
+            - beat
+            - --loglevel=info
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
