@@ -1,15 +1,18 @@
 from celery.schedules import crontab
 from app.worker.celery_app import celery_app
 
+# Celery Beat Schedule
 celery_app.conf.beat_schedule = {
-    "scrape-cars-every-hour": {
-        "task": "tasks.run_scrape",
-        "schedule": crontab(minute=0),
-        "kwargs": {"category": "fahrzeuge", "location": "", "max_pages": 10},
-    },
-    "scrape-electronics-every-2h": {
-        "task": "tasks.run_scrape",
-        "schedule": crontab(minute=0, hour="*/2"),
-        "kwargs": {"category": "elektronik", "location": "", "max_pages": 5},
+    # Example: Run a scrape task every 30 minutes
+    "scheduled-scrape-every-30-minutes": {
+        "task": "scrape.kleinanzeigen",
+        "schedule": crontab(minute="*/30"),   # Every 30 minutes
+        "args": [{
+            "keywords": "handwerker",
+            "location": "berlin",
+            "price_max": 200
+        }]
     },
 }
+
+celery_app.conf.timezone = "Europe/Berlin"
