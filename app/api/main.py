@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -34,6 +35,12 @@ templates = Jinja2Templates(directory="app/api/templates")
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
+
+
+@app.get("/healthz", tags=["Ops"], include_in_schema=False)
+async def healthz():
+    """Kubernetes liveness and readiness probe endpoint."""
+    return JSONResponse({"status": "ok"})
 
 
 @app.get("/", tags=["Web"])
