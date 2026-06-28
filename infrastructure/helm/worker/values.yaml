@@ -12,3 +12,15 @@ resources:
   requests:
     cpu: 200m
     memory: 256Mi
+
+env:
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: kleinanzeigen-secrets
+        key: DATABASE_URL
+  - name: REDIS_URL
+    valueFrom:
+      secretKeyRef:
+        name: kleinanzeigen-secrets
+        key: REDIS_URL
