@@ -1,31 +1,38 @@
-name: Build and Push
+name: Build and Push Docker Images
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build:
-    name: Build Docker Images
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [api, worker, beat]
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build ${{ matrix.service }} image
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and Push API
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: app/${{ matrix.service }}/Dockerfile
-          push: false
-          tags: kleinanzeigen-ai/${{ matrix.service }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          context: ./app/api
+          push: true
+          tags: ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-api:${{ github.sha }}
+
+      - name: Build and Push Worker
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app/worker
+          push: true
+          tags: ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker:${{ github.sha }}
