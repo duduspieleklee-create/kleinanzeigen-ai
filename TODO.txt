@@ -114,11 +114,11 @@ Things that need to be completed before this project is production-ready.
 =============================================================================
 13. URL BUILDER (app/shared/url_builder.py)
 =============================================================================
-- [ ] Implement full URL construction logic in build_kleinanzeigen_url()
-- [ ] Support all relevant search parameters (keywords, price_min, price_max, radius, sorting)
-- [ ] Add URL encoding for special characters in category and location
-- [ ] Add pagination support (page number in URL)
-- [ ] Wire build_kleinanzeigen_url() into scrapes router and worker task
+- [x] Implement full URL construction logic in build_kleinanzeigen_url()
+- [x] Support search parameters: keywords (k0), price_max (p), radius (r), sort (sortierung)
+- [x] URL encoding handled via urllib.parse.urlencode
+- [ ] Add pagination support (page number in URL) — post M1
+- [ ] Wire build_kleinanzeigen_url() into scrapes router (replace hardcoded placeholder URL)
 - [ ] Add unit tests to cover URL variations
 
 =============================================================================
