@@ -157,3 +157,15 @@ Things that need to be completed before this project is production-ready.
 - [ ] Set echo=True temporarily during development for SQL query debugging, then revert
 - [ ] Move DATABASE_URL fallback default out of code — require env var explicitly in production
 - [ ] Consider switching to asyncpg + SQLAlchemy async engine when adding async routes
+
+=============================================================================
+18. DATABASE MODELS — USERS & SCRAPE TABLES (app/shared/models.py)
+=============================================================================
+- [ ] Run Alembic migrations to create users, scrape_tasks, scrape_results tables
+      (alembic revision --autogenerate -m "initial schema", alembic upgrade head)
+- [ ] Replace is_active Integer column with Boolean for correctness
+- [ ] Add unique constraint on ScrapeResult.url per task to avoid duplicate results
+- [ ] Add index on scrape_tasks.status for fast queue polling queries
+- [ ] Add index on scrape_results.task_id for fast result lookups
+- [ ] Populate ScrapeTask.completed_at timestamp when worker finishes the task
+- [ ] Consider adding a soft-delete (deleted_at) column to User for GDPR compliance
