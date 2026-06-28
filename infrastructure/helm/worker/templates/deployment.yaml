@@ -1,44 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-worker
+  name: {{ include "kleinanzeigen-worker.fullname" . }}
   labels:
-    app: {{ .Release.Name }}-worker
+    {{- include "kleinanzeigen-worker.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-worker
+      {{- include "kleinanzeigen-worker.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-worker
+        {{- include "kleinanzeigen-worker.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-        - name: worker
+        - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - celery
-            - -A
-            - app.worker.celery_app
-            - worker
-            - --loglevel=info
+
           env:
             {{- toYaml .Values.env | nindent 12 }}
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          # Workers have no HTTP port — use process-level liveness check
-          livenessProbe:
-            exec:
-              command:
-                - celery
-                - -A
-                - app.worker.celery_app
-                - inspect
-                - ping
-                - -t
-                - "5"
-            initialDelaySeconds: 30
-            periodSeconds: 60
-            failureThreshold: 3
+
+          command: ["celery"]
+          args: ["-A", "app.worker.celery_app", "worker", "--loglevel=info"]
