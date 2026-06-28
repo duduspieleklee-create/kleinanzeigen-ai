@@ -1,22 +1,11 @@
-"""SQLAlchemy async engine and session setup (placeholder)."""
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
-from app.api.config import settings
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+import os
 
-engine = create_async_engine(settings.database_url, echo=False, pool_pre_ping=True)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/kleinanzeigen")
 
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-class Base(DeclarativeBase):
-    pass
-
-
-async def get_db() -> AsyncSession:
-    """FastAPI dependency that yields a database session."""
-    async with AsyncSessionLocal() as session:
-        yield session
+Base = declarative_base()
