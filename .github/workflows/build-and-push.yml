@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Build, Test and Deploy
 
 on:
   push:
@@ -7,8 +7,34 @@ on:
     branches: [ main ]
 
 jobs:
+  # ─────────────────────────────────────────────
+  # 1. Lint & basic checks (runs first, fast)
+  # ─────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dev dependencies
+        run: pip install ruff
+
+      - name: Run ruff linter
+        run: ruff check app/
+
+  # ─────────────────────────────────────────────
+  # 2. Build and push Docker images
+  # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
+    needs: lint
+    # Only push images on main branch, not on PRs
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,13 +52,47 @@ jobs:
       - name: Build and Push API
         uses: docker/build-push-action@v5
         with:
-          context: ./app/api
+          context: .
+          file: app/api/Dockerfile
           push: true
           tags: ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-api:${{ github.sha }}
 
       - name: Build and Push Worker
         uses: docker/build-push-action@v5
         with:
-          context: ./app/worker
+          context: .
+          file: app/worker/Dockerfile
           push: true
           tags: ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker:${{ github.sha }}
+
+      - name: Build and Push Beat
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: app/beat/Dockerfile
+          push: true
+          tags: ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-beat:${{ github.sha }}
+
+  # ─────────────────────────────────────────────
+  # 3. Run database migrations
+  # ─────────────────────────────────────────────
+  migrate:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: alembic upgrade head
