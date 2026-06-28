@@ -17,7 +17,7 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-    env:
+env:
   - name: DATABASE_URL
     valueFrom:
       secretKeyRef:
