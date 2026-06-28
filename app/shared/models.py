@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.shared.database import Base
@@ -39,6 +39,11 @@ class ScrapeResult(Base):
     price = Column(String(50))
     location = Column(String(100))
     url = Column(Text)
+    description = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     task = relationship("ScrapeTask", back_populates="results")
+
+    __table_args__ = (
+        Index("ix_scrape_results_created_at", "created_at"),
+    )
