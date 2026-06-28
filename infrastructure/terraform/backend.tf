@@ -1,10 +1,8 @@
-# Configure remote state backend
-# terraform {
-#   backend "s3" {
-#     bucket         = "kleinanzeigen-ai-tfstate"
-#     key            = "terraform.tfstate"
-#     region         = "eu-central-1"
-#     encrypt        = true
-#     dynamodb_table = "kleinanzeigen-ai-tfstate-lock"
-#   }
-# }
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "tfstate-rg"
+    storage_account_name = "tfstatestoragekleinan"
+    container_name       = "tfstate"
+    key                  = "kleinanzeigen-ai.tfstate"
+  }
+}
