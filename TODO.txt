@@ -129,3 +129,14 @@ Things that need to be completed before this project is production-ready.
 - [ ] Update app/beat/Dockerfile to also use requirements.txt (currently uses pyproject.toml)
 - [ ] Consider multi-stage Docker builds to reduce final image size
 - [ ] Pin base image to a specific digest for reproducibility (e.g. python:3.11-slim@sha256:...)
+
+=============================================================================
+15. DATABASE MODELS & SESSION (app/shared/)
+=============================================================================
+- [ ] Run Alembic migrations to create listings and scrape_jobs tables in PostgreSQL
+      (alembic init, alembic revision --autogenerate, alembic upgrade head)
+- [ ] Set DATABASE_URL environment variable to Azure PostgreSQL connection string
+- [ ] Add indexes on listings.category, listings.location for query performance
+- [ ] Add relationship between ScrapeJob and Listing (one job → many listings)
+- [ ] Inject get_db() dependency into scrapes router endpoints
+- [ ] Add created_by / user_id field if multi-user support is needed later
