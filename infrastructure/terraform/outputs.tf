@@ -1,3 +1,7 @@
+output "key_vault_uri" {
+  value = azurerm_key_vault.main.vault_uri
+}
+
 output "aks_cluster_name" {
   value = azurerm_kubernetes_cluster.aks.name
 }
