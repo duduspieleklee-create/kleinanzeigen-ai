@@ -1,0 +1,14 @@
+replicaCount: 2
+
+image:
+  repository: kleinanzeigen-ai/worker
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi

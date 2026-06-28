@@ -1,0 +1,14 @@
+replicaCount: 1
+
+image:
+  repository: kleinanzeigen-ai/beat
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
