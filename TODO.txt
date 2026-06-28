@@ -229,3 +229,9 @@ Things that need to be completed before this project is production-ready.
 - [ ] Add startup/shutdown event handlers (lifespan) for DB connection pool warm-up
 - [ ] Add request logging middleware for observability
 - [ ] Add rate limiting middleware before exposing publicly
+
+cd infrastructure/terraform
+
+terraform init
+terraform plan
+terraform apply
