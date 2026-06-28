@@ -1,42 +1,85 @@
-output "aks_cluster_name" {
-  description = "Name of the AKS cluster"
-  value       = module.aks.cluster_name
+# Get current Azure configuration
+data "azurerm_client_config" "current" {}
+
+# Resource Group
+resource "azurerm_resource_group" "main" {
+  name     = var.resource_group_name
+  location = var.location
 }
 
-output "acr_login_server" {
-  description = "Login server URL for the container registry"
-  value       = module.acr.login_server
+# Azure Container Registry
+resource "azurerm_container_registry" "acr" {
+  name                = var.acr_name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = "Basic"
+  admin_enabled       = true
 }
 
-output "acr_admin_username" {
-  description = "Admin username for the container registry"
-  value       = module.acr.admin_username
+# Azure Kubernetes Service (AKS)
+resource "azurerm_kubernetes_cluster" "aks" {
+  name                = var.aks_cluster_name
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  dns_prefix          = var.aks_cluster_name
+
+  default_node_pool {
+    name       = "default"
+    node_count = var.node_count
+    vm_size    = var.vm_size
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  # Enable Key Vault CSI Driver
+  key_vault_secrets_provider {
+    secret_rotation_enabled  = true
+    secret_rotation_interval = "2m"
+  }
 }
 
-output "acr_admin_password" {
-  description = "Admin password for the container registry (sensitive)"
-  value       = module.acr.admin_password
-  sensitive   = true
+# Azure Database for PostgreSQL (Flexible Server)
+resource "azurerm_postgresql_flexible_server" "db" {
+  name                   = var.postgres_server_name
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  version                = "16"
+  administrator_login    = var.postgres_admin_username
+  administrator_password = var.postgres_admin_password
+  storage_mb             = 32768
+  sku_name               = "B_Standard_B1ms"
 }
 
-output "postgres_fqdn" {
-  description = "Fully qualified domain name of the PostgreSQL server"
-  value       = module.postgres.fqdn
+# Azure Cache for Redis
+resource "azurerm_redis_cache" "redis" {
+  name                = var.redis_name
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  capacity            = 1
+  family              = "C"
+  sku_name            = "Basic"
+  enable_non_ssl_port = false
+  minimum_tls_version = "1.2"
 }
 
-output "redis_hostname" {
-  description = "Hostname of the Redis cache"
-  value       = module.redis.hostname
-}
+# Azure Key Vault
+resource "azurerm_key_vault" "main" {
+  name                        = var.key_vault_name
+  location                    = azurerm_resource_group.main.location
+  resource_group_name         = azurerm_resource_group.main.name
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+  sku_name                    = "standard"
+  soft_delete_retention_days  = 7
+  purge_protection_enabled    = false
 
-output "database_url" {
-  description = "Full PostgreSQL connection string — copy this as DATABASE_URL GitHub secret"
-  value       = module.postgres.database_url
-  sensitive   = true
-}
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azurerm_client_config.current.object_id
 
-output "redis_url" {
-  description = "Full Redis connection URL with TLS — copy this as REDIS_URL GitHub secret"
-  value       = module.redis.redis_url
-  sensitive   = true
+    secret_permissions = [
+      "Get", "List", "Set", "Delete", "Purge", "Recover"
+    ]
+  }
 }
