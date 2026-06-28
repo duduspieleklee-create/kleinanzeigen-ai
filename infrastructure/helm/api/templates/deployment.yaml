@@ -28,15 +28,14 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           livenessProbe:
             httpGet:
-              # TODO: replace with GET /healthz once that endpoint is added to main.py
-              path: /
+              path: /healthz
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 20
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
