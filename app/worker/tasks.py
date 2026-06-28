@@ -11,6 +11,32 @@ from typing import Optional
 logger = logging.getLogger("kleinanzeigen-ai")
 
 
+def _extract_description(item) -> Optional[str]:
+    """
+    Extract raw listing description text from a parsed aditem element.
+
+    Kleinanzeigen renders the short description in a <p> with class
+    'aditem-main--middle--description'.  We fall back to a broader search
+    for any <p> that isn't the price tag so this stays useful if the
+    site's markup changes slightly.
+    """
+    # Primary: dedicated description paragraph
+    desc_tag = item.find("p", class_="aditem-main--middle--description")
+    if desc_tag:
+        return desc_tag.get_text(strip=True) or None
+
+    # Fallback: first <p> that is not the price line
+    for p in item.find_all("p"):
+        classes = p.get("class", [])
+        if "aditem-main--middle--price" in classes:
+            continue
+        text = p.get_text(strip=True)
+        if text:
+            return text
+
+    return None
+
+
 @celery_app.task(name="scrape.kleinanzeigen", bind=True, max_retries=2)
 def scrape_kleinanzeigen(self, parameters: dict, task_id: Optional[int] = None):
     """
@@ -81,12 +107,15 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: Optional[int] = None):
                         f"https://www.kleinanzeigen.de{href}" if href.startswith("/") else href
                     )
 
+                description = _extract_description(item)
+
                 result = ScrapeResult(
                     task_id=task_id,
                     title=title[:255],
                     price=price[:50],
                     location=location[:100],
                     url=item_url,
+                    description=description,
                 )
                 db.add(result)
                 saved += 1
