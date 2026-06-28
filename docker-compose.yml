@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL
+  # PostgreSQL Database
   db:
     image: postgres:15-alpine
     environment:
@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis (Celery broker)
+  # Redis (Celery Broker)
   redis:
     image: redis:7-alpine
     ports:
@@ -39,7 +39,7 @@ services:
     environment:
       DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
       REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: supersecretkey123
+      SECRET_KEY: ${SECRET_KEY}
     depends_on:
       db:
         condition: service_healthy
