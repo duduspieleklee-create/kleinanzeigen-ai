@@ -11,13 +11,13 @@ def build_kleinanzeigen_url(
     sort: Optional[str] = "neueste"
 ) -> str:
     """
-    Builds a search URL for kleinanzeigen.de based on user-selected parameters.
-    This is a simplified version for Milestone 1.
+    Builds a search URL for kleinanzeigen.de based on user parameters.
+    This is a simplified but functional version for Milestone 1.
     """
 
     base_url = "https://www.kleinanzeigen.de"
 
-    # Build path segment
+    # Build path
     path_parts = []
     if category:
         path_parts.append(f"s-{category}")
@@ -25,7 +25,7 @@ def build_kleinanzeigen_url(
         path_parts.append("s-all")
 
     if location:
-        path_parts.append(location)
+        path_parts.append(location.replace(" ", "-").lower())
 
     path = "/".join(path_parts) + "/"
 
@@ -33,7 +33,7 @@ def build_kleinanzeigen_url(
     query_params = {}
 
     if keywords:
-        query_params["k0"] = keywords
+        query_params["k0"] = keywords.strip()
 
     if price_max:
         query_params["p"] = price_max
@@ -46,7 +46,6 @@ def build_kleinanzeigen_url(
 
     # Construct final URL
     if query_params:
-        query_string = urlencode(query_params)
-        return f"{base_url}/{path}?{query_string}"
+        return f"{base_url}/{path}?{urlencode(query_params)}"
     else:
         return f"{base_url}/{path}"
