@@ -1,31 +1,48 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.shared.database import Base
 
 
-class Listing(Base):
-    __tablename__ = "listings"
+class User(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    external_id = Column(String, unique=True, index=True, nullable=False)
-    title = Column(String, nullable=False)
-    price = Column(Float, nullable=True)
-    location = Column(String, nullable=True)
-    category = Column(String, nullable=True)
-    url = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    scrape_tasks = relationship("ScrapeTask", back_populates="user")
 
 
-class ScrapeJob(Base):
-    __tablename__ = "scrape_jobs"
+class ScrapeTask(Base):
+    __tablename__ = "scrape_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(String, unique=True, index=True, nullable=False)
-    status = Column(String, default="queued")   # queued | running | done | failed
-    category = Column(String, nullable=True)
-    location = Column(String, nullable=True)
-    keywords = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    url = Column(Text, nullable=False)
+    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    parameters = Column(JSON)                       # Store search parameters
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True))
+
+    user = relationship("User", back_populates="scrape_tasks")
+    results = relationship("ScrapeResult", back_populates="task")
+
+
+class ScrapeResult(Base):
+    __tablename__ = "scrape_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("scrape_tasks.id"), nullable=False)
+    title = Column(String(255))
+    price = Column(String(50))
+    location = Column(String(100))
+    url = Column(Text)
+    description = Column(Text)
+    raw_data = Column(JSON)                         # Store full scraped data
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    task = relationship("ScrapeTask", back_populates="results")
