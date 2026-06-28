@@ -8,7 +8,7 @@ from app.api.routers import auth, scrapes
 from app.shared.database import Base, engine
 
 Base.metadata.create_all(bind=engine)
-
+templates = Jinja2Templates(directory="app/api/templates")
 app = FastAPI(title="kleinanzeigen-ai")
 
 app.add_middleware(
