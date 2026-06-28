@@ -140,3 +140,11 @@ Things that need to be completed before this project is production-ready.
 - [ ] Add relationship between ScrapeJob and Listing (one job → many listings)
 - [ ] Inject get_db() dependency into scrapes router endpoints
 - [ ] Add created_by / user_id field if multi-user support is needed later
+
+=============================================================================
+16. DEPENDENCIES MAINTENANCE (requirements.txt)
+=============================================================================
+- [ ] Create requirements-dev.txt separating dev/test deps (pytest, httpx) from production
+- [ ] Add asyncpg==0.29.0 for async PostgreSQL support (needed by SQLAlchemy async engine)
+- [ ] Set up Dependabot or Renovate to keep dependencies up to date automatically
+- [ ] Verify all pinned versions are compatible with each other before first deploy
