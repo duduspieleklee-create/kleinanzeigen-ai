@@ -28,7 +28,26 @@ jobs:
         run: ruff check app/
 
   # ─────────────────────────────────────────────
-  # 2. Build and push Docker images
+  # 2a. Validate Helm charts (parallel with build)
+  # ─────────────────────────────────────────────
+  helm-lint:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint Helm charts
+        run: |
+          helm lint infrastructure/helm/api
+          helm lint infrastructure/helm/worker
+          helm lint infrastructure/helm/beat
+
+  # ─────────────────────────────────────────────
+  # 2b. Build and push Docker images (parallel with helm-lint)
   # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
@@ -77,7 +96,7 @@ jobs:
   # ─────────────────────────────────────────────
   migrate:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, helm-lint]
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
