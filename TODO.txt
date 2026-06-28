@@ -201,3 +201,12 @@ Things that need to be completed before this project is production-ready.
 - [ ] Add a startup guard: raise a clear error if DATABASE_URL is None/empty at boot time
 - [ ] Re-add connection pool tuning (pool_size, max_overflow) before production deploy
 - [ ] Set DATABASE_URL as an environment variable in AKS pod spec / Azure Key Vault reference
+
+=============================================================================
+22. MODELS — POST M1 ADDITIONS (app/shared/models.py)
+=============================================================================
+- [ ] Re-add SQLAlchemy relationships (User→ScrapeTask, ScrapeTask→ScrapeResult) after M1
+- [ ] Re-add is_active flag to User for account deactivation support
+- [ ] Re-add completed_at timestamp to ScrapeTask for job duration tracking
+- [ ] Re-add description and raw_data JSON columns to ScrapeResult for full data storage
+- [ ] Add Alembic migration for the M1 schema before first deploy
