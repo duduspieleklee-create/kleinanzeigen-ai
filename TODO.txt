@@ -92,3 +92,10 @@ Things that need to be completed before this project is production-ready.
 - [ ] Add a docker-compose.yml for local development
 - [ ] Update docs/architecture.md with final infra and data flow diagrams
 - [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
+
+=============================================================================
+11. CELERY BROKER & BACKEND (app/worker/celery_app.py)
+=============================================================================
+- [ ] Replace hardcoded broker URL (redis://localhost:6379/0) with Azure Cache for Redis connection string
+- [ ] Replace hardcoded backend URL (redis://localhost:6379/0) with Azure Cache for Redis connection string
+- [ ] Inject Redis URLs via environment variable REDIS_URL instead of hardcoding
