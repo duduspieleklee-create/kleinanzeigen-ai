@@ -2,7 +2,9 @@ from app.shared.logging_config import logger
 
 logger.info("Starting kleinanzeigen-ai application...")
 
+from app.api.routers import auth
 
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
