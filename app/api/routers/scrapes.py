@@ -1,24 +1,19 @@
-from fastapi import APIRouter, Depends
-from app.api.dependencies import require_auth
-from app.api.models.schemas import ScrapeRequest, ScrapeResponse
-from app.worker.tasks import run_scrape
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 router = APIRouter()
 
+class ScrapeRequest(BaseModel):
+    keywords: str | None = None
+    category: str | None = None
+    location: str | None = None
+    price_max: int | None = None
 
-@router.post("/", response_model=ScrapeResponse)
-async def create_scrape(request: ScrapeRequest, _: str = Depends(require_auth)):
-    """Enqueue a new scrape job."""
-    task = run_scrape.delay(
-        category=request.category,
-        location=request.location,
-        max_pages=request.max_pages,
-    )
-    return ScrapeResponse(task_id=task.id, status="queued")
-
-
-@router.get("/{task_id}", response_model=ScrapeResponse)
-async def get_scrape_status(task_id: str, _: str = Depends(require_auth)):
-    """Get the status of a scrape job."""
-    task = run_scrape.AsyncResult(task_id)
-    return ScrapeResponse(task_id=task_id, status=task.state.lower())
+@router.post("/")
+async def create_scrape(request: ScrapeRequest):
+    # TODO: Build URL using shared/url_builder.py
+    # TODO: Send task to Celery
+    return {
+        "message": "Scrape job created",
+        "parameters": request.dict()
+    }
