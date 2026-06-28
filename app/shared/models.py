@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Index
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.shared.database import Base
@@ -11,39 +11,50 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    tasks = relationship("ScrapeTask", back_populates="user")
+    # Relationships
+    scrape_tasks = relationship("ScrapeTask", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username='{self.username}')>"
 
 
 class ScrapeTask(Base):
     __tablename__ = "scrape_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     url = Column(Text, nullable=False)
-    status = Column(String(20), default="pending", index=True)
-    parameters = Column(JSON)
+    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    parameters = Column(JSON)                       # Stores search parameters as JSON
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True))
 
-    user = relationship("User", back_populates="tasks")
+    # Relationships
+    user = relationship("User", back_populates="scrape_tasks")
     results = relationship("ScrapeResult", back_populates="task")
+
+    def __repr__(self):
+        return f"<ScrapeTask(id={self.id}, status='{self.status}')>"
 
 
 class ScrapeResult(Base):
     __tablename__ = "scrape_results"
 
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("scrape_tasks.id"), index=True)
+    task_id = Column(Integer, ForeignKey("scrape_tasks.id"), nullable=False)
     title = Column(String(255))
     price = Column(String(50))
     location = Column(String(100))
     url = Column(Text)
-    description = Column(Text, nullable=True)
+    description = Column(Text)
+    raw_data = Column(JSON)                         # Optional: store full raw data
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Relationships
     task = relationship("ScrapeTask", back_populates="results")
 
-    __table_args__ = (
-        Index("ix_scrape_results_created_at", "created_at"),
-    )
+    def __repr__(self):
+        return f"<ScrapeResult(id={self.id}, title='{self.title}')>"
