@@ -33,8 +33,9 @@ Things that need to be completed before this project is production-ready.
 4. DATABASE (app/shared/database.py + Azure)
 =============================================================================
 - [ ] Provision Azure Database for PostgreSQL (Flexible Server)
-- [ ] Set DATABASE_URL environment variable / secret to the real connection string
-      Format: postgresql+asyncpg://user:password@host/dbname
+- [ ] Set DATABASE_URL environment variable / secret to the real Azure PostgreSQL connection string
+      Format: postgresql://user:password@<host>.postgres.database.azure.com:5432/kleinanzeigen_ai
+      (currently falls back to localhost default in database.py)
 - [ ] Create SQLAlchemy ORM models (tables for listings, scrape jobs, users)
 - [ ] Write and run Alembic migrations
 
@@ -148,3 +149,11 @@ Things that need to be completed before this project is production-ready.
 - [ ] Add asyncpg==0.29.0 for async PostgreSQL support (needed by SQLAlchemy async engine)
 - [ ] Set up Dependabot or Renovate to keep dependencies up to date automatically
 - [ ] Verify all pinned versions are compatible with each other before first deploy
+
+=============================================================================
+17. CONNECTION POOLING (app/shared/database.py)
+=============================================================================
+- [ ] Tune pool_size and max_overflow based on AKS pod count and Azure PostgreSQL connection limits
+- [ ] Set echo=True temporarily during development for SQL query debugging, then revert
+- [ ] Move DATABASE_URL fallback default out of code — require env var explicitly in production
+- [ ] Consider switching to asyncpg + SQLAlchemy async engine when adding async routes
