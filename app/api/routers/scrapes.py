@@ -1,19 +1,24 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.shared.database import get_db
+from app.shared.models import ScrapeTask
+from app.api.dependencies import get_current_user
 
 router = APIRouter()
 
-class ScrapeRequest(BaseModel):
-    keywords: str | None = None
-    category: str | None = None
-    location: str | None = None
-    price_max: int | None = None
-
 @router.post("/")
-async def create_scrape(request: ScrapeRequest):
-    # TODO: Build URL using shared/url_builder.py
-    # TODO: Send task to Celery
-    return {
-        "message": "Scrape job created",
-        "parameters": request.dict()
-    }
+async def create_scrape(
+    request: ScrapeRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    task = ScrapeTask(
+        user_id=current_user["id"],
+        url="https://www.kleinanzeigen.de/...",   # Will come from URL builder
+        parameters=request.dict(),
+        status="pending"
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return {"task_id": task.id, "status": task.status}
