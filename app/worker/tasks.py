@@ -5,7 +5,6 @@ from app.shared.models import ScrapeResult
 import requests
 from bs4 import BeautifulSoup
 import logging
-import re
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
@@ -14,10 +13,10 @@ logger = logging.getLogger("kleinanzeigen-ai")
 def scrape_kleinanzeigen(self, parameters: dict):
     """
     Celery task that scrapes kleinanzeigen.de and saves results to the database.
+    Final version for Milestone 1.
     """
     db = SessionLocal()
     try:
-        # Build the search URL
         url = build_kleinanzeigen_url(**parameters)
         logger.info(f"Starting scrape for: {url}")
 
@@ -30,7 +29,6 @@ def scrape_kleinanzeigen(self, parameters: dict):
 
         soup = BeautifulSoup(response.text, "lxml")
 
-        # Try common selectors for kleinanzeigen.de listings
         listings = (
             soup.find_all("article", class_="aditem") or
             soup.select("article.aditem") or
@@ -39,7 +37,7 @@ def scrape_kleinanzeigen(self, parameters: dict):
 
         saved_count = 0
 
-        for item in listings[:25]:  # Limit results for Milestone 1
+        for item in listings[:25]:
             try:
                 title_tag = item.find("h2") or item.find("a", class_="ellipsis")
                 title = title_tag.get_text(strip=True) if title_tag else "No title"
@@ -56,7 +54,6 @@ def scrape_kleinanzeigen(self, parameters: dict):
                     href = link_tag["href"]
                     item_url = f"https://www.kleinanzeigen.de{href}" if href.startswith("/") else href
 
-                # Save to database
                 result = ScrapeResult(
                     title=title[:255],
                     price=price[:50],
@@ -67,13 +64,17 @@ def scrape_kleinanzeigen(self, parameters: dict):
                 saved_count += 1
 
             except Exception as e:
-                logger.warning(f"Failed to parse one listing: {e}")
+                logger.warning(f"Failed to parse listing: {e}")
                 continue
 
         db.commit()
         logger.info(f"Saved {saved_count} results from {url}")
 
-        return {"status": "success", "results_saved": saved_count, "url": url}
+        return {
+            "status": "success",
+            "results_saved": saved_count,
+            "url": url
+        }
 
     except Exception as exc:
         logger.error(f"Scraping failed: {str(exc)}")
