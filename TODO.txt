@@ -186,7 +186,7 @@ Things that need to be completed before this project is production-ready.
 - [x] Add missing import: ScrapeRequest and ScrapeResponse defined in app/api/models/schemas.py
       and imported at the top of scrapes.py
 - [ ] Replace hardcoded URL placeholder with build_kleinanzeigen_url(request.model_dump())
-      from app.shared.url_builder (request.dict() updated to model_dump() — Pydantic v2)
+      from app.shared.url_builder — handler renamed to create_scrape_job (Pydantic v2 ready)
 - [ ] Dispatch Celery task after DB insert:
       scrape_kleinanzeigen.delay(task.url) and store task_id on ScrapeTask
 - [ ] Add GET /scrapes/{task_id} endpoint to retrieve task status and results
