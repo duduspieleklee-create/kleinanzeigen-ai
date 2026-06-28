@@ -1,3 +1,8 @@
+from app.shared.logging_config import logger
+
+logger.info("Starting kleinanzeigen-ai application...")
+
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
