@@ -1,26 +1,20 @@
 replicaCount: 2
 
 image:
-  repository: kleinanzeigen-ai/worker
+  repository: kleinanzeigenacrdev.azurecr.io/kleinanzeigen-ai-worker
+  tag: latest
   pullPolicy: IfNotPresent
-  tag: "latest"
 
 resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
   requests:
-    cpu: 200m
-    memory: 256Mi
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
 
 env:
   - name: DATABASE_URL
-    valueFrom:
-      secretKeyRef:
-        name: kleinanzeigen-secrets
-        key: DATABASE_URL
+    value: "postgresql://kleinanzeigen:secret@your-db-server.postgres.database.azure.com:5432/kleinanzeigen_ai"
   - name: REDIS_URL
-    valueFrom:
-      secretKeyRef:
-        name: kleinanzeigen-secrets
-        key: REDIS_URL
+    value: "redis://your-redis.redis.cache.windows.net:6380"
