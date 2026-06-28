@@ -1,21 +1,17 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from typing import Optional
 
 
 class ScrapeRequest(BaseModel):
-    category: str = Field(..., description="Kleinanzeigen category slug")
-    location: str = Field(default="", description="City or region filter")
-    max_pages: int = Field(default=5, ge=1, le=50, description="Maximum pages to scrape")
+    keywords: Optional[str] = None
+    category: Optional[str] = None
+    location: Optional[str] = None
+    price_max: Optional[int] = None
+    radius: Optional[int] = None
+    sort: Optional[str] = "neueste"   # Default sorting option
 
 
 class ScrapeResponse(BaseModel):
-    task_id: str
+    task_id: int
     status: str
-
-
-class ListingSchema(BaseModel):
-    external_id: str
-    title: str
-    price: float | None
-    location: str | None
-    url: str
-    description: str | None = None
+    message: str
