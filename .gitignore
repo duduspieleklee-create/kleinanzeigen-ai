@@ -36,6 +36,7 @@ env/
 **/.terraform/
 *.tfstate
 *.tfstate.*
+*.tfstate.backup
 *.tfvars
 !example.tfvars
 crash.log
@@ -46,14 +47,12 @@ override.tf.json
 *_override.tf.json
 .terraform.lock.hcl
 
-# Docker
-Dockerfile*
-docker-compose*.yml
-
 # OS
 .DS_Store
 Thumbs.db
 
 # Secrets
 *.env
+.env
 secrets/
+logs/
