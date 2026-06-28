@@ -13,7 +13,10 @@ vm_size          = "Standard_B2s"
 # PostgreSQL
 postgres_server_name    = "kleinanzeigen-db-dev"
 postgres_admin_username = "kleinanzeigenadmin"
-postgres_admin_password = "ChangeThisPassword123!"   # ← Change this!
+# postgres_admin_password is intentionally absent.
+# Pass it at runtime via the TF_VAR_postgres_admin_password environment variable:
+#   export TF_VAR_postgres_admin_password="your-password"
+#   terraform apply
 
 # Redis
 redis_name = "kleinanzeigen-redis-dev"
