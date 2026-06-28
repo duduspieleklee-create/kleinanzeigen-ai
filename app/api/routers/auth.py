@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Response
 from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import timedelta
-import os
 
 from app.api.auth.google import oauth
 from app.shared.database import get_db
@@ -24,41 +23,39 @@ async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
     user_info = token.get("userinfo")
 
     if not user_info:
-        return {"error": "Failed to retrieve user information from Google"}
+        return RedirectResponse(url="/?error=google_auth_failed")
 
     email = user_info.get("email")
     name = user_info.get("name")
 
-    # Check if user already exists
+    # Find or create user
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
-        # Create new user (Google users won't have a password)
         user = User(
             username=name or email.split("@")[0],
             email=email,
-            hashed_password="google-oauth"  # Placeholder since it's Google auth
+            hashed_password="google-oauth"
         )
         db.add(user)
         db.commit()
         db.refresh(user)
 
-    # Create JWT token
+    # Create JWT
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id), "username": user.username},
         expires_delta=access_token_expires
     )
 
-    # For Milestone 1: Return token + user info
-    # In production you would redirect to frontend with token
-    return {
-        "message": "Google login successful",
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email
-        }
-    }
+    # Redirect to dashboard and set JWT as cookie
+    response = RedirectResponse(url="/dashboard")
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=3600,           # 1 hour
+        secure=False,           # Set to True in production (HTTPS)
+        samesite="lax"
+    )
+    return response
