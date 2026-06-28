@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: kleinanzeigen
       POSTGRES_PASSWORD: secret
@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis (for Celery)
+  # Redis (Celery broker)
   redis:
     image: redis:7-alpine
     ports:
