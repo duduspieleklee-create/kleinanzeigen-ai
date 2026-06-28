@@ -29,7 +29,7 @@ ingress:
   enabled: false
   host: kleinanzeigen-ai.example.com
   annotations:
-    kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress-class: nginx
 
 env:
   - name: DATABASE_URL
@@ -47,5 +47,15 @@ env:
       secretKeyRef:
         name: kleinanzeigen-secrets
         key: SECRET_KEY
+  - name: GOOGLE_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: kleinanzeigen-secrets
+        key: GOOGLE_CLIENT_ID
+  - name: GOOGLE_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: kleinanzeigen-secrets
+        key: GOOGLE_CLIENT_SECRET
   - name: ENVIRONMENT
     value: "prod"
