@@ -9,7 +9,10 @@ vm_size          = "Standard_D2s_v3"
 
 postgres_server_name    = "kleinanzeigen-db-prod"
 postgres_admin_username = "kleinanzeigenadmin"
-postgres_admin_password = "VeryStrongProdPassword123!"
+# postgres_admin_password is intentionally absent.
+# Pass it at runtime via the TF_VAR_postgres_admin_password environment variable:
+#   export TF_VAR_postgres_admin_password="your-password"
+#   terraform apply
 
 redis_name = "kleinanzeigen-redis-prod"
 
