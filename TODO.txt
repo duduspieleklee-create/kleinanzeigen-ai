@@ -183,9 +183,8 @@ Things that need to be completed before this project is production-ready.
 =============================================================================
 20. SCRAPES ROUTER (app/api/routers/scrapes.py)
 =============================================================================
-- [ ] Add missing import: from app.api.routers.scrapes import ScrapeRequest
-      (ScrapeRequest is used but not imported — define it in app/api/models/schemas.py
-      and import it at the top of scrapes.py)
+- [x] Add missing import: ScrapeRequest and ScrapeResponse defined in app/api/models/schemas.py
+      and imported at the top of scrapes.py
 - [ ] Replace hardcoded URL placeholder with build_kleinanzeigen_url(request.dict())
       from app.shared.url_builder
 - [ ] Dispatch Celery task after DB insert:
