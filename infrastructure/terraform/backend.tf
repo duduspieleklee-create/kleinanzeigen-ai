@@ -1,8 +1,6 @@
 terraform {
-  backend "azurerm" {
-    resource_group_name  = "tfstate-rg"
-    storage_account_name = "tfstatestoragekleinan"
-    container_name       = "tfstate"
-    key                  = "kleinanzeigen-ai.tfstate"
-  }
+  # Backend config is supplied per environment via:
+  #   terraform init -backend-config=backend-config.<env>.conf
+  # See infrastructure/terraform/backend-config.dev.conf for the dev example.
+  backend "azurerm" {}
 }
