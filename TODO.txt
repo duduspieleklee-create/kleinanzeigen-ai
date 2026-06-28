@@ -99,3 +99,13 @@ Things that need to be completed before this project is production-ready.
 - [ ] Replace hardcoded broker URL (redis://localhost:6379/0) with Azure Cache for Redis connection string
 - [ ] Replace hardcoded backend URL (redis://localhost:6379/0) with Azure Cache for Redis connection string
 - [ ] Inject Redis URLs via environment variable REDIS_URL instead of hardcoding
+
+=============================================================================
+12. SCRAPING LOGIC (app/worker/tasks.py)
+=============================================================================
+- [ ] Implement real HTTP scraping inside scrape_kleinanzeigen() using requests + BeautifulSoup
+- [ ] Parse listing data (title, price, location, URL, description) from HTML
+- [ ] Persist scraped listings to PostgreSQL via SQLAlchemy
+- [ ] Call scrape_kleinanzeigen.delay(url) from the scrapes router instead of returning a placeholder
+- [ ] Add error handling and retry logic for failed requests
+- [ ] Respect rate limits (add delays between requests)
