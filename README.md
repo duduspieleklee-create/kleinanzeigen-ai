@@ -1,18 +1,32 @@
 # kleinanzeigen-ai
 
-AI-powered tooling for Kleinanzeigen: REST API, async Celery worker, and Celery beat scheduler.
+Intelligent scraping and analytics platform for kleinanzeigen.de.
 
-## Services
+## Overview
 
-- **api** — FastAPI REST API
-- **worker** — Celery async task worker  
-- **beat** — Celery beat scheduler
+This project provides a scalable web scraping solution with an intelligence layer for classifieds data from kleinanzeigen.de.
 
-## Infrastructure
+## Tech Stack
 
-- **Terraform** — cloud provisioning (dev / staging / prod)
-- **Helm** — Kubernetes deployment charts
+- **Backend**: FastAPI + Celery
+- **Database**: Azure Database for PostgreSQL
+- **Queue**: Azure Cache for Redis
+- **Infrastructure**: Terraform + Azure AKS
+- **Deployment**: GitHub Actions + Octopus Deploy + Helm
+- **Orchestration**: Kubernetes (AKS)
+
+## Repository Structure
+
+- `app/` – Application code (API, Worker, Beat)
+- `infrastructure/` – Terraform and Helm charts
+- `.github/workflows/` – CI/CD pipelines
 
 ## Getting Started
 
-See [docs/architecture.md](docs/architecture.md) for the system overview.
+See [docs/architecture.md](docs/architecture.md) for system overview.
+
+## Environments
+
+- `dev`
+- `staging`
+- `prod`
