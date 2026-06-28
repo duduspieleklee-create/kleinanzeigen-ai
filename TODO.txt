@@ -119,7 +119,8 @@ Things that need to be completed before this project is production-ready.
 - [x] URL encoding handled via urllib.parse.urlencode
 - [ ] Add pagination support (page number in URL) — post M1
 - [ ] Wire build_kleinanzeigen_url() into scrapes router (replace hardcoded placeholder URL)
-- [ ] Add unit tests to cover URL variations
+- [x] Document usage examples and parameter reference in docs/url_builder.md
+- [ ] Add unit tests to cover URL variations (keywords, category, location, price_max, radius)
 
 =============================================================================
 14. REQUIREMENTS & DOCKERFILES
