@@ -2,6 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers import auth, scrapes
+from app.shared.database import Base, engine
+
+# Create database tables (for development only)
+# In production, use Alembic migrations instead
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="kleinanzeigen-ai",
@@ -9,7 +14,7 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# CORS (adjust in production)
+# CORS middleware (adjust origins in production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,6 +27,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 
+
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "ok", "service": "kleinanzeigen-ai"}
