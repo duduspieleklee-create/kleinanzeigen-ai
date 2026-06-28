@@ -29,6 +29,9 @@ jobs:
 
   # ─────────────────────────────────────────────
   # 2a. Validate Helm charts (parallel with build)
+  #     helm lint  — checks chart syntax and structure
+  #     helm template — renders the chart with CI-like values to catch
+  #                     missing keys that lint alone won't flag
   # ─────────────────────────────────────────────
   helm-lint:
     runs-on: ubuntu-latest
@@ -45,6 +48,23 @@ jobs:
           helm lint infrastructure/helm/api
           helm lint infrastructure/helm/worker
           helm lint infrastructure/helm/beat
+
+      - name: Render Helm charts (template validation)
+        run: |
+          helm template ci-release infrastructure/helm/api \
+            --set image.repository=acr.example.com/kleinanzeigen-ai-api \
+            --set image.tag=ci-test-sha \
+            > /dev/null
+
+          helm template ci-release infrastructure/helm/worker \
+            --set image.repository=acr.example.com/kleinanzeigen-ai-worker \
+            --set image.tag=ci-test-sha \
+            > /dev/null
+
+          helm template ci-release infrastructure/helm/beat \
+            --set image.repository=acr.example.com/kleinanzeigen-ai-beat \
+            --set image.tag=ci-test-sha \
+            > /dev/null
 
   # ─────────────────────────────────────────────
   # 2b. Build and push Docker images (parallel with helm-lint)
@@ -143,6 +163,9 @@ jobs:
           resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
           cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
 
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
       - name: Create / update Kubernetes secret
         run: |
           kubectl create secret generic kleinanzeigen-secrets \
@@ -153,10 +176,23 @@ jobs:
             --from-literal=GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy with Helm
+      - name: Deploy API
         run: |
-          helm upgrade --install kleinanzeigen infrastructure/helm \
-            --set api.image.tag=${{ github.sha }} \
-            --set worker.image.tag=${{ github.sha }} \
-            --set beat.image.tag=${{ github.sha }} \
+          helm upgrade --install kleinanzeigen-api infrastructure/helm/api \
+            --set image.repository=${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-api \
+            --set image.tag=${{ github.sha }} \
+            --wait --timeout=5m
+
+      - name: Deploy Worker
+        run: |
+          helm upgrade --install kleinanzeigen-worker infrastructure/helm/worker \
+            --set image.repository=${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker \
+            --set image.tag=${{ github.sha }} \
+            --wait --timeout=5m
+
+      - name: Deploy Beat
+        run: |
+          helm upgrade --install kleinanzeigen-beat infrastructure/helm/beat \
+            --set image.repository=${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-beat \
+            --set image.tag=${{ github.sha }} \
             --wait --timeout=5m
