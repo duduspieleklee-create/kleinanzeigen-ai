@@ -1,248 +1,149 @@
 # TODO — kleinanzeigen-ai
-
-Things that need to be completed before this project is production-ready.
-
-=============================================================================
-1. GITHUB SECRETS (Settings → Secrets and variables → Actions)
-=============================================================================
-- [ ] ACR_LOGIN_SERVER  → set to your Azure Container Registry URL
-                          e.g. myregistry.azurecr.io
-- [ ] ACR_USERNAME      → set to your ACR username (or service principal ID)
-- [ ] ACR_PASSWORD      → set to your ACR password (or service principal secret)
+# Last updated: 2026-06-28
+# Items without a checkbox are section headers.
+# Fixed items have been removed. Only open work remains.
 
 =============================================================================
-2. AUTHENTICATION (app/api/routers/auth.py)
+1. SECRETS & ENV VARS  (do these before anything else runs)
 =============================================================================
-- [ ] Replace the fake demo login with real JWT-based authentication
-- [ ] Implement JWT token generation using settings.secret_key
-- [ ] Implement JWT token validation in app/api/dependencies.py
-- [ ] Store users in the database with hashed passwords (e.g. bcrypt)
-- [ ] Set a strong SECRET_KEY in your environment / Key Vault
+- [ ] Set GITHUB_TOKEN in GitHub Settings → Secrets → Actions (already in Replit)
+- [ ] Set ACR_LOGIN_SERVER  e.g. myregistry.azurecr.io
+- [ ] Set ACR_USERNAME      service principal ID or ACR username
+- [ ] Set ACR_PASSWORD      service principal secret or ACR password
+- [ ] Set GOOGLE_CLIENT_ID  from Google Cloud Console → OAuth 2.0 credentials
+- [ ] Set GOOGLE_CLIENT_SECRET  same place
+- [ ] Set DATABASE_URL  postgresql://user:pass@host:5432/kleinanzeigen_ai
+- [ ] Set REDIS_URL  rediss://... (Azure Cache for Redis connection string)
+- [ ] Set SECRET_KEY  generate with: python -c "import secrets; print(secrets.token_hex(32))"
+- [ ] Set ENVIRONMENT  dev | staging | prod per deployment
+- [ ] Add .env.example to repo root documenting all required vars (never commit .env)
 
 =============================================================================
-3. SCRAPING LOGIC (app/worker/tasks.py)
+2. SECURITY — URGENT
 =============================================================================
-- [ ] Implement the actual HTTP scraping logic inside run_scrape()
-- [ ] Wire up shared/url_builder.py in app/api/routers/scrapes.py
-- [ ] Send Celery task from the scrapes router (currently returns placeholder)
-- [ ] Parse HTML responses and extract listing data
-- [ ] Persist scraped listings to the PostgreSQL database
-- [ ] Handle pagination, rate limiting, and retries gracefully
+- [ ] Rotate ALL passwords committed in terraform.tfvars (they are in git history):
+        dev/terraform.tfvars      → ChangeThisPassword123!
+        staging/terraform.tfvars  → ChangeThisPassword123!
+        prod/terraform.tfvars     → VeryStrongProdPassword123!
+      Steps: change passwords in Azure, update Key Vault, re-push tfvars with new values,
+      then run: git filter-repo --path infrastructure/terraform --invert-paths  (or BFG)
+      to scrub them from history.
+- [ ] Replace YOUR_TENANT_ID_HERE in infrastructure/kubernetes/secret-provider-class.yaml
+- [ ] Set cookie secure=True in app/api/routers/auth.py when ENVIRONMENT != dev
+- [ ] Restrict CORS allow_origins from ["*"] to your frontend domain(s) in production
 
 =============================================================================
-4. DATABASE (app/shared/database.py + Azure)
+3. AUTHENTICATION
 =============================================================================
-- [ ] Provision Azure Database for PostgreSQL (Flexible Server)
-- [ ] Set DATABASE_URL environment variable / secret to the real Azure PostgreSQL connection string
-      Format: postgresql://user:password@<host>.postgres.database.azure.com:5432/kleinanzeigen_ai
-      (currently falls back to localhost default in database.py)
-- [ ] Create SQLAlchemy ORM models (tables for listings, scrape jobs, users)
-- [ ] Write and run Alembic migrations
+- [ ] Look up user from DB in get_current_user() — currently returns a plain dict
+      without verifying the user exists; add db.query(User).filter(User.id == user_id).first()
+- [ ] Raise HTTP 401 if user is not found or is inactive
+- [ ] Register Google OAuth redirect URI in Google Cloud Console:
+        https://yourdomain.com/auth/google/callback
+- [ ] Test the full Google OAuth flow end-to-end in dev
 
 =============================================================================
-5. INFRASTRUCTURE — TERRAFORM (infrastructure/terraform/)
+4. API — MISSING ENDPOINTS
 =============================================================================
-- [ ] Fill in infrastructure/terraform/modules/ with reusable modules:
-      - AKS cluster module
-      - Azure PostgreSQL module
-      - Azure Cache for Redis module
-      - Azure Container Registry module
-- [ ] Populate environments/dev, staging, prod with real variable values
-- [ ] Enable and configure the remote state backend in backend.tf
-      (use Azure Blob Storage instead of the commented-out S3 block)
-- [ ] Store Terraform secrets (e.g. client_id, client_secret) in Key Vault
+- [ ] GET /scrapes/{task_id}  — return task status + result count for polling
+- [ ] GET /scrapes/           — list all tasks for current user (paginated)
+- [ ] Add 422 response with clear message if required scrape parameters are missing
+- [ ] Add /dashboard auth guard — currently anyone can hit /dashboard without a token
 
 =============================================================================
-6. INFRASTRUCTURE — HELM (infrastructure/helm/)
+5. DATABASE
 =============================================================================
-- [ ] Add Kubernetes deployment templates for each service:
-      infrastructure/helm/api/templates/deployment.yaml
-      infrastructure/helm/worker/templates/deployment.yaml
-      infrastructure/helm/beat/templates/deployment.yaml
-- [ ] Add Service and Ingress templates for the API
-- [ ] Add ConfigMap / Secret templates for environment variables
-- [ ] Configure resource limits and HPA (horizontal pod autoscaler)
+- [ ] Provision Azure Database for PostgreSQL (Flexible Server) in Azure Portal
+- [ ] Run Alembic init and first migration:
+        alembic init alembic
+        alembic revision --autogenerate -m "initial schema"
+        alembic upgrade head
+- [ ] Remove Base.metadata.create_all() from main.py before production
+      (use Alembic upgrade head in your deploy pipeline instead)
+- [ ] Add startup guard in app/shared/database.py:
+        if not DATABASE_URL: raise RuntimeError("DATABASE_URL is not set")
+- [ ] Add unique constraint on ScrapeResult.url per task_id (avoid duplicate rows)
+- [ ] Add completed_at timestamp to ScrapeTask (populate when worker finishes)
+- [ ] Tune pool_size and max_overflow based on AKS pod count + Azure PostgreSQL limits
+- [ ] Add asyncpg if/when switching to async SQLAlchemy engine
+- [ ] Set up Dependabot or Renovate to keep dependencies updated
+
+=============================================================================
+6. REQUIREMENTS & DOCKERFILES
+=============================================================================
+- [ ] Consolidate pyproject.toml vs requirements.txt — pick one and use it everywhere
+        Currently: api+worker Dockerfiles use requirements.txt; beat uses pyproject.toml
+        Recommended: use requirements.txt for all three, remove pyproject.toml build deps
+- [ ] Create requirements-dev.txt for dev/test deps (pytest, ruff, mypy, httpx)
+- [ ] Create app/api/static/ directory (empty is fine) — app.mount("/static", ...) crashes
+        if the directory does not exist at startup
+- [ ] Pin base images to a specific digest for reproducibility:
+        e.g. python:3.11-slim@sha256:<digest>
+- [ ] Consider multi-stage Docker builds to reduce final image size
 
 =============================================================================
 7. CI/CD (.github/workflows/build-and-push.yml)
 =============================================================================
-- [ ] Add Build and Push step for the Beat service (currently missing)
-- [ ] Add a deploy step (Octopus Deploy trigger or Helm upgrade) after push
-- [ ] Add a lint / test job that runs before the build
-- [ ] Pin action versions for security (e.g. actions/checkout@v4 SHA pin)
+- [ ] Add Build and Push step for the Beat service (currently missing from workflow)
+- [ ] Add a deploy step after image push (Helm upgrade or Octopus Deploy trigger)
+- [ ] Add a lint + test job that runs before the build job
+- [ ] Pin action versions to SHA for supply-chain security
+        e.g. actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4.2.2
 
 =============================================================================
-8. CELERY BEAT SCHEDULE (app/beat/celery_beat.py)
+8. INFRASTRUCTURE — TERRAFORM
 =============================================================================
-- [ ] Review and adjust scrape schedules (currently: cars hourly, electronics every 2h)
-- [ ] Add schedules for any additional categories
-- [ ] Store schedules in the database (django-celery-beat or similar) for runtime editing
+- [ ] Create reusable modules in infrastructure/terraform/modules/:
+        modules/aks/        AKS cluster
+        modules/postgres/   Azure PostgreSQL Flexible Server
+        modules/redis/      Azure Cache for Redis
+        modules/acr/        Azure Container Registry
+- [ ] Populate terraform.tfvars with real (rotated) credentials per environment
+- [ ] Configure Azure Blob Storage remote state backend:
+        terraform init -backend-config=backend-config.dev.conf
+- [ ] Store Terraform service principal credentials in Azure Key Vault
+- [ ] Add environment variable to main.tf module call:
+        environment = "dev" | "staging" | "prod"
 
 =============================================================================
-9. CONFIGURATION & SECRETS MANAGEMENT
+9. INFRASTRUCTURE — HELM
 =============================================================================
-- [ ] Set up Azure Key Vault for production secrets
-- [ ] Replace .env-based config with Key Vault references in production
-- [ ] Set ENVIRONMENT variable per deployment (dev / staging / prod)
-- [ ] Set REDIS_URL to Azure Cache for Redis connection string
+- [ ] Create complete Deployment manifest for API:
+        infrastructure/helm/api/templates/deployment.yaml
+        (currently only 2 lines — not a valid manifest)
+- [ ] Create Deployment manifests for Worker and Beat:
+        infrastructure/helm/worker/templates/deployment.yaml
+        infrastructure/helm/beat/templates/deployment.yaml
+- [ ] Add Service + Ingress templates for the API
+- [ ] Add ConfigMap / Secret templates for environment variables
+- [ ] Configure resource limits and HPA (horizontal pod autoscaler) per service
+- [ ] Replace keyvaultName hardcoded value in secret-provider-class.yaml
+        with a Helm value ({{ .Values.keyVaultName }})
 
 =============================================================================
-10. GENERAL / HOUSEKEEPING
+10. CELERY BEAT SCHEDULE
 =============================================================================
-- [ ] Add unit tests (pytest) for url_builder, tasks, and API routes
-- [ ] Add a docker-compose.yml for local development
-- [ ] Update docs/architecture.md with final infra and data flow diagrams
+- [ ] Review and adjust scrape schedule (currently every 30 min, hardcoded category)
+- [ ] Add schedules for additional categories as needed
+- [ ] Consider storing schedules in PostgreSQL via django-celery-beat or similar
+        for runtime editing without a redeploy
+
+=============================================================================
+11. SCRAPING — REMAINING WORK
+=============================================================================
+- [ ] Add pagination support: scrape multiple pages per job (page param in URL)
+- [ ] Respect rate limits: add configurable delay between requests
+- [ ] Add unit tests for url_builder covering all parameter combinations
+- [ ] Validate that HTML selectors still match kleinanzeigen.de
+        (site structure changes frequently — selectors may need updating)
+
+=============================================================================
+12. PRODUCTION READINESS
+=============================================================================
+- [ ] Add request logging middleware (structured JSON logs for AKS/Log Analytics)
+- [ ] Add rate limiting middleware before exposing the API publicly
+- [ ] Add startup/shutdown lifespan handlers for DB connection pool warm-up
+- [ ] Add health check endpoint GET /healthz (for Kubernetes liveness probe)
+- [ ] Update docs/architecture.md with final infra diagram and data flow
 - [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
-
-=============================================================================
-11. CELERY BROKER & BACKEND (app/worker/celery_app.py)
-=============================================================================
-- [ ] Replace hardcoded broker URL (redis://localhost:6379/0) with Azure Cache for Redis connection string
-- [ ] Replace hardcoded backend URL (redis://localhost:6379/0) with Azure Cache for Redis connection string
-- [ ] Inject Redis URLs via environment variable REDIS_URL instead of hardcoding
-
-=============================================================================
-12. SCRAPING LOGIC (app/worker/tasks.py)
-=============================================================================
-- [ ] Implement real HTTP scraping inside scrape_kleinanzeigen() using requests + BeautifulSoup
-- [ ] Parse listing data (title, price, location, URL, description) from HTML
-- [ ] Persist scraped listings to PostgreSQL via SQLAlchemy
-- [ ] Call scrape_kleinanzeigen.delay(url) from the scrapes router instead of returning a placeholder
-- [ ] Add error handling and retry logic for failed requests
-- [ ] Respect rate limits (add delays between requests)
-
-=============================================================================
-13. URL BUILDER (app/shared/url_builder.py)
-=============================================================================
-- [x] Implement full URL construction logic in build_kleinanzeigen_url()
-- [x] Support search parameters: keywords (k0), price_max (p), radius (r), sort (sortierung)
-- [x] URL encoding handled via urllib.parse.urlencode
-- [ ] Add pagination support (page number in URL) — post M1
-- [ ] Wire build_kleinanzeigen_url() into scrapes router (replace hardcoded placeholder URL)
-- [x] Document usage examples and parameter reference in docs/url_builder.md
-- [ ] Add unit tests to cover URL variations (keywords, category, location, price_max, radius)
-
-=============================================================================
-14. REQUIREMENTS & DOCKERFILES
-=============================================================================
-- [x] Create requirements.txt in the repo root with all production dependencies
-      (fastapi, uvicorn, celery, redis, httpx, pydantic, sqlalchemy, alembic, beautifulsoup4, requests)
-- [ ] Create requirements-dev.txt for development dependencies (pytest, ruff, mypy)
-- [ ] Update app/beat/Dockerfile to also use requirements.txt (currently uses pyproject.toml)
-- [ ] Consider multi-stage Docker builds to reduce final image size
-- [ ] Pin base image to a specific digest for reproducibility (e.g. python:3.11-slim@sha256:...)
-
-=============================================================================
-15. DATABASE MODELS & SESSION (app/shared/)
-=============================================================================
-- [ ] Run Alembic migrations to create listings and scrape_jobs tables in PostgreSQL
-      (alembic init, alembic revision --autogenerate, alembic upgrade head)
-- [ ] Set DATABASE_URL environment variable to Azure PostgreSQL connection string
-- [ ] Add indexes on listings.category, listings.location for query performance
-- [ ] Add relationship between ScrapeJob and Listing (one job → many listings)
-- [ ] Inject get_db() dependency into scrapes router endpoints
-- [ ] Add created_by / user_id field if multi-user support is needed later
-
-=============================================================================
-16. DEPENDENCIES MAINTENANCE (requirements.txt)
-=============================================================================
-- [ ] Create requirements-dev.txt separating dev/test deps (pytest, httpx) from production
-- [ ] Add asyncpg==0.29.0 for async PostgreSQL support (needed by SQLAlchemy async engine)
-- [ ] Set up Dependabot or Renovate to keep dependencies up to date automatically
-- [ ] Verify all pinned versions are compatible with each other before first deploy
-
-=============================================================================
-17. CONNECTION POOLING (app/shared/database.py)
-=============================================================================
-- [ ] Tune pool_size and max_overflow based on AKS pod count and Azure PostgreSQL connection limits
-- [ ] Set echo=True temporarily during development for SQL query debugging, then revert
-- [ ] Move DATABASE_URL fallback default out of code — require env var explicitly in production
-- [ ] Consider switching to asyncpg + SQLAlchemy async engine when adding async routes
-
-=============================================================================
-18. DATABASE MODELS — USERS & SCRAPE TABLES (app/shared/models.py)
-=============================================================================
-- [ ] Run Alembic migrations to create users, scrape_tasks, scrape_results tables
-      (alembic revision --autogenerate -m "initial schema", alembic upgrade head)
-- [ ] Replace is_active Integer column with Boolean for correctness
-- [ ] Add unique constraint on ScrapeResult.url per task to avoid duplicate results
-- [ ] Add index on scrape_tasks.status for fast queue polling queries
-- [ ] Add index on scrape_results.task_id for fast result lookups
-- [ ] Populate ScrapeTask.completed_at timestamp when worker finishes the task
-- [ ] Consider adding a soft-delete (deleted_at) column to User for GDPR compliance
-
-=============================================================================
-19. AUTHENTICATION DEPENDENCY (app/api/dependencies.py)
-=============================================================================
-- [ ] Implement real JWT token decoding in get_current_user() using python-jose
-      (OAuth2PasswordBearer wired to tokenUrl="auth/login" — fake token guard in place)
-- [ ] Look up the user from the database by ID extracted from the JWT payload
-- [x] Raise HTTP 401 if token does not match (stub check in place — replace with JWT decode)
-- [ ] Raise HTTP 403 if user is inactive (is_active == 0)
-- [ ] Apply get_current_user as a dependency on all protected routes in scrapes.py
-- [ ] Add get_current_active_user wrapper to distinguish active vs inactive users
-
-=============================================================================
-20. SCRAPES ROUTER (app/api/routers/scrapes.py)
-=============================================================================
-- [x] Add missing import: ScrapeRequest and ScrapeResponse defined in app/api/models/schemas.py
-      and imported at the top of scrapes.py
-- [ ] Replace hardcoded URL placeholder with build_kleinanzeigen_url(request.model_dump())
-      from app.shared.url_builder — handler renamed to create_scrape_job (Pydantic v2 ready)
-- [ ] Dispatch Celery task after DB insert:
-      scrape_kleinanzeigen.delay(task.url) and store task_id on ScrapeTask
-- [ ] Add GET /scrapes/{task_id} endpoint to retrieve task status and results
-- [ ] Add GET /scrapes/ endpoint to list all tasks for the current user
-- [ ] Return 422 with clear error if required parameters are missing
-
-=============================================================================
-21. DATABASE CONFIGURATION (app/shared/database.py — simplified)
-=============================================================================
-- [ ] Create a .env file locally with DATABASE_URL set (never commit it — it is in .gitignore)
-- [ ] Add a .env.example file to the repo with DATABASE_URL=postgresql://user:password@host:5432/dbname
-- [ ] Add a startup guard: raise a clear error if DATABASE_URL is None/empty at boot time
-- [ ] Re-add connection pool tuning (pool_size, max_overflow) before production deploy
-- [ ] Set DATABASE_URL as an environment variable in AKS pod spec / Azure Key Vault reference
-
-=============================================================================
-22. MODELS — POST M1 ADDITIONS (app/shared/models.py)
-=============================================================================
-- [ ] Re-add SQLAlchemy relationships (User→ScrapeTask, ScrapeTask→ScrapeResult) after M1
-- [ ] Re-add is_active flag to User for account deactivation support
-- [ ] Re-add completed_at timestamp to ScrapeTask for job duration tracking
-- [ ] Re-add description and raw_data JSON columns to ScrapeResult for full data storage
-- [ ] Add Alembic migration for the M1 schema before first deploy
-
-=============================================================================
-23. SCHEMAS — POST M1 ADDITIONS (app/api/models/schemas.py)
-=============================================================================
-- [ ] Re-add radius and sort fields to ScrapeRequest after M1
-- [ ] Add ScrapeResultResponse schema for GET /scrapes/{task_id} results endpoint
-- [ ] Add UserCreate and UserResponse schemas for registration / auth endpoints
-- [ ] Add validation constraints (e.g. price_max > 0, sort in allowed values list)
-
-=============================================================================
-24. STARTUP & PRODUCTION READINESS (app/api/main.py)
-=============================================================================
-- [ ] Remove Base.metadata.create_all() before production — use Alembic migrations instead
-- [ ] Restrict CORS allow_origins from ["*"] to specific frontend domain(s) in production
-- [ ] Add startup/shutdown event handlers (lifespan) for DB connection pool warm-up
-- [ ] Add request logging middleware for observability
-- [ ] Add rate limiting middleware before exposing publicly
-
-cd infrastructure/terraform
-
-terraform init
-terraform plan
-terraform apply
-
-pip install -r requirements.txt
-# or
-uv pip install authlib
-
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-cd infrastructure/terraform
-
-terraform init -backend-config=backend-config.dev.conf
+- [ ] Add unit tests (pytest) for API routes and Celery tasks
