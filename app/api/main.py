@@ -8,13 +8,9 @@ from starlette.requests import Request
 
 from app.api.config import settings
 from app.api.routers import auth, scrapes
-from app.shared.database import Base, engine
 from app.shared.logging_config import logger
 
 logger.info("Starting kleinanzeigen-ai application...")
-
-# TODO: Replace with Alembic migrations before production
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="kleinanzeigen-ai")
 
