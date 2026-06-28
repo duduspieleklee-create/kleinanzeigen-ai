@@ -1,0 +1,94 @@
+# TODO — kleinanzeigen-ai
+
+Things that need to be completed before this project is production-ready.
+
+=============================================================================
+1. GITHUB SECRETS (Settings → Secrets and variables → Actions)
+=============================================================================
+- [ ] ACR_LOGIN_SERVER  → set to your Azure Container Registry URL
+                          e.g. myregistry.azurecr.io
+- [ ] ACR_USERNAME      → set to your ACR username (or service principal ID)
+- [ ] ACR_PASSWORD      → set to your ACR password (or service principal secret)
+
+=============================================================================
+2. AUTHENTICATION (app/api/routers/auth.py)
+=============================================================================
+- [ ] Replace the fake demo login with real JWT-based authentication
+- [ ] Implement JWT token generation using settings.secret_key
+- [ ] Implement JWT token validation in app/api/dependencies.py
+- [ ] Store users in the database with hashed passwords (e.g. bcrypt)
+- [ ] Set a strong SECRET_KEY in your environment / Key Vault
+
+=============================================================================
+3. SCRAPING LOGIC (app/worker/tasks.py)
+=============================================================================
+- [ ] Implement the actual HTTP scraping logic inside run_scrape()
+- [ ] Wire up shared/url_builder.py in app/api/routers/scrapes.py
+- [ ] Send Celery task from the scrapes router (currently returns placeholder)
+- [ ] Parse HTML responses and extract listing data
+- [ ] Persist scraped listings to the PostgreSQL database
+- [ ] Handle pagination, rate limiting, and retries gracefully
+
+=============================================================================
+4. DATABASE (app/shared/database.py + Azure)
+=============================================================================
+- [ ] Provision Azure Database for PostgreSQL (Flexible Server)
+- [ ] Set DATABASE_URL environment variable / secret to the real connection string
+      Format: postgresql+asyncpg://user:password@host/dbname
+- [ ] Create SQLAlchemy ORM models (tables for listings, scrape jobs, users)
+- [ ] Write and run Alembic migrations
+
+=============================================================================
+5. INFRASTRUCTURE — TERRAFORM (infrastructure/terraform/)
+=============================================================================
+- [ ] Fill in infrastructure/terraform/modules/ with reusable modules:
+      - AKS cluster module
+      - Azure PostgreSQL module
+      - Azure Cache for Redis module
+      - Azure Container Registry module
+- [ ] Populate environments/dev, staging, prod with real variable values
+- [ ] Enable and configure the remote state backend in backend.tf
+      (use Azure Blob Storage instead of the commented-out S3 block)
+- [ ] Store Terraform secrets (e.g. client_id, client_secret) in Key Vault
+
+=============================================================================
+6. INFRASTRUCTURE — HELM (infrastructure/helm/)
+=============================================================================
+- [ ] Add Kubernetes deployment templates for each service:
+      infrastructure/helm/api/templates/deployment.yaml
+      infrastructure/helm/worker/templates/deployment.yaml
+      infrastructure/helm/beat/templates/deployment.yaml
+- [ ] Add Service and Ingress templates for the API
+- [ ] Add ConfigMap / Secret templates for environment variables
+- [ ] Configure resource limits and HPA (horizontal pod autoscaler)
+
+=============================================================================
+7. CI/CD (.github/workflows/build-and-push.yml)
+=============================================================================
+- [ ] Add Build and Push step for the Beat service (currently missing)
+- [ ] Add a deploy step (Octopus Deploy trigger or Helm upgrade) after push
+- [ ] Add a lint / test job that runs before the build
+- [ ] Pin action versions for security (e.g. actions/checkout@v4 SHA pin)
+
+=============================================================================
+8. CELERY BEAT SCHEDULE (app/beat/celery_beat.py)
+=============================================================================
+- [ ] Review and adjust scrape schedules (currently: cars hourly, electronics every 2h)
+- [ ] Add schedules for any additional categories
+- [ ] Store schedules in the database (django-celery-beat or similar) for runtime editing
+
+=============================================================================
+9. CONFIGURATION & SECRETS MANAGEMENT
+=============================================================================
+- [ ] Set up Azure Key Vault for production secrets
+- [ ] Replace .env-based config with Key Vault references in production
+- [ ] Set ENVIRONMENT variable per deployment (dev / staging / prod)
+- [ ] Set REDIS_URL to Azure Cache for Redis connection string
+
+=============================================================================
+10. GENERAL / HOUSEKEEPING
+=============================================================================
+- [ ] Add unit tests (pytest) for url_builder, tasks, and API routes
+- [ ] Add a docker-compose.yml for local development
+- [ ] Update docs/architecture.md with final infra and data flow diagrams
+- [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
