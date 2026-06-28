@@ -1,8 +1,3 @@
-output "key_vault_uri" {
-  description = "URI of the Azure Key Vault"
-  value       = azurerm_key_vault.main.vault_uri
-}
-
 output "aks_cluster_name" {
   description = "Name of the AKS cluster"
   value       = module.aks.cluster_name
@@ -11,6 +6,17 @@ output "aks_cluster_name" {
 output "acr_login_server" {
   description = "Login server URL for the container registry"
   value       = module.acr.login_server
+}
+
+output "acr_admin_username" {
+  description = "Admin username for the container registry"
+  value       = module.acr.admin_username
+}
+
+output "acr_admin_password" {
+  description = "Admin password for the container registry (sensitive)"
+  value       = module.acr.admin_password
+  sensitive   = true
 }
 
 output "postgres_fqdn" {
@@ -24,13 +30,13 @@ output "redis_hostname" {
 }
 
 output "database_url" {
-  description = "Full PostgreSQL connection string (sensitive)"
+  description = "Full PostgreSQL connection string — copy this as DATABASE_URL GitHub secret"
   value       = module.postgres.database_url
   sensitive   = true
 }
 
 output "redis_url" {
-  description = "Full Redis connection string (sensitive)"
+  description = "Full Redis connection URL with TLS — copy this as REDIS_URL GitHub secret"
   value       = module.redis.redis_url
   sensitive   = true
 }
