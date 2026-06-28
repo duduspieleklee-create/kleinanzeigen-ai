@@ -14,6 +14,13 @@ spec:
       labels:
         app: {{ .Release.Name }}-api
     spec:
+      initContainers:
+        - name: alembic-migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["alembic", "upgrade", "head"]
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
       containers:
         - name: api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
