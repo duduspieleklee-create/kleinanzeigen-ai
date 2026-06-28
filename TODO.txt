@@ -210,3 +210,11 @@ Things that need to be completed before this project is production-ready.
 - [ ] Re-add completed_at timestamp to ScrapeTask for job duration tracking
 - [ ] Re-add description and raw_data JSON columns to ScrapeResult for full data storage
 - [ ] Add Alembic migration for the M1 schema before first deploy
+
+=============================================================================
+23. SCHEMAS — POST M1 ADDITIONS (app/api/models/schemas.py)
+=============================================================================
+- [ ] Re-add radius and sort fields to ScrapeRequest after M1
+- [ ] Add ScrapeResultResponse schema for GET /scrapes/{task_id} results endpoint
+- [ ] Add UserCreate and UserResponse schemas for registration / auth endpoints
+- [ ] Add validation constraints (e.g. price_max > 0, sort in allowed values list)
