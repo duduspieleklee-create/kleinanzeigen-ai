@@ -218,3 +218,12 @@ Things that need to be completed before this project is production-ready.
 - [ ] Add ScrapeResultResponse schema for GET /scrapes/{task_id} results endpoint
 - [ ] Add UserCreate and UserResponse schemas for registration / auth endpoints
 - [ ] Add validation constraints (e.g. price_max > 0, sort in allowed values list)
+
+=============================================================================
+24. STARTUP & PRODUCTION READINESS (app/api/main.py)
+=============================================================================
+- [ ] Remove Base.metadata.create_all() before production — use Alembic migrations instead
+- [ ] Restrict CORS allow_origins from ["*"] to specific frontend domain(s) in production
+- [ ] Add startup/shutdown event handlers (lifespan) for DB connection pool warm-up
+- [ ] Add request logging middleware for observability
+- [ ] Add rate limiting middleware before exposing publicly
