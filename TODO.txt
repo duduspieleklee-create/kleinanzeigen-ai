@@ -192,3 +192,12 @@ Things that need to be completed before this project is production-ready.
 - [ ] Add GET /scrapes/{task_id} endpoint to retrieve task status and results
 - [ ] Add GET /scrapes/ endpoint to list all tasks for the current user
 - [ ] Return 422 with clear error if required parameters are missing
+
+=============================================================================
+21. DATABASE CONFIGURATION (app/shared/database.py — simplified)
+=============================================================================
+- [ ] Create a .env file locally with DATABASE_URL set (never commit it — it is in .gitignore)
+- [ ] Add a .env.example file to the repo with DATABASE_URL=postgresql://user:password@host:5432/dbname
+- [ ] Add a startup guard: raise a clear error if DATABASE_URL is None/empty at boot time
+- [ ] Re-add connection pool tuning (pool_size, max_overflow) before production deploy
+- [ ] Set DATABASE_URL as an environment variable in AKS pod spec / Azure Key Vault reference
