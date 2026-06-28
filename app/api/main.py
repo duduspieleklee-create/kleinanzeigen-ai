@@ -1,10 +1,3 @@
-from app.shared.logging_config import logger
-
-logger.info("Starting kleinanzeigen-ai application...")
-
-from app.api.routers import auth
-
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,31 +6,30 @@ from starlette.requests import Request
 
 from app.api.routers import auth, scrapes
 from app.shared.database import Base, engine
+from app.shared.logging_config import logger
 
+logger.info("Starting kleinanzeigen-ai application...")
+
+# TODO: Replace with Alembic migrations before production
 Base.metadata.create_all(bind=engine)
-templates = Jinja2Templates(directory="app/api/templates")
+
 app = FastAPI(title="kleinanzeigen-ai")
 
 app.add_middleware(
     CORSMiddleware,
+    # TODO: Restrict to specific origins in production
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static files and templates
 app.mount("/static", StaticFiles(directory="app/api/static"), name="static")
 templates = Jinja2Templates(directory="app/api/templates")
 
-# Include API routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 
-
-# ======================
-# Web Pages (Jinja2)
-# ======================
 
 @app.get("/", tags=["Web"])
 async def home(request: Request):
