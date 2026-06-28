@@ -1,47 +1,70 @@
+# Get current Azure configuration
 data "azurerm_client_config" "current" {}
 
+# Resource Group
 resource "azurerm_resource_group" "main" {
   name     = var.resource_group_name
   location = var.location
+}
 
-  tags = {
-    environment = var.environment
-    project     = "kleinanzeigen-ai"
+# Azure Container Registry
+resource "azurerm_container_registry" "acr" {
+  name                = var.acr_name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = "Basic"
+  admin_enabled       = true
+}
+
+# Azure Kubernetes Service (AKS)
+resource "azurerm_kubernetes_cluster" "aks" {
+  name                = var.aks_cluster_name
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  dns_prefix          = var.aks_cluster_name
+
+  default_node_pool {
+    name       = "default"
+    node_count = var.node_count
+    vm_size    = var.vm_size
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  # Enable Key Vault CSI Driver
+  key_vault_secrets_provider {
+    secret_rotation_enabled  = true
+    secret_rotation_interval = "2m"
   }
 }
 
-module "acr" {
-  source              = "./modules/acr"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  acr_name            = var.acr_name
+# Azure Database for PostgreSQL (Flexible Server)
+resource "azurerm_postgresql_flexible_server" "db" {
+  name                   = var.postgres_server_name
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  version                = "16"
+  administrator_login    = var.postgres_admin_username
+  administrator_password = var.postgres_admin_password
+  storage_mb             = 32768
+  sku_name               = "B_Standard_B1ms"
 }
 
-module "aks" {
-  source              = "./modules/aks"
-  resource_group_name = azurerm_resource_group.main.name
+# Azure Cache for Redis
+resource "azurerm_redis_cache" "redis" {
+  name                = var.redis_name
   location            = azurerm_resource_group.main.location
-  cluster_name        = var.aks_cluster_name
-  node_count          = var.node_count
-  vm_size             = var.vm_size
+  resource_group_name = azurerm_resource_group.main.name
+  capacity            = 1
+  family              = "C"
+  sku_name            = "Basic"
+  enable_non_ssl_port = false
+  minimum_tls_version = "1.2"
 }
 
-module "postgres" {
-  source              = "./modules/postgres"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  server_name         = var.postgres_server_name
-  admin_username      = var.postgres_admin_username
-  admin_password      = var.postgres_admin_password
-}
-
-module "redis" {
-  source              = "./modules/redis"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  redis_name          = var.redis_name
-}
-
+# Azure Key Vault
 resource "azurerm_key_vault" "main" {
   name                        = var.key_vault_name
   location                    = azurerm_resource_group.main.location
@@ -49,9 +72,14 @@ resource "azurerm_key_vault" "main" {
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   sku_name                    = "standard"
   soft_delete_retention_days  = 7
-  purge_protection_enabled    = true
+  purge_protection_enabled    = false
 
-  tags = {
-    environment = var.environment
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azurerm_client_config.current.object_id
+
+    secret_permissions = [
+      "Get", "List", "Set", "Delete", "Purge", "Recover"
+    ]
   }
 }
