@@ -1,8 +1,18 @@
+variable "environment" {
+  description = "Deployment environment (dev, staging, prod)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "environment must be one of: dev, staging, prod"
+  }
+}
+
 variable "key_vault_name" {
   description = "Name of the Azure Key Vault"
   type        = string
 }
-
 
 variable "resource_group_name" {
   description = "Name of the resource group"
