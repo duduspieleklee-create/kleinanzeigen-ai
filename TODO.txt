@@ -179,3 +179,17 @@ Things that need to be completed before this project is production-ready.
 - [ ] Raise HTTP 403 if user is inactive (is_active == 0)
 - [ ] Apply get_current_user as a dependency on all protected routes in scrapes.py
 - [ ] Add get_current_active_user wrapper to distinguish active vs inactive users
+
+=============================================================================
+20. SCRAPES ROUTER (app/api/routers/scrapes.py)
+=============================================================================
+- [ ] Add missing import: from app.api.routers.scrapes import ScrapeRequest
+      (ScrapeRequest is used but not imported — define it in app/api/models/schemas.py
+      and import it at the top of scrapes.py)
+- [ ] Replace hardcoded URL placeholder with build_kleinanzeigen_url(request.dict())
+      from app.shared.url_builder
+- [ ] Dispatch Celery task after DB insert:
+      scrape_kleinanzeigen.delay(task.url) and store task_id on ScrapeTask
+- [ ] Add GET /scrapes/{task_id} endpoint to retrieve task status and results
+- [ ] Add GET /scrapes/ endpoint to list all tasks for the current user
+- [ ] Return 422 with clear error if required parameters are missing
