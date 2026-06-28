@@ -1,20 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.requests import Request
 
 from app.api.routers import auth, scrapes
 from app.shared.database import Base, engine
 
-# Create database tables (for development only)
-# In production, use Alembic migrations instead
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="kleinanzeigen-ai",
-    description="Intelligent scraping platform for kleinanzeigen.de",
-    version="0.1.0"
-)
+app = FastAPI(title="kleinanzeigen-ai")
 
-# CORS middleware (adjust origins in production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,11 +19,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Mount static files and templates
+app.mount("/static", StaticFiles(directory="app/api/static"), name="static")
+templates = Jinja2Templates(directory="app/api/templates")
+
+# Include API routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 
 
-@app.get("/health", tags=["Health"])
-async def health_check():
-    return {"status": "ok", "service": "kleinanzeigen-ai"}
+# ======================
+# Web Pages (Jinja2)
+# ======================
+
+@app.get("/", tags=["Web"])
+async def home(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.get("/dashboard", tags=["Web"])
+async def dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
