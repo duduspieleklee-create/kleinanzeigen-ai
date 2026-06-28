@@ -1,3 +1,15 @@
+## Current Status (Milestone 1)
+
+- [x] Project structure
+- [x] FastAPI + Celery setup
+- [x] Basic authentication
+- [x] URL Builder
+- [x] Docker Compose
+- [ ] Celery task fully working + saving results
+- [ ] Terraform ready for AKS
+- [ ] Deployment via Octopus Deploy
+
+
 # kleinanzeigen-ai
 
 Intelligent scraping and analytics platform for kleinanzeigen.de.
