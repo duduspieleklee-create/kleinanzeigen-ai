@@ -28,9 +28,6 @@ Cloud provisioning across three environments:
 
 Reusable modules live in `modules/`.
 
-### Helm (`infrastructure/helm`)
-Kubernetes deployment charts for each service (`api`, `worker`, `beat`).
-
 ## CI/CD
 
-`.github/workflows/build-and-push.yml` builds Docker images for all three services on every push to `main` or `develop`.
+`.github/workflows/build-and-push.yml` builds Docker images for all three services and runs database migrations on every push to `main`.

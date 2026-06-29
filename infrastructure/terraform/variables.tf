@@ -27,26 +27,6 @@ variable "acr_name" {
 }
 
 # ==========================================
-# Azure Kubernetes Service (AKS)
-# ==========================================
-variable "aks_cluster_name" {
-  description = "Name of the AKS cluster"
-  type        = string
-}
-
-variable "node_count" {
-  description = "Number of nodes in the default node pool"
-  type        = number
-  default     = 2
-}
-
-variable "vm_size" {
-  description = "VM size for AKS nodes"
-  type        = string
-  default     = "Standard_B2s"
-}
-
-# ==========================================
 # Azure Database for PostgreSQL
 # ==========================================
 variable "postgres_server_name" {
