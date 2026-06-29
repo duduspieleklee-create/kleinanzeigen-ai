@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -26,7 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="app/api/static"), name="static")
+# Only mount static files if the directory exists (prevents startup crash in CI)
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
 templates = Jinja2Templates(directory="app/api/templates")
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
@@ -35,7 +40,7 @@ app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
 async def healthz():
-    """Kubernetes liveness and readiness probe endpoint."""
+    """Health check endpoint for load balancers and uptime monitors."""
     return JSONResponse({"status": "ok"})
 
 

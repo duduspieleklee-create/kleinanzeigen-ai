@@ -1,7 +1,7 @@
 from app.worker.celery_app import celery_app
 from app.shared.url_builder import build_kleinanzeigen_url
 from app.shared.database import SessionLocal
-from app.shared.models import ScrapeResult
+from app.shared.models import ScrapeTask, ScrapeResult
 import requests
 from bs4 import BeautifulSoup
 import logging
@@ -10,15 +10,25 @@ logger = logging.getLogger("kleinanzeigen-ai")
 
 
 @celery_app.task(name="scrape.kleinanzeigen", bind=True, max_retries=2)
-def scrape_kleinanzeigen(self, parameters: dict):
+def scrape_kleinanzeigen(self, parameters: dict, task_id: int):
     """
     Celery task that scrapes kleinanzeigen.de and saves results to the database.
-    Final version for Milestone 1.
     """
     db = SessionLocal()
     try:
+        # Mark task as running
+        task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
+        if task:
+            task.status = "running"
+            db.commit()
+
         url = build_kleinanzeigen_url(**parameters)
         logger.info(f"Starting scrape for: {url}")
+
+        # Update task with resolved URL
+        if task:
+            task.url = url
+            db.commit()
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -55,6 +65,7 @@ def scrape_kleinanzeigen(self, parameters: dict):
                     item_url = f"https://www.kleinanzeigen.de{href}" if href.startswith("/") else href
 
                 result = ScrapeResult(
+                    task_id=task_id,
                     title=title[:255],
                     price=price[:50],
                     location=location[:100],
@@ -68,6 +79,12 @@ def scrape_kleinanzeigen(self, parameters: dict):
                 continue
 
         db.commit()
+
+        # Mark task as completed
+        if task:
+            task.status = "completed"
+            db.commit()
+
         logger.info(f"Saved {saved_count} results from {url}")
 
         return {
@@ -79,6 +96,16 @@ def scrape_kleinanzeigen(self, parameters: dict):
     except Exception as exc:
         logger.error(f"Scraping failed: {str(exc)}")
         db.rollback()
+
+        # Mark task as failed before retrying
+        try:
+            task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
+            if task:
+                task.status = "failed"
+                db.commit()
+        except Exception:
+            pass
+
         raise self.retry(exc=exc, countdown=120)
 
     finally:

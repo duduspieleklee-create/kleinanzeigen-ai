@@ -10,7 +10,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -32,21 +31,6 @@ env/
 *.swp
 *.swo
 
-# Terraform
-**/.terraform/
-*.tfstate
-*.tfstate.*
-*.tfstate.backup
-*.tfvars
-!example.tfvars
-crash.log
-crash.*.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-.terraform.lock.hcl
-
 # OS
 .DS_Store
 Thumbs.db
@@ -56,3 +40,11 @@ Thumbs.db
 .env
 secrets/
 logs/
+
+# Replit
+.replit
+.replit-artifact/
+artifacts/
+scripts/tsconfig.tsbuildinfo
+*.tsbuildinfo
+.vite/

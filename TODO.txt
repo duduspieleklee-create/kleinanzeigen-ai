@@ -1,34 +1,25 @@
 # TODO — kleinanzeigen-ai
-# Last updated: 2026-06-28
+# Last updated: 2026-06-29
 # Items without a checkbox are section headers.
-# Fixed items have been removed. Only open work remains.
 
 =============================================================================
 1. SECRETS & ENV VARS  (do these before anything else runs)
 =============================================================================
-- [ ] Set GITHUB_TOKEN in GitHub Settings → Secrets → Actions (already in Replit)
 - [ ] Set ACR_LOGIN_SERVER  e.g. myregistry.azurecr.io
-- [ ] Set ACR_USERNAME      service principal ID or ACR username
-- [ ] Set ACR_PASSWORD      service principal secret or ACR password
+- [ ] Set ACR_USERNAME      ACR admin username
+- [ ] Set ACR_PASSWORD      ACR admin password
 - [ ] Set GOOGLE_CLIENT_ID  from Google Cloud Console → OAuth 2.0 credentials
 - [ ] Set GOOGLE_CLIENT_SECRET  same place
 - [ ] Set DATABASE_URL  postgresql://user:pass@host:5432/kleinanzeigen_ai
-- [ ] Set REDIS_URL  rediss://... (Azure Cache for Redis connection string)
-- [ ] Set SECRET_KEY  generate with: python -c "import secrets; print(secrets.token_hex(32))"
+- [ ] Set REDIS_URL  redis://... or rediss://... connection string
+- [ ] Set SECRET_KEY  generate with: openssl rand -hex 32
 - [ ] Set ENVIRONMENT  dev | staging | prod per deployment
-- [ ] Add .env.example to repo root documenting all required vars (never commit .env)
+- [ ] Set OCTOPUS_SERVER_URL  e.g. https://yourinstance.octopus.app
+- [ ] Set OCTOPUS_API_KEY  from Octopus → Profile → API Keys
 
 =============================================================================
 2. SECURITY — URGENT
 =============================================================================
-- [ ] Rotate ALL passwords committed in terraform.tfvars (they are in git history):
-        dev/terraform.tfvars      → ChangeThisPassword123!
-        staging/terraform.tfvars  → ChangeThisPassword123!
-        prod/terraform.tfvars     → VeryStrongProdPassword123!
-      Steps: change passwords in Azure, update Key Vault, re-push tfvars with new values,
-      then run: git filter-repo --path infrastructure/terraform --invert-paths  (or BFG)
-      to scrub them from history.
-- [ ] Replace YOUR_TENANT_ID_HERE in infrastructure/kubernetes/secret-provider-class.yaml
 - [ ] Set cookie secure=True in app/api/routers/auth.py when ENVIRONMENT != dev
 - [ ] Restrict CORS allow_origins from ["*"] to your frontend domain(s) in production
 
@@ -45,8 +36,6 @@
 =============================================================================
 4. API — MISSING ENDPOINTS
 =============================================================================
-- [ ] GET /scrapes/{task_id}  — return task status + result count for polling
-- [ ] GET /scrapes/           — list all tasks for current user (paginated)
 - [ ] Add 422 response with clear message if required scrape parameters are missing
 - [ ] Add /dashboard auth guard — currently anyone can hit /dashboard without a token
 
@@ -54,29 +43,17 @@
 5. DATABASE
 =============================================================================
 - [ ] Provision Azure Database for PostgreSQL (Flexible Server) in Azure Portal
-- [ ] Run Alembic init and first migration:
-        alembic init alembic
-        alembic revision --autogenerate -m "initial schema"
-        alembic upgrade head
-- [ ] Remove Base.metadata.create_all() from main.py before production
-      (use Alembic upgrade head in your deploy pipeline instead)
-- [ ] Add startup guard in app/shared/database.py:
-        if not DATABASE_URL: raise RuntimeError("DATABASE_URL is not set")
+- [ ] Run migrations against prod: alembic upgrade head
 - [ ] Add unique constraint on ScrapeResult.url per task_id (avoid duplicate rows)
-- [ ] Add completed_at timestamp to ScrapeTask (populate when worker finishes)
-- [ ] Tune pool_size and max_overflow based on AKS pod count + Azure PostgreSQL limits
 - [ ] Add asyncpg if/when switching to async SQLAlchemy engine
-- [ ] Set up Dependabot or Renovate to keep dependencies updated
 
 =============================================================================
 6. REQUIREMENTS & DOCKERFILES
 =============================================================================
 - [ ] Consolidate pyproject.toml vs requirements.txt — pick one and use it everywhere
-        Currently: api+worker Dockerfiles use requirements.txt; beat uses pyproject.toml
-        Recommended: use requirements.txt for all three, remove pyproject.toml build deps
+        Currently: api+worker+beat Dockerfiles all use requirements.txt; pyproject.toml
+        is present but only partially complete. Recommended: use requirements.txt only.
 - [ ] Create requirements-dev.txt for dev/test deps (pytest, ruff, mypy, httpx)
-- [ ] Create app/api/static/ directory (empty is fine) — app.mount("/static", ...) crashes
-        if the directory does not exist at startup
 - [ ] Pin base images to a specific digest for reproducibility:
         e.g. python:3.11-slim@sha256:<digest>
 - [ ] Consider multi-stage Docker builds to reduce final image size
@@ -84,44 +61,24 @@
 =============================================================================
 7. CI/CD (.github/workflows/build-and-push.yml)
 =============================================================================
-- [ ] Add Build and Push step for the Beat service (currently missing from workflow)
-- [ ] Add a deploy step after image push (Helm upgrade or Octopus Deploy trigger)
-- [ ] Add a lint + test job that runs before the build job
+- [ ] Add GitHub secrets: OCTOPUS_SERVER_URL, OCTOPUS_API_KEY (see TODO.md Step 3)
+- [ ] Configure Octopus project "kleinanzeigen-ai" with environments Dev/Staging/Prod
 - [ ] Pin action versions to SHA for supply-chain security
         e.g. actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4.2.2
 
 =============================================================================
-8. INFRASTRUCTURE — TERRAFORM
+8. OCTOPUS DEPLOY — PROJECT SETUP
 =============================================================================
-- [ ] Create reusable modules in infrastructure/terraform/modules/:
-        modules/aks/        AKS cluster
-        modules/postgres/   Azure PostgreSQL Flexible Server
-        modules/redis/      Azure Cache for Redis
-        modules/acr/        Azure Container Registry
-- [ ] Populate terraform.tfvars with real (rotated) credentials per environment
-- [ ] Configure Azure Blob Storage remote state backend:
-        terraform init -backend-config=backend-config.dev.conf
-- [ ] Store Terraform service principal credentials in Azure Key Vault
-- [ ] Add environment variable to main.tf module call:
-        environment = "dev" | "staging" | "prod"
+- [ ] Create project "kleinanzeigen-ai" in Octopus Deploy
+- [ ] Create environments: Dev, Staging, Prod
+- [ ] Configure deployment process to run api + worker + beat containers from ACR
+- [ ] Set project variables per environment:
+        DATABASE_URL, REDIS_URL, SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+- [ ] Configure lifecycle: Dev → Staging → Prod (manual promotion after Dev)
+- [ ] Add a rollback step/runbook in Octopus for emergency revert
 
 =============================================================================
-9. INFRASTRUCTURE — HELM
-=============================================================================
-- [ ] Create complete Deployment manifest for API:
-        infrastructure/helm/api/templates/deployment.yaml
-        (currently only 2 lines — not a valid manifest)
-- [ ] Create Deployment manifests for Worker and Beat:
-        infrastructure/helm/worker/templates/deployment.yaml
-        infrastructure/helm/beat/templates/deployment.yaml
-- [ ] Add Service + Ingress templates for the API
-- [ ] Add ConfigMap / Secret templates for environment variables
-- [ ] Configure resource limits and HPA (horizontal pod autoscaler) per service
-- [ ] Replace keyvaultName hardcoded value in secret-provider-class.yaml
-        with a Helm value ({{ .Values.keyVaultName }})
-
-=============================================================================
-10. CELERY BEAT SCHEDULE
+9. CELERY BEAT SCHEDULE
 =============================================================================
 - [ ] Review and adjust scrape schedule (currently every 30 min, hardcoded category)
 - [ ] Add schedules for additional categories as needed
@@ -129,7 +86,7 @@
         for runtime editing without a redeploy
 
 =============================================================================
-11. SCRAPING — REMAINING WORK
+10. SCRAPING — REMAINING WORK
 =============================================================================
 - [ ] Add pagination support: scrape multiple pages per job (page param in URL)
 - [ ] Respect rate limits: add configurable delay between requests
@@ -138,12 +95,10 @@
         (site structure changes frequently — selectors may need updating)
 
 =============================================================================
-12. PRODUCTION READINESS
+11. PRODUCTION READINESS
 =============================================================================
-- [ ] Add request logging middleware (structured JSON logs for AKS/Log Analytics)
 - [ ] Add rate limiting middleware before exposing the API publicly
 - [ ] Add startup/shutdown lifespan handlers for DB connection pool warm-up
-- [ ] Add health check endpoint GET /healthz (for Kubernetes liveness probe)
 - [ ] Update docs/architecture.md with final infra diagram and data flow
 - [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
 - [ ] Add unit tests (pytest) for API routes and Celery tasks
