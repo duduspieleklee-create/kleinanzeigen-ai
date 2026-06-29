@@ -1,6 +1,0 @@
-apiVersion: v2
-name: kleinanzeigen-api
-description: FastAPI application for kleinanzeigen-ai
-type: application
-version: 0.1.0
-appVersion: "0.1.0"

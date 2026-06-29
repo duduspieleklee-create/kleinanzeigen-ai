@@ -6,8 +6,7 @@
 - [x] URL Builder
 - [x] Docker Compose
 - [ ] Celery task fully working + saving results
-- [ ] Terraform ready for AKS
-- [ ] Deployment via Octopus Deploy
+- [ ] Terraform ready for cloud deployment
 
 
 # kleinanzeigen-ai
@@ -23,14 +22,13 @@ This project provides a scalable web scraping solution with an intelligence laye
 - **Backend**: FastAPI + Celery
 - **Database**: Azure Database for PostgreSQL
 - **Queue**: Azure Cache for Redis
-- **Infrastructure**: Terraform + Azure AKS
-- **Deployment**: GitHub Actions + Octopus Deploy + Helm
-- **Orchestration**: Kubernetes (AKS)
+- **Infrastructure**: Terraform + Azure
+- **Deployment**: GitHub Actions + Docker
 
 ## Repository Structure
 
 - `app/` – Application code (API, Worker, Beat)
-- `infrastructure/` – Terraform and Helm charts
+- `infrastructure/` – Terraform configurations
 - `.github/workflows/` – CI/CD pipelines
 
 ## Getting Started

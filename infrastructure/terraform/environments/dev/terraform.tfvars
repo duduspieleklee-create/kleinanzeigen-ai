@@ -9,11 +9,6 @@ environment         = "dev"
 # Azure Container Registry
 acr_name = "kleinanzeigenacrdev"
 
-# AKS Cluster
-aks_cluster_name = "kleinanzeigen-aks-dev"
-node_count       = 2
-vm_size          = "Standard_B2s"
-
 # PostgreSQL Database
 postgres_server_name    = "kleinanzeigen-db-dev"
 postgres_admin_username = "kleinanzeigenadmin"
