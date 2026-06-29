@@ -13,5 +13,10 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     api_token_expire_minutes: int = 60
 
+    # User ID used for ScrapeTask records created by Celery Beat scheduled runs.
+    # Create a dedicated "scheduler" user in your database and set this to their ID.
+    # Defaults to 1 (assumes first seeded user). Set via SYSTEM_USER_ID env var.
+    system_user_id: int = 1
+
 
 settings = Settings()

@@ -2,6 +2,7 @@ from app.worker.celery_app import celery_app
 from app.shared.url_builder import build_kleinanzeigen_url
 from app.shared.database import SessionLocal
 from app.shared.models import ScrapeTask, ScrapeResult
+from app.api.config import settings
 import requests
 from bs4 import BeautifulSoup
 import logging
@@ -9,15 +10,46 @@ import logging
 logger = logging.getLogger("kleinanzeigen-ai")
 
 
+def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int, object | None]:
+    """
+    Return (task_id, task_orm_object).
+
+    - If task_id is supplied (API-triggered run): load and return the existing ScrapeTask.
+    - If task_id is None (Beat-scheduled run): create a new ScrapeTask owned by the
+      configured SYSTEM_USER_ID so that ScrapeResult FK constraints are always satisfied.
+    """
+    if task_id is not None:
+        task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
+        return task_id, task
+
+    # Beat-scheduled run — create an internal task record
+    task = ScrapeTask(
+        user_id=settings.system_user_id,
+        url="pending",
+        parameters=parameters,
+        status="pending",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    logger.info(f"Beat-scheduled run: created ScrapeTask id={task.id}")
+    return task.id, task
+
+
 @celery_app.task(name="scrape.kleinanzeigen", bind=True, max_retries=2)
-def scrape_kleinanzeigen(self, parameters: dict, task_id: int):
+def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     """
     Celery task that scrapes kleinanzeigen.de and saves results to the database.
+
+    task_id is supplied by the API for user-initiated scrapes.
+    When called by Celery Beat (no task_id), a ScrapeTask is created automatically
+    under settings.system_user_id so that ScrapeResult FK constraints are satisfied.
     """
     db = SessionLocal()
     try:
+        resolved_task_id, task = _ensure_task(db, task_id, parameters)
+
         # Mark task as running
-        task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
         if task:
             task.status = "running"
             db.commit()
@@ -62,10 +94,14 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int):
                 item_url = None
                 if link_tag:
                     href = link_tag["href"]
-                    item_url = f"https://www.kleinanzeigen.de{href}" if href.startswith("/") else href
+                    item_url = (
+                        f"https://www.kleinanzeigen.de{href}"
+                        if href.startswith("/")
+                        else href
+                    )
 
                 result = ScrapeResult(
-                    task_id=task_id,
+                    task_id=resolved_task_id,
                     title=title[:255],
                     price=price[:50],
                     location=location[:100],
@@ -90,7 +126,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int):
         return {
             "status": "success",
             "results_saved": saved_count,
-            "url": url
+            "url": url,
         }
 
     except Exception as exc:
@@ -99,10 +135,11 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int):
 
         # Mark task as failed before retrying
         try:
-            task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
-            if task:
-                task.status = "failed"
-                db.commit()
+            if task_id is not None:
+                task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
+                if task:
+                    task.status = "failed"
+                    db.commit()
         except Exception:
             pass
 
