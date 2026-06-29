@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional
 
 
 class ScrapeRequest(BaseModel):
@@ -7,6 +7,7 @@ class ScrapeRequest(BaseModel):
     category: Optional[str] = None
     location: Optional[str] = None
     price_max: Optional[int] = None
+    interval_seconds: Optional[int] = None
 
 
 class ScrapeResponse(BaseModel):

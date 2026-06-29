@@ -39,13 +39,15 @@ def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int, object
 @celery_app.task(name="scrape.kleinanzeigen", bind=True, max_retries=2)
 def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     """
-    Celery task that scrapes kleinanzeigen.de and saves results to the database.
+    Celery task that scrapes kleinanzeigen.de, saves results, then self-re-schedules
+    when the caller supplied an interval_seconds in parameters.
 
     task_id is supplied by the API for user-initiated scrapes.
     When called by Celery Beat (no task_id), a ScrapeTask is created automatically
     under settings.system_user_id so that ScrapeResult FK constraints are satisfied.
     """
     db = SessionLocal()
+    task = None
     try:
         resolved_task_id, task = _ensure_task(db, task_id, parameters)
 
@@ -54,10 +56,11 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             task.status = "running"
             db.commit()
 
-        url = build_kleinanzeigen_url(**parameters)
+        # Build scrape URL (strip scheduling key before passing to url_builder)
+        scrape_params = {k: v for k, v in parameters.items() if k != "interval_seconds"}
+        url = build_kleinanzeigen_url(**scrape_params)
         logger.info(f"Starting scrape for: {url}")
 
-        # Update task with resolved URL
         if task:
             task.url = url
             db.commit()
@@ -116,12 +119,23 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
         db.commit()
 
-        # Mark task as completed
         if task:
             task.status = "completed"
             db.commit()
 
         logger.info(f"Saved {saved_count} results from {url}")
+
+        # ── Self-re-scheduling ──────────────────────────────────────────────
+        # Re-queue this same task after the user-chosen interval so searches
+        # repeat automatically until the task is cancelled.
+        interval = parameters.get("interval_seconds")
+        if interval:
+            logger.info(f"Re-scheduling scrape in {interval}s (task_id={resolved_task_id})")
+            scrape_kleinanzeigen.apply_async(
+                args=[parameters, resolved_task_id],
+                countdown=int(interval),
+            )
+        # ───────────────────────────────────────────────────────────────────
 
         return {
             "status": "success",
@@ -133,7 +147,6 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         logger.error(f"Scraping failed: {str(exc)}")
         db.rollback()
 
-        # Mark task as failed before retrying
         try:
             if task_id is not None:
                 task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()

@@ -1,33 +1,33 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.requests import Request
 
 from app.api.config import settings
 from app.api.routers import auth, scrapes
+from app.api.dependencies import get_current_user
+from app.shared.database import get_db
+from app.shared.models import ScrapeTask, ScrapeResult
 from app.shared.logging_config import logger
 
 logger.info("Starting kleinanzeigen-ai application...")
 
 app = FastAPI(title="kleinanzeigen-ai")
 
-# SessionMiddleware must be added before any route that uses the session (e.g. OAuth)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 app.add_middleware(
     CORSMiddleware,
-    # TODO: Restrict allow_origins to specific domains in production
-    allow_origins=["*"],
+    allow_origins=["*"] if settings.environment == "dev" else [],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Only mount static files if the directory exists (prevents startup crash in CI)
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
@@ -40,7 +40,6 @@ app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
 async def healthz():
-    """Health check endpoint for load balancers and uptime monitors."""
     return JSONResponse({"status": "ok"})
 
 
@@ -50,5 +49,42 @@ async def home(request: Request):
 
 
 @app.get("/dashboard", tags=["Web"])
-async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+async def dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Protected dashboard — redirects to / if not authenticated."""
+    flash_success = request.cookies.get("flash_success")
+    flash_error = request.cookies.get("flash_error")
+
+    raw_tasks = (
+        db.query(ScrapeTask)
+        .filter(ScrapeTask.user_id == current_user["id"])
+        .order_by(ScrapeTask.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    tasks_with_counts = []
+    for t in raw_tasks:
+        count = db.query(ScrapeResult).filter(ScrapeResult.task_id == t.id).count()
+        t.result_count = count
+        tasks_with_counts.append(t)
+
+    response = templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "tasks": tasks_with_counts,
+            "flash_success": flash_success,
+            "flash_error": flash_error,
+        },
+    )
+
+    if flash_success:
+        response.delete_cookie("flash_success")
+    if flash_error:
+        response.delete_cookie("flash_error")
+
+    return response
