@@ -1,52 +1,76 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, Request
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.shared.database import get_db
 from app.shared.models import ScrapeTask, ScrapeResult
 from app.api.models.schemas import ScrapeRequest, ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.worker.tasks import scrape_kleinanzeigen
+from app.api.config import settings
 
 router = APIRouter()
+templates = Jinja2Templates(directory="app/api/templates")
+
+MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
 
 
-@router.post("/", response_model=ScrapeResponse)
+@router.post("/", response_model=None)
 async def create_scrape(
-    request: ScrapeRequest,
+    request: Request,
+    keywords: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    price_max: Optional[int] = Form(None),
+    interval_seconds: Optional[int] = Form(None),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    parameters = request.model_dump()
+    # Enforce minimum interval outside dev
+    if interval_seconds is not None and settings.environment != "dev":
+        if interval_seconds < MIN_INTERVAL_PROD:
+            interval_seconds = MIN_INTERVAL_PROD
+
+    parameters = {
+        "keywords": keywords,
+        "category": category,
+        "location": location,
+        "price_max": price_max,
+    }
+    if interval_seconds:
+        parameters["interval_seconds"] = interval_seconds
+
+    # Remove None values so url_builder receives clean kwargs
+    parameters = {k: v for k, v in parameters.items() if v is not None}
 
     task = ScrapeTask(
         user_id=current_user["id"],
         url="pending",
         parameters=parameters,
-        status="pending"
+        status="pending",
     )
     db.add(task)
     db.commit()
     db.refresh(task)
 
-    # Pass task_id so the worker can link ScrapeResults and update task status
     scrape_kleinanzeigen.delay(parameters, task.id)
 
-    return ScrapeResponse(
-        task_id=task.id,
-        status=task.status,
-        message="Scrape job submitted successfully"
-    )
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie("flash_success", f"Scrape job #{task.id} started!", max_age=5)
+    return response
 
 
 @router.get("/{task_id}", response_model=ScrapeResponse)
 async def get_scrape_status(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     task = db.query(ScrapeTask).filter(
         ScrapeTask.id == task_id,
-        ScrapeTask.user_id == current_user["id"]
+        ScrapeTask.user_id == current_user["id"],
     ).first()
 
     if not task:
@@ -57,7 +81,7 @@ async def get_scrape_status(
     return ScrapeResponse(
         task_id=task.id,
         status=task.status,
-        message=f"{result_count} result(s) saved"
+        message=f"{result_count} result(s) saved",
     )
 
 
@@ -66,7 +90,7 @@ async def list_scrapes(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     skip: int = 0,
-    limit: int = 20
+    limit: int = 20,
 ):
     tasks = (
         db.query(ScrapeTask)
