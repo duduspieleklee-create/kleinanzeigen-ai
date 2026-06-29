@@ -17,11 +17,23 @@
         }
         label { font-weight: bold; display: block; margin-top: 8px; }
         .frequency-group { margin: 12px 0 18px; }
-        .frequency-group label { font-weight: normal; display: inline; margin-left: 6px; }
-        .frequency-option { display: block; margin: 8px 0; cursor: pointer; }
-        .frequency-option input { margin-right: 8px; }
-        .warning { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;
-                   padding: 10px 14px; margin-top: 8px; font-size: 14px; display: none; color: #856404; }
+        /* Each radio row stacks vertically; override bold/block from global label rule */
+        .frequency-option {
+            display: block !important;
+            margin: 10px 0;
+            cursor: pointer;
+            font-weight: normal;
+            font-size: 15px;
+        }
+        .frequency-option input[type="radio"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        .warning {
+            background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;
+            padding: 10px 14px; margin-top: 4px; margin-bottom: 8px;
+            font-size: 14px; display: none; color: #856404;
+        }
         button[type="submit"] {
             width: 100%; background: #007bff; color: white; padding: 12px;
             border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 8px;
@@ -52,7 +64,6 @@
             <a class="logout-link" href="/auth/logout">Sign out</a>
         </div>
 
-        <!-- Flash messages rendered by server -->
         {% if flash_success %}
         <div class="flash-success">{{ flash_success }}</div>
         {% endif %}
@@ -73,7 +84,7 @@
                 <label for="location">Location</label>
                 <input type="text" id="location" name="location" placeholder="e.g. berlin">
 
-                <label for="price_max">Max Price (€)</label>
+                <label for="price_max">Max Price (&euro;)</label>
                 <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
 
                 <label>Frequency</label>
@@ -96,7 +107,7 @@
                     </label>
                 </div>
                 <div class="warning" id="fast-warning">
-                    &#9888; 5-second interval is very aggressive and may result in IP bans. Use only for local testing.
+                    &#9888; 5-second interval is very aggressive and may result in IP bans from kleinanzeigen.de. Use only for local testing.
                 </div>
 
                 <button type="submit">Start Recurring Scrape</button>
@@ -122,8 +133,8 @@
                     {% for task in tasks %}
                     <tr>
                         <td>{{ task.id }}</td>
-                        <td>{{ task.parameters.get('keywords', '—') }}</td>
-                        <td>{{ task.parameters.get('location', '—') }}</td>
+                        <td>{{ task.parameters.get('keywords', '&mdash;') }}</td>
+                        <td>{{ task.parameters.get('location', '&mdash;') }}</td>
                         <td>
                             {% set iv = task.parameters.get('interval_seconds') %}
                             {% if iv == 5 %}5 s
@@ -145,15 +156,12 @@
     </div>
 
     <script>
-        // Show warning when 5-second interval selected
         document.querySelectorAll('input[name="interval_seconds"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 document.getElementById('fast-warning').style.display =
                     this.value === '5' ? 'block' : 'none';
             });
         });
-
-        // Auto-refresh results table every 15 seconds
         setTimeout(function() { window.location.reload(); }, 15000);
     </script>
 </body>
