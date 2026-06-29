@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -55,11 +55,9 @@ async def dashboard(
     current_user: dict = Depends(get_current_user),
 ):
     """Protected dashboard — redirects to / if not authenticated."""
-    # Read one-shot flash cookies set by the scrapes router after form submit
     flash_success = request.cookies.get("flash_success")
     flash_error = request.cookies.get("flash_error")
 
-    # Fetch user tasks with result counts for the table
     raw_tasks = (
         db.query(ScrapeTask)
         .filter(ScrapeTask.user_id == current_user["id"])
@@ -68,7 +66,6 @@ async def dashboard(
         .all()
     )
 
-    # Attach result count to each task so the template can render it
     tasks_with_counts = []
     for t in raw_tasks:
         count = db.query(ScrapeResult).filter(ScrapeResult.task_id == t.id).count()
@@ -85,7 +82,6 @@ async def dashboard(
         },
     )
 
-    # Clear flash cookies
     if flash_success:
         response.delete_cookie("flash_success")
     if flash_error:
