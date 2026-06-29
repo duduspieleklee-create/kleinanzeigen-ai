@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, Request
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.shared.database import get_db
 from app.shared.models import ScrapeTask, ScrapeResult
-from app.api.models.schemas import ScrapeRequest, ScrapeResponse
+from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
@@ -74,6 +74,7 @@ async def get_scrape_status(
     ).first()
 
     if not task:
+        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Task not found")
 
     result_count = db.query(ScrapeResult).filter(ScrapeResult.task_id == task_id).count()
