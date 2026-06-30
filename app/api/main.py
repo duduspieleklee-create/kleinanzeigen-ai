@@ -1,7 +1,7 @@
 import os
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
@@ -44,6 +44,19 @@ async def healthz():
     return JSONResponse({"status": "ok"})
 
 
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    # Served from root so the SW scope covers the whole app, not just /static/
+    sw_path = os.path.join(os.path.dirname(__file__), "static", "sw.js")
+    return FileResponse(sw_path, media_type="application/javascript",
+                        headers={"Service-Worker-Allowed": "/"})
+
+
+@app.get("/offline", tags=["Web"], include_in_schema=False)
+async def offline(request: Request):
+    return templates.TemplateResponse("offline.html", {"request": request})
+
+
 @app.get("/", tags=["Web"])
 async def home(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -53,9 +66,14 @@ async def home(request: Request):
 async def dashboard(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
 ):
-    """Protected dashboard — redirects to / if not authenticated."""
+    # Redirect to login instead of returning 401 — keeps standalone PWA UX sane
+    # when the session cookie expires.
+    try:
+        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
+    except HTTPException:
+        return RedirectResponse(url="/")
+
     flash_success = request.cookies.get("flash_success")
     flash_error = request.cookies.get("flash_error")
 

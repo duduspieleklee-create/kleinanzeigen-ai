@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - kleinanzeigen-ai</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="KA-AI">
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 40px; }
@@ -120,6 +125,7 @@
         <!-- My searches -->
         <div class="card">
             <h3>My Searches</h3>
+            <div id="tasks-container">
             {% if tasks %}
             <table>
                 <thead>
@@ -133,7 +139,7 @@
                         <th></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="tasks-tbody">
                     {% for task in tasks %}
                     <tr>
                         <td>{{ task.id }}</td>
@@ -161,8 +167,9 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">No searches yet. Create one above!</div>
+            <div class="empty-state" id="empty-state">No searches yet. Create one above!</div>
             {% endif %}
+            </div>
         </div>
     </div>
 
@@ -173,7 +180,101 @@
                     this.value === '5' ? 'block' : 'none';
             });
         });
-        setTimeout(function() { window.location.reload(); }, 15000);
+
+        function formatInterval(iv) {
+            if (iv === 5) return '5 s';
+            if (iv === 300) return '5 min';
+            if (iv === 1800) return '30 min';
+            if (iv === 3600) return '60 min';
+            return 'one-shot';
+        }
+
+        function renderTasks(tasks) {
+            var container = document.getElementById('tasks-container');
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<div class="empty-state">No searches yet. Create one above!</div>';
+                return;
+            }
+
+            var table = document.createElement('table');
+            var thead = document.createElement('thead');
+            thead.innerHTML = '<tr><th>#</th><th>Keywords</th><th>Location</th><th>Interval</th><th>Status</th><th>Results</th><th></th></tr>';
+            table.appendChild(thead);
+
+            var tbody = document.createElement('tbody');
+            tbody.id = 'tasks-tbody';
+
+            tasks.forEach(function(task) {
+                var tr = document.createElement('tr');
+
+                var params = task.parameters || {};
+                var canCancel = ['pending', 'running', 'completed'].indexOf(task.status) !== -1 && params.interval_seconds;
+
+                var idTd = document.createElement('td');
+                idTd.textContent = task.id;
+
+                var kwTd = document.createElement('td');
+                kwTd.textContent = params.keywords || '—';
+
+                var locTd = document.createElement('td');
+                locTd.textContent = params.location || '—';
+
+                var ivTd = document.createElement('td');
+                ivTd.textContent = formatInterval(params.interval_seconds);
+
+                var statusTd = document.createElement('td');
+                var badge = document.createElement('span');
+                badge.className = 'badge badge-' + task.status;
+                badge.textContent = task.status;
+                statusTd.appendChild(badge);
+
+                var countTd = document.createElement('td');
+                countTd.textContent = task.result_count;
+
+                var actionTd = document.createElement('td');
+                if (canCancel) {
+                    var form = document.createElement('form');
+                    form.method = 'post';
+                    form.action = '/scrapes/' + task.id + '/cancel';
+                    form.style.margin = '0';
+                    var btn = document.createElement('button');
+                    btn.type = 'submit';
+                    btn.className = 'cancel-btn';
+                    btn.textContent = 'Cancel';
+                    form.appendChild(btn);
+                    actionTd.appendChild(form);
+                }
+
+                tr.appendChild(idTd);
+                tr.appendChild(kwTd);
+                tr.appendChild(locTd);
+                tr.appendChild(ivTd);
+                tr.appendChild(statusTd);
+                tr.appendChild(countTd);
+                tr.appendChild(actionTd);
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+
+        if (typeof EventSource !== 'undefined') {
+            var es = new EventSource('/scrapes/stream');
+            es.onmessage = function(e) {
+                try {
+                    renderTasks(JSON.parse(e.data));
+                } catch (err) {}
+            };
+            es.onerror = function() {
+                // On error the browser will auto-reconnect; nothing to do
+            };
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function() {});
+        }
     </script>
 </body>
 </html>
