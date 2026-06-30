@@ -42,3 +42,27 @@ self.addEventListener('fetch', e => {
 
   // All other requests (API calls, SSE stream): pass through to network
 });
+
+self.addEventListener('push', e => {
+  let data = { title: 'kleinanzeigen-ai', body: 'New results found' };
+  try { if (e.data) data = e.data.json(); } catch (_) {}
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'kleinanzeigen-ai', {
+      body: data.body || '',
+      icon: '/static/icons/icon-192.png',
+      badge: '/static/icons/icon-192.png',
+      data: { url: '/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.url.includes('/dashboard') && 'focus' in c);
+      if (existing) return existing.focus();
+      return clients.openWindow(e.notification.data.url || '/dashboard');
+    })
+  );
+});

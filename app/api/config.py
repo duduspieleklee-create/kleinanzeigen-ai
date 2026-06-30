@@ -28,5 +28,13 @@ class Settings(BaseSettings):
     beat_location: str = "berlin"
     beat_price_max: int = 200
 
+    # VAPID keys for Web Push notifications.
+    # Generate with: python3 -c "from py_vapid import Vapid; v=Vapid(); v.generate_keys(); print(v.private_pem())"
+    # Set VAPID_PUBLIC_KEY to the base64url-encoded uncompressed EC public key (87 chars).
+    # Leave empty to disable push notifications.
+    vapid_private_key: str = ""
+    vapid_public_key: str = ""
+    vapid_email: str = "mailto:admin@example.com"
+
 
 settings = Settings()

@@ -1,13 +1,60 @@
-from app.worker.celery_app import celery_app
-from app.shared.url_builder import build_kleinanzeigen_url
-from app.shared.database import SessionLocal
-from app.shared.models import ScrapeTask, ScrapeResult
-from app.api.config import settings
-import requests
-from bs4 import BeautifulSoup
+import json
 import logging
 
+import requests
+from bs4 import BeautifulSoup
+
+from app.api.config import settings
+from app.shared.database import SessionLocal
+from app.shared.models import PushSubscription, ScrapeTask, ScrapeResult
+from app.shared.url_builder import build_kleinanzeigen_url
+from app.worker.celery_app import celery_app
+
 logger = logging.getLogger("kleinanzeigen-ai")
+
+
+def _send_push_notifications(db, user_id: int, result_count: int, keywords: str) -> None:
+    if not settings.vapid_private_key or not settings.vapid_public_key:
+        return
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        return
+
+    subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
+    if not subs:
+        return
+
+    payload = json.dumps({
+        "title": "kleinanzeigen-ai",
+        "body": f"{result_count} new listing(s) found for \"{keywords}\"",
+    })
+    private_key = settings.vapid_private_key.replace("\\n", "\n")
+
+    stale = []
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                },
+                data=payload,
+                vapid_private_key=private_key,
+                vapid_claims={"sub": settings.vapid_email},
+            )
+        except WebPushException as e:
+            # 404/410 means the subscription has expired — clean it up
+            if e.response is not None and e.response.status_code in (404, 410):
+                stale.append(sub.id)
+            else:
+                logger.warning(f"Push failed for sub {sub.id}: {e}")
+        except Exception as e:
+            logger.warning(f"Push failed for sub {sub.id}: {e}")
+
+    if stale:
+        db.query(PushSubscription).filter(PushSubscription.id.in_(stale)).delete(synchronize_session=False)
+        db.commit()
 
 
 def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int, object | None]:
@@ -128,6 +175,16 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 db.commit()
 
         logger.info(f"Saved {saved_count} results from {url}")
+
+        # ── Push notifications ──────────────────────────────────────────────
+        if task and saved_count > 0:
+            _send_push_notifications(
+                db,
+                user_id=task.user_id,
+                result_count=saved_count,
+                keywords=parameters.get("keywords", "your search"),
+            )
+        # ───────────────────────────────────────────────────────────────────
 
         # ── Self-re-scheduling ──────────────────────────────────────────────
         # Only re-queue if the task wasn't cancelled between start and now.
