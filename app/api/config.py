@@ -18,5 +18,15 @@ class Settings(BaseSettings):
     # Defaults to 1 (assumes first seeded user). Set via SYSTEM_USER_ID env var.
     system_user_id: int = 1
 
+    # Comma-separated list of Google email addresses allowed to log in.
+    # Leave empty to allow any Google account (open registration).
+    # Example: "alice@example.com,bob@example.com"
+    allowed_emails: str = ""
+
+    # Celery Beat scheduled search parameters — override via env vars.
+    beat_keywords: str = "handwerker"
+    beat_location: str = "berlin"
+    beat_price_max: int = 200
+
 
 settings = Settings()

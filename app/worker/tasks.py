@@ -47,6 +47,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     under settings.system_user_id so that ScrapeResult FK constraints are satisfied.
     """
     db = SessionLocal()
+    resolved_task_id = None
     task = None
     try:
         resolved_task_id, task = _ensure_task(db, task_id, parameters)
@@ -120,16 +121,18 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         db.commit()
 
         if task:
-            task.status = "completed"
-            db.commit()
+            # Re-fetch to respect a cancellation that arrived while the task was running.
+            task = db.query(ScrapeTask).filter(ScrapeTask.id == resolved_task_id).first()
+            if task and task.status != "cancelled":
+                task.status = "completed"
+                db.commit()
 
         logger.info(f"Saved {saved_count} results from {url}")
 
         # ── Self-re-scheduling ──────────────────────────────────────────────
-        # Re-queue this same task after the user-chosen interval so searches
-        # repeat automatically until the task is cancelled.
+        # Only re-queue if the task wasn't cancelled between start and now.
         interval = parameters.get("interval_seconds")
-        if interval:
+        if interval and task and task.status == "completed":
             logger.info(f"Re-scheduling scrape in {interval}s (task_id={resolved_task_id})")
             scrape_kleinanzeigen.apply_async(
                 args=[parameters, resolved_task_id],
@@ -148,10 +151,13 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         db.rollback()
 
         try:
-            if task_id is not None:
-                task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
-                if task:
-                    task.status = "failed"
+            # resolved_task_id covers both API-triggered and Beat-triggered paths;
+            # fall back to task_id only if _ensure_task itself raised before setting it.
+            update_id = resolved_task_id if resolved_task_id is not None else task_id
+            if update_id is not None:
+                failed_task = db.query(ScrapeTask).filter(ScrapeTask.id == update_id).first()
+                if failed_task:
+                    failed_task.status = "failed"
                     db.commit()
         except Exception:
             pass

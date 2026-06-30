@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, Form, Query
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -12,7 +11,6 @@ from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/api/templates")
 
 MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
 
@@ -74,7 +72,6 @@ async def get_scrape_status(
     ).first()
 
     if not task:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Task not found")
 
     result_count = db.query(ScrapeResult).filter(ScrapeResult.task_id == task_id).count()
@@ -90,8 +87,8 @@ async def get_scrape_status(
 async def list_scrapes(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
-    skip: int = 0,
-    limit: int = 20,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
 ):
     tasks = (
         db.query(ScrapeTask)
@@ -105,3 +102,24 @@ async def list_scrapes(
         ScrapeResponse(task_id=t.id, status=t.status, message=t.url)
         for t in tasks
     ]
+
+
+@router.post("/{task_id}/cancel")
+async def cancel_scrape(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    task = db.query(ScrapeTask).filter(
+        ScrapeTask.id == task_id,
+        ScrapeTask.user_id == current_user["id"],
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.status = "cancelled"
+    db.commit()
+
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie("flash_success", f"Scrape job #{task_id} cancelled.", max_age=5)
+    return response

@@ -1,5 +1,11 @@
+import re
 from urllib.parse import urlencode
 from typing import Optional
+
+
+def _sanitize_path_segment(value: str) -> str:
+    """Strip characters that are not safe in a URL path segment."""
+    return re.sub(r"[^a-zA-Z0-9\-_]", "", value.replace(" ", "-").lower())
 
 
 def build_kleinanzeigen_url(
@@ -20,12 +26,12 @@ def build_kleinanzeigen_url(
     # Build path
     path_parts = []
     if category:
-        path_parts.append(f"s-{category}")
+        path_parts.append(f"s-{_sanitize_path_segment(category)}")
     else:
         path_parts.append("s-all")
 
     if location:
-        path_parts.append(location.replace(" ", "-").lower())
+        path_parts.append(_sanitize_path_segment(location))
 
     path = "/".join(path_parts) + "/"
 

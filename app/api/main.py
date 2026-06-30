@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -58,19 +59,20 @@ async def dashboard(
     flash_success = request.cookies.get("flash_success")
     flash_error = request.cookies.get("flash_error")
 
-    raw_tasks = (
-        db.query(ScrapeTask)
+    rows = (
+        db.query(ScrapeTask, func.count(ScrapeResult.id).label("result_count"))
+        .outerjoin(ScrapeResult, ScrapeResult.task_id == ScrapeTask.id)
         .filter(ScrapeTask.user_id == current_user["id"])
+        .group_by(ScrapeTask.id)
         .order_by(ScrapeTask.created_at.desc())
         .limit(50)
         .all()
     )
 
     tasks_with_counts = []
-    for t in raw_tasks:
-        count = db.query(ScrapeResult).filter(ScrapeResult.task_id == t.id).count()
-        t.result_count = count
-        tasks_with_counts.append(t)
+    for task, count in rows:
+        task.result_count = count
+        tasks_with_counts.append(task)
 
     response = templates.TemplateResponse(
         "dashboard.html",

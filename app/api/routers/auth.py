@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from app.api.auth.google import oauth
+from app.api.config import settings
 from app.shared.database import get_db
 from app.shared.models import User
 from app.api.dependencies import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -28,6 +29,12 @@ async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
     email = user_info.get("email")
     name = user_info.get("name")
 
+    # Restrict login to an allowlist when ALLOWED_EMAILS is configured.
+    if settings.allowed_emails:
+        allowed = {e.strip().lower() for e in settings.allowed_emails.split(",") if e.strip()}
+        if email.lower() not in allowed:
+            return RedirectResponse(url="/?error=unauthorized")
+
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
@@ -51,8 +58,15 @@ async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
         key="access_token",
         value=access_token,
         httponly=True,
-        max_age=3600,
-        secure=False,  # TODO: set True in production
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=settings.environment != "dev",
         samesite="lax",
     )
+    return response
+
+
+@router.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/")
+    response.delete_cookie("access_token")
     return response
