@@ -6,52 +6,9 @@
     <title>Results · {{ task.parameters.get('keywords', 'Search') }} · kleinanzeigen-ai</title>
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#007bff">
-    <style>
-        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; color: #222; }
-        .topbar {
-            background: #fff; border-bottom: 1px solid #e5e5e5; padding: 14px 20px;
-            display: flex; align-items: center; gap: 14px;
-        }
-        .topbar a.back { color: #007bff; text-decoration: none; font-size: 14px; }
-        .topbar a.back:hover { text-decoration: underline; }
-        .wrap { max-width: 960px; margin: 0 auto; padding: 20px; }
-        .summary {
-            background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
-            padding: 16px 20px; margin-bottom: 20px;
-        }
-        .summary h1 { font-size: 20px; margin: 0 0 6px; }
-        .summary .meta { font-size: 13px; color: #666; }
-        .summary .filters { font-size: 13px; color: #444; margin-top: 8px; }
-        .count-badge { background: #e7f1ff; color: #0a58ca; border-radius: 12px;
-                       padding: 2px 10px; font-size: 13px; font-weight: 600; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-        .card {
-            background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
-            overflow: hidden; display: flex; flex-direction: column;
-            text-decoration: none; color: inherit; transition: box-shadow .12s, transform .12s;
-        }
-        .card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.12); transform: translateY(-2px); }
-        .thumb { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #eee; display: block; }
-        .thumb-placeholder {
-            width: 100%; aspect-ratio: 4 / 3; background: #eef0f2; display: flex;
-            align-items: center; justify-content: center; color: #b0b6bd; font-size: 13px;
-        }
-        .card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-        .price-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .card-price { font-weight: 700; font-size: 16px; color: #111; }
-        .deal { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
-        .deal-great { background: #e2f6e6; color: #1a7f37; }
-        .deal-fair  { background: #eef0f2; color: #57606a; }
-        .deal-high  { background: #fdecea; color: #b42318; }
-        .card-title { font-size: 14px; line-height: 1.35; max-height: 3.7em; overflow: hidden; }
-        .card-desc { font-size: 12px; color: #666; max-height: 3.2em; overflow: hidden; }
-        .card-meta { margin-top: auto; font-size: 12px; color: #888; display: flex;
-                     justify-content: space-between; gap: 8px; padding-top: 6px; }
-        .empty { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
-                 padding: 40px; text-align: center; color: #888; }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="results-page">
     <div class="topbar">
         <a class="back" href="/dashboard">&larr; Back to dashboard</a>
     </div>
@@ -78,7 +35,7 @@
         {% if results %}
         <div class="grid">
             {% for r in results %}
-            <a class="card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
+            <a class="result-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
                 {% if r.image_url %}
                 <img class="thumb" src="{{ r.image_url }}" alt="" loading="lazy"
                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
