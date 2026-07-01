@@ -175,6 +175,26 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                         else href
                     )
 
+                # Listing thumbnail — kleinanzeigen lazy-loads images, so the
+                # real URL may live in data-imgsrc/data-src/srcset while src holds
+                # a data: placeholder. Take the first real (non-data:) URL.
+                image_url = None
+                img_tag = item.find("img")
+                if img_tag:
+                    candidates = [
+                        img_tag.get("src"),
+                        img_tag.get("data-imgsrc"),
+                        img_tag.get("data-src"),
+                    ]
+                    image_url = next(
+                        (u for u in candidates if u and not u.startswith("data:")), None
+                    )
+                    if not image_url and img_tag.get("srcset"):
+                        image_url = img_tag["srcset"].split()[0]
+
+                desc_tag = item.find("p", class_="aditem-main--middle--description")
+                description = desc_tag.get_text(strip=True) if desc_tag else None
+
                 key = item_url or f"{title}|{price}|{location}"
                 if key in seen_keys:
                     continue  # already seen on a previous run — not new
@@ -186,6 +206,8 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     price=price[:50],
                     location=location[:100],
                     url=item_url,
+                    image_url=image_url,
+                    description=description,
                 )
                 db.add(result)
                 new_count += 1
