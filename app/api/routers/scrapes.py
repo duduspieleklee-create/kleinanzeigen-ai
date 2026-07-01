@@ -214,7 +214,7 @@ async def view_results(
     # Mirror the dashboard's auth handling: redirect to login instead of 401
     # so a missed-session user lands on a friendly page.
     try:
-        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
+        current_user = get_current_user(request, token=request.cookies.get("access_token") or "", db=db)
     except HTTPException:
         return RedirectResponse(url="/")
 
