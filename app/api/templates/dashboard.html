@@ -106,7 +106,49 @@
                 <input type="text" id="keywords" name="keywords" placeholder="e.g. handwerker">
 
                 <label for="category">Category</label>
-                <input type="text" id="category" name="category" placeholder="e.g. handwerk">
+                <select id="category" name="category" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                    <option value="">Alle Kategorien</option>
+                    <optgroup label="Fahrzeuge">
+                        <option value="autos">Autos</option>
+                        <option value="motorraeder-scooter">Motorräder &amp; Scooter</option>
+                        <option value="transporter-lkw">Transporter &amp; LKW</option>
+                        <option value="wohnwagen-wohnmobile">Wohnmobile &amp; Wohnwagen</option>
+                        <option value="boote-bootszubehoer">Boote &amp; Bootszubehör</option>
+                        <option value="fahrraeder">Fahrräder</option>
+                    </optgroup>
+                    <optgroup label="Elektronik">
+                        <option value="computer-elektronik-buero">Computer &amp; Elektronik</option>
+                        <option value="handys-telefone">Handys &amp; Telefone</option>
+                        <option value="tv-video-audio">TV, Video &amp; Audio</option>
+                    </optgroup>
+                    <optgroup label="Haushalt &amp; Garten">
+                        <option value="haushalt-haushaltsgeraete">Haushalt &amp; Haushaltsgeräte</option>
+                        <option value="moebel-wohnen">Möbel &amp; Wohnen</option>
+                        <option value="heimwerken-hausumbau">Heimwerken &amp; Hausumbau</option>
+                        <option value="garten-pflanzen">Garten &amp; Pflanzen</option>
+                    </optgroup>
+                    <optgroup label="Mode &amp; Freizeit">
+                        <option value="kleidung-accessoires">Kleidung &amp; Accessoires</option>
+                        <option value="sport-camping-outdoor">Sport &amp; Camping</option>
+                        <option value="hobby-freizeit">Hobby &amp; Freizeit</option>
+                        <option value="musik-filme-buecher">Musik, Filme &amp; Bücher</option>
+                        <option value="spielzeug-kinderbedarf">Spielzeug &amp; Kinderbedarf</option>
+                        <option value="tiere">Tiere</option>
+                    </optgroup>
+                    <optgroup label="Immobilien">
+                        <option value="wohnungen-mieten">Wohnungen mieten</option>
+                        <option value="wohnungen-kaufen">Wohnungen kaufen</option>
+                        <option value="haeuser-mieten">Häuser mieten</option>
+                        <option value="haeuser-kaufen">Häuser kaufen</option>
+                        <option value="wg-zimmer-mitbewohner">WG-Zimmer</option>
+                        <option value="grundstuecke">Grundstücke</option>
+                    </optgroup>
+                    <optgroup label="Arbeit &amp; Gewerbe">
+                        <option value="jobs">Jobs</option>
+                        <option value="dienstleistungen">Dienstleistungen</option>
+                        <option value="buero-gewerbe-industrie">Büro &amp; Gewerbe</option>
+                    </optgroup>
+                </select>
 
                 <label for="location-input">Location (city or PLZ)</label>
                 <div class="suggest-wrap">
@@ -127,31 +169,18 @@
                     </div>
                 </div>
 
-                <div style="display:flex;gap:12px;margin-top:4px">
-                    <div style="flex:1">
-                        <label for="radius">Radius</label>
-                        <select id="radius" name="radius" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
-                            <option value="">Alle</option>
-                            <option value="5">5 km</option>
-                            <option value="10">10 km</option>
-                            <option value="20">20 km</option>
-                            <option value="30">30 km</option>
-                            <option value="50">50 km</option>
-                            <option value="100">100 km</option>
-                            <option value="150">150 km</option>
-                            <option value="200">200 km</option>
-                        </select>
-                    </div>
-                    <div style="flex:1">
-                        <label for="sort">Sortierung</label>
-                        <select id="sort" name="sort" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
-                            <option value="SORTING_DATE">Neueste zuerst</option>
-                            <option value="SORTING_PRICE_ASC">Preis aufsteigend</option>
-                            <option value="SORTING_PRICE_DESC">Preis absteigend</option>
-                            <option value="SORTING_RELEVANCE">Relevanz</option>
-                        </select>
-                    </div>
-                </div>
+                <label for="radius">Radius</label>
+                <select id="radius" name="radius" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                    <option value="">Alle</option>
+                    <option value="5">5 km</option>
+                    <option value="10">10 km</option>
+                    <option value="20">20 km</option>
+                    <option value="30">30 km</option>
+                    <option value="50">50 km</option>
+                    <option value="100">100 km</option>
+                    <option value="150">150 km</option>
+                    <option value="200">200 km</option>
+                </select>
 
                 <div style="display:flex;gap:12px">
                     <div style="flex:1">
