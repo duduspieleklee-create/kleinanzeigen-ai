@@ -69,6 +69,37 @@
             margin-top: 14px;
             font-size: 14px;
         }
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            margin: 20px 0;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px solid #eee;
+        }
+        .divider span { padding: 0 12px; }
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 11px;
+            background: #fff;
+            color: #444;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .google-btn:hover { background: #f7f7f7; }
         .register-link {
             margin-top: 20px;
             font-size: 14px;
@@ -100,6 +131,11 @@
 
         {% if error is defined and error %}
         <p class="error-msg">{{ error }}</p>
+        {% endif %}
+
+        {% if google_enabled %}
+        <div class="divider"><span>or</span></div>
+        <a href="/auth/google/login" class="google-btn">Sign in with Google</a>
         {% endif %}
 
         <p class="register-link">Don't have an account? <a href="/auth/register">Register</a></p>
