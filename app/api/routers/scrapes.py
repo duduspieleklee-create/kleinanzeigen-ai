@@ -18,44 +18,91 @@ router = APIRouter()
 MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
 
 
+def _clean_str(value: Optional[str]) -> Optional[str]:
+    """Trim whitespace and treat an empty string as absent."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _clean_int(value: Optional[str], label: str, errors: list) -> Optional[int]:
+    """Empty -> None; valid digits -> int; otherwise record a friendly error.
+
+    HTML forms submit blank optional fields as "" rather than omitting them,
+    so numeric fields must accept strings and coerce here — declaring them as
+    Optional[int] makes FastAPI reject the whole request with a raw 422.
+    """
+    value = _clean_str(value)
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        errors.append(f"{label} must be a whole number")
+        return None
+
+
 @router.post("/", response_model=None)
 async def create_scrape(
     request: Request,
     keywords: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     location: Optional[str] = Form(None),
-    location_id: Optional[int] = Form(None),
-    price_min: Optional[int] = Form(None),
-    price_max: Optional[int] = Form(None),
-    radius: Optional[int] = Form(None),
+    location_id: Optional[str] = Form(None),
+    price_min: Optional[str] = Form(None),
+    price_max: Optional[str] = Form(None),
+    radius: Optional[str] = Form(None),
     ad_type: Optional[str] = Form(None),
     poster_type: Optional[str] = Form(None),
     condition: Optional[str] = Form(None),
     shipping: Optional[str] = Form(None),
-    interval_seconds: Optional[int] = Form(None),
+    interval_seconds: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    errors: list = []
+
+    keywords = _clean_str(keywords)
+    if not keywords:
+        errors.append("Please enter search keywords")
+
+    location_id_v = _clean_int(location_id, "Location", errors)
+    price_min_v = _clean_int(price_min, "Minimum price", errors)
+    price_max_v = _clean_int(price_max, "Maximum price", errors)
+    radius_v = _clean_int(radius, "Radius", errors)
+    interval_v = _clean_int(interval_seconds, "Interval", errors)
+
+    if price_min_v is not None and price_max_v is not None and price_min_v > price_max_v:
+        errors.append("Minimum price cannot be greater than maximum price")
+
+    # On any bad input, go back to the dashboard with a readable message
+    # instead of returning a raw 422 JSON body.
+    if errors:
+        response = RedirectResponse(url="/dashboard", status_code=303)
+        response.set_cookie("flash_error", " · ".join(errors), max_age=10)
+        return response
+
     # Enforce minimum interval outside dev
-    if interval_seconds is not None and settings.environment != "dev":
-        if interval_seconds < MIN_INTERVAL_PROD:
-            interval_seconds = MIN_INTERVAL_PROD
+    if interval_v is not None and settings.environment != "dev":
+        if interval_v < MIN_INTERVAL_PROD:
+            interval_v = MIN_INTERVAL_PROD
 
     parameters = {
         "keywords": keywords,
-        "category": category,
-        "location": location,
-        "location_id": location_id,
-        "price_min": price_min,
-        "price_max": price_max,
-        "radius": radius,
-        "ad_type": ad_type,
-        "poster_type": poster_type,
-        "condition": condition,
-        "shipping": shipping,
+        "category": _clean_str(category),
+        "location": _clean_str(location),
+        "location_id": location_id_v,
+        "price_min": price_min_v,
+        "price_max": price_max_v,
+        "radius": radius_v,
+        "ad_type": _clean_str(ad_type),
+        "poster_type": _clean_str(poster_type),
+        "condition": _clean_str(condition),
+        "shipping": _clean_str(shipping),
     }
-    if interval_seconds:
-        parameters["interval_seconds"] = interval_seconds
+    if interval_v:
+        parameters["interval_seconds"] = interval_v
 
     # Remove None values so url_builder receives clean kwargs
     parameters = {k: v for k, v in parameters.items() if v is not None}
