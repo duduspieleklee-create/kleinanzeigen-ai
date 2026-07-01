@@ -18,5 +18,23 @@ class Settings(BaseSettings):
     # Defaults to 1 (assumes first seeded user). Set via SYSTEM_USER_ID env var.
     system_user_id: int = 1
 
+    # Comma-separated list of Google email addresses allowed to log in.
+    # Leave empty to allow any Google account (open registration).
+    # Example: "alice@example.com,bob@example.com"
+    allowed_emails: str = ""
+
+    # Celery Beat scheduled search parameters — override via env vars.
+    beat_keywords: str = "handwerker"
+    beat_location: str = "berlin"
+    beat_price_max: int = 200
+
+    # VAPID keys for Web Push notifications.
+    # Generate with: python3 -c "from py_vapid import Vapid; v=Vapid(); v.generate_keys(); print(v.private_pem())"
+    # Set VAPID_PUBLIC_KEY to the base64url-encoded uncompressed EC public key (87 chars).
+    # Leave empty to disable push notifications.
+    vapid_private_key: str = ""
+    vapid_public_key: str = ""
+    vapid_email: str = "mailto:admin@example.com"
+
 
 settings = Settings()

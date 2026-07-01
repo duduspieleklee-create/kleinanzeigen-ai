@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+import asyncio
+import json
+from fastapi import APIRouter, Depends, HTTPException, Request, Form, Query
+from fastapi.responses import RedirectResponse, StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from app.shared.database import get_db
+from app.shared.database import get_db, SessionLocal
 from app.shared.models import ScrapeTask, ScrapeResult
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
@@ -12,7 +14,6 @@ from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/api/templates")
 
 MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
 
@@ -23,7 +24,14 @@ async def create_scrape(
     keywords: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     location: Optional[str] = Form(None),
+    price_min: Optional[int] = Form(None),
     price_max: Optional[int] = Form(None),
+    radius: Optional[int] = Form(None),
+    sort: Optional[str] = Form(None),
+    ad_type: Optional[str] = Form(None),
+    poster_type: Optional[str] = Form(None),
+    condition: Optional[str] = Form(None),
+    shipping: Optional[str] = Form(None),
     interval_seconds: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -37,7 +45,14 @@ async def create_scrape(
         "keywords": keywords,
         "category": category,
         "location": location,
+        "price_min": price_min,
         "price_max": price_max,
+        "radius": radius,
+        "sort": sort,
+        "ad_type": ad_type,
+        "poster_type": poster_type,
+        "condition": condition,
+        "shipping": shipping,
     }
     if interval_seconds:
         parameters["interval_seconds"] = interval_seconds
@@ -62,6 +77,54 @@ async def create_scrape(
     return response
 
 
+@router.get("/stream")
+async def stream_task_updates(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+
+    def fetch_tasks():
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(ScrapeTask, func.count(ScrapeResult.id).label("result_count"))
+                .outerjoin(ScrapeResult, ScrapeResult.task_id == ScrapeTask.id)
+                .filter(ScrapeTask.user_id == user_id)
+                .group_by(ScrapeTask.id)
+                .order_by(ScrapeTask.created_at.desc())
+                .limit(50)
+                .all()
+            )
+            return [
+                {
+                    "id": t.id,
+                    "status": t.status,
+                    "result_count": count,
+                    "parameters": t.parameters or {},
+                    "url": t.url,
+                }
+                for t, count in rows
+            ]
+        finally:
+            db.close()
+
+    async def event_generator():
+        loop = asyncio.get_running_loop()
+        while True:
+            if await request.is_disconnected():
+                break
+            tasks = await loop.run_in_executor(None, fetch_tasks)
+            yield f"data: {json.dumps(tasks)}\n\n"
+            await asyncio.sleep(5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.get("/{task_id}", response_model=ScrapeResponse)
 async def get_scrape_status(
     task_id: int,
@@ -74,7 +137,6 @@ async def get_scrape_status(
     ).first()
 
     if not task:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Task not found")
 
     result_count = db.query(ScrapeResult).filter(ScrapeResult.task_id == task_id).count()
@@ -90,8 +152,8 @@ async def get_scrape_status(
 async def list_scrapes(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
-    skip: int = 0,
-    limit: int = 20,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
 ):
     tasks = (
         db.query(ScrapeTask)
@@ -105,3 +167,24 @@ async def list_scrapes(
         ScrapeResponse(task_id=t.id, status=t.status, message=t.url)
         for t in tasks
     ]
+
+
+@router.post("/{task_id}/cancel")
+async def cancel_scrape(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    task = db.query(ScrapeTask).filter(
+        ScrapeTask.id == task_id,
+        ScrapeTask.user_id == current_user["id"],
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.status = "cancelled"
+    db.commit()
+
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie("flash_success", f"Scrape job #{task_id} cancelled.", max_age=5)
+    return response

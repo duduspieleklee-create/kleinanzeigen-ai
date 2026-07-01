@@ -16,6 +16,7 @@ class User(Base):
 
     # Relationships
     scrape_tasks = relationship("ScrapeTask", back_populates="user")
+    push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}')>"
@@ -58,3 +59,19 @@ class ScrapeResult(Base):
 
     def __repr__(self):
         return f"<ScrapeResult(id={self.id}, title='{self.title}')>"
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    endpoint = Column(Text, nullable=False, unique=True)
+    p256dh = Column(Text, nullable=False)
+    auth = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="push_subscriptions")
+
+    def __repr__(self):
+        return f"<PushSubscription(id={self.id}, user_id={self.user_id})>"

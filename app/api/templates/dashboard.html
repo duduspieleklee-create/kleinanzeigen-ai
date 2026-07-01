@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - kleinanzeigen-ai</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="KA-AI">
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 40px; }
@@ -54,7 +59,17 @@
         .badge-running   { background: #cce5ff; color: #004085; }
         .badge-completed { background: #d4edda; color: #155724; }
         .badge-failed    { background: #f8d7da; color: #721c24; }
+        .badge-cancelled { background: #e2e3e5; color: #383d41; }
         .empty-state { text-align: center; padding: 24px; color: #888; }
+        .cancel-btn { font-size: 12px; color: #dc3545; background: none; border: none;
+                      cursor: pointer; padding: 0; text-decoration: underline; }
+        .notif-bar { display: flex; align-items: center; justify-content: space-between;
+                     background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 6px;
+                     padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
+        .notif-bar button { background: #007bff; color: white; border: none; border-radius: 4px;
+                            padding: 6px 14px; cursor: pointer; font-size: 13px; }
+        .notif-bar button:hover { background: #0056b3; }
+        .notif-bar button:disabled { background: #6c757d; cursor: default; }
     </style>
 </head>
 <body>
@@ -62,6 +77,11 @@
         <div class="header-row">
             <h2 style="margin:0">kleinanzeigen-ai</h2>
             <a class="logout-link" href="/auth/logout">Sign out</a>
+        </div>
+
+        <div id="notif-bar" class="notif-bar" style="display:none">
+            <span>Get notified when new listings are found</span>
+            <button id="notif-btn" onclick="handleNotifClick()">Enable notifications</button>
         </div>
 
         {% if flash_success %}
@@ -84,8 +104,84 @@
                 <label for="location">Location</label>
                 <input type="text" id="location" name="location" placeholder="e.g. berlin">
 
-                <label for="price_max">Max Price (&euro;)</label>
-                <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
+                <div style="display:flex;gap:12px">
+                    <div style="flex:1">
+                        <label for="price_min">Min Price (&euro;)</label>
+                        <input type="number" id="price_min" name="price_min" placeholder="e.g. 0">
+                    </div>
+                    <div style="flex:1">
+                        <label for="price_max">Max Price (&euro;)</label>
+                        <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:4px">
+                    <div style="flex:1">
+                        <label for="radius">Radius</label>
+                        <select id="radius" name="radius" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="5">5 km</option>
+                            <option value="10">10 km</option>
+                            <option value="20">20 km</option>
+                            <option value="30">30 km</option>
+                            <option value="50">50 km</option>
+                            <option value="100">100 km</option>
+                            <option value="150">150 km</option>
+                            <option value="200">200 km</option>
+                        </select>
+                    </div>
+                    <div style="flex:1">
+                        <label for="sort">Sortierung</label>
+                        <select id="sort" name="sort" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="SORTING_DATE">Neueste zuerst</option>
+                            <option value="SORTING_PRICE_ASC">Preis aufsteigend</option>
+                            <option value="SORTING_PRICE_DESC">Preis absteigend</option>
+                            <option value="SORTING_RELEVANCE">Relevanz</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px">
+                    <div style="flex:1">
+                        <label for="ad_type">Angebotstyp</label>
+                        <select id="ad_type" name="ad_type" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="angebote">Angebote</option>
+                            <option value="gesuche">Gesuche</option>
+                        </select>
+                    </div>
+                    <div style="flex:1">
+                        <label for="poster_type">Anbieter</label>
+                        <select id="poster_type" name="poster_type" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="privat">Privat</option>
+                            <option value="gewerblich">Gewerblich</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px">
+                    <div style="flex:1">
+                        <label for="condition">Zustand</label>
+                        <select id="condition" name="condition" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="new_with_tag">Neu mit Etikett</option>
+                            <option value="new">Neu</option>
+                            <option value="like_new">Sehr Gut</option>
+                            <option value="ok">Gut</option>
+                            <option value="alright">In Ordnung</option>
+                            <option value="defect">Defekt</option>
+                        </select>
+                    </div>
+                    <div style="flex:1">
+                        <label for="shipping">Versand</label>
+                        <select id="shipping" name="shipping" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Egal</option>
+                            <option value="ja">Versand möglich</option>
+                            <option value="nein">Nur Abholung</option>
+                        </select>
+                    </div>
+                </div>
 
                 <label>Frequency</label>
                 <div class="frequency-group">
@@ -117,6 +213,7 @@
         <!-- My searches -->
         <div class="card">
             <h3>My Searches</h3>
+            <div id="tasks-container">
             {% if tasks %}
             <table>
                 <thead>
@@ -124,17 +221,30 @@
                         <th>#</th>
                         <th>Keywords</th>
                         <th>Location</th>
+                        <th>Filters</th>
                         <th>Interval</th>
                         <th>Status</th>
                         <th>Results</th>
+                        <th></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="tasks-tbody">
                     {% for task in tasks %}
                     <tr>
                         <td>{{ task.id }}</td>
                         <td>{{ task.parameters.get('keywords', '&mdash;') }}</td>
                         <td>{{ task.parameters.get('location', '&mdash;') }}</td>
+                        <td style="font-size:12px;color:#666">
+                            {% set parts = [] %}
+                            {% if task.parameters.get('ad_type') %}{% set _ = parts.append(task.parameters.get('ad_type')) %}{% endif %}
+                            {% if task.parameters.get('poster_type') %}{% set _ = parts.append(task.parameters.get('poster_type')) %}{% endif %}
+                            {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
+                            {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
+                                {% set _ = parts.append(task.parameters.get('price_min', '0') ~ '–' ~ task.parameters.get('price_max', '∞') ~ ' €') %}
+                            {% endif %}
+                            {% if task.parameters.get('radius') %}{% set _ = parts.append(task.parameters.get('radius') ~ ' km') %}{% endif %}
+                            {{ parts | join(', ') if parts else '&mdash;' }}
+                        </td>
                         <td>
                             {% set iv = task.parameters.get('interval_seconds') %}
                             {% if iv == 5 %}5 s
@@ -145,13 +255,21 @@
                         </td>
                         <td><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
                         <td>{{ task.result_count }}</td>
+                        <td>
+                            {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
+                            <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0">
+                                <button type="submit" class="cancel-btn">Cancel</button>
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">No searches yet. Create one above!</div>
+            <div class="empty-state" id="empty-state">No searches yet. Create one above!</div>
             {% endif %}
+            </div>
         </div>
     </div>
 
@@ -162,7 +280,170 @@
                     this.value === '5' ? 'block' : 'none';
             });
         });
-        setTimeout(function() { window.location.reload(); }, 15000);
+
+        // ── Push notification helpers ────────────────────────────────────────
+        function urlBase64ToUint8Array(b64) {
+            var pad = '='.repeat((4 - b64.length % 4) % 4);
+            var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+            return Uint8Array.from(Array.from(raw).map(function(c) { return c.charCodeAt(0); }));
+        }
+
+        function updateNotifBar(perm) {
+            var bar = document.getElementById('notif-bar');
+            var btn = document.getElementById('notif-btn');
+            if (!('PushManager' in window) || !('serviceWorker' in navigator)) return;
+            if (perm === 'granted') {
+                btn.textContent = 'Notifications on ✓';
+                btn.disabled = true;
+            } else if (perm === 'denied') {
+                btn.textContent = 'Blocked by browser';
+                btn.disabled = true;
+            } else {
+                bar.style.display = 'flex';
+            }
+        }
+
+        async function handleNotifClick() {
+            var btn = document.getElementById('notif-btn');
+            btn.disabled = true;
+            btn.textContent = 'Requesting…';
+            try {
+                var perm = await Notification.requestPermission();
+                if (perm !== 'granted') { updateNotifBar(perm); return; }
+
+                var keyResp = await fetch('/push/vapid-public-key');
+                if (!keyResp.ok) { btn.textContent = 'Not configured'; return; }
+                var publicKey = (await keyResp.json()).publicKey;
+
+                var reg = await navigator.serviceWorker.ready;
+                var sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                });
+
+                await fetch('/push/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sub),
+                });
+                updateNotifBar('granted');
+            } catch (err) {
+                btn.textContent = 'Failed — try again';
+                btn.disabled = false;
+            }
+        }
+        // ────────────────────────────────────────────────────────────────────
+
+        function formatInterval(iv) {
+            if (iv === 5) return '5 s';
+            if (iv === 300) return '5 min';
+            if (iv === 1800) return '30 min';
+            if (iv === 3600) return '60 min';
+            return 'one-shot';
+        }
+
+        function renderTasks(tasks) {
+            var container = document.getElementById('tasks-container');
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<div class="empty-state">No searches yet. Create one above!</div>';
+                return;
+            }
+
+            var table = document.createElement('table');
+            var thead = document.createElement('thead');
+            thead.innerHTML = '<tr><th>#</th><th>Keywords</th><th>Location</th><th>Filters</th><th>Interval</th><th>Status</th><th>Results</th><th></th></tr>';
+            table.appendChild(thead);
+
+            var tbody = document.createElement('tbody');
+            tbody.id = 'tasks-tbody';
+
+            tasks.forEach(function(task) {
+                var tr = document.createElement('tr');
+
+                var params = task.parameters || {};
+                var canCancel = ['pending', 'running', 'completed'].indexOf(task.status) !== -1 && params.interval_seconds;
+
+                var idTd = document.createElement('td');
+                idTd.textContent = task.id;
+
+                var kwTd = document.createElement('td');
+                kwTd.textContent = params.keywords || '—';
+
+                var locTd = document.createElement('td');
+                locTd.textContent = params.location || '—';
+
+                var filterParts = [];
+                if (params.ad_type) filterParts.push(params.ad_type);
+                if (params.poster_type) filterParts.push(params.poster_type);
+                if (params.condition) filterParts.push(params.condition.replace(/_/g, ' '));
+                if (params.price_min || params.price_max)
+                    filterParts.push((params.price_min || '0') + '–' + (params.price_max || '∞') + ' €');
+                if (params.radius) filterParts.push(params.radius + ' km');
+                var filterTd = document.createElement('td');
+                filterTd.textContent = filterParts.length ? filterParts.join(', ') : '—';
+                filterTd.style.fontSize = '12px';
+                filterTd.style.color = '#666';
+
+                var ivTd = document.createElement('td');
+                ivTd.textContent = formatInterval(params.interval_seconds);
+
+                var statusTd = document.createElement('td');
+                var badge = document.createElement('span');
+                badge.className = 'badge badge-' + task.status;
+                badge.textContent = task.status;
+                statusTd.appendChild(badge);
+
+                var countTd = document.createElement('td');
+                countTd.textContent = task.result_count;
+
+                var actionTd = document.createElement('td');
+                if (canCancel) {
+                    var form = document.createElement('form');
+                    form.method = 'post';
+                    form.action = '/scrapes/' + task.id + '/cancel';
+                    form.style.margin = '0';
+                    var btn = document.createElement('button');
+                    btn.type = 'submit';
+                    btn.className = 'cancel-btn';
+                    btn.textContent = 'Cancel';
+                    form.appendChild(btn);
+                    actionTd.appendChild(form);
+                }
+
+                tr.appendChild(idTd);
+                tr.appendChild(kwTd);
+                tr.appendChild(locTd);
+                tr.appendChild(filterTd);
+                tr.appendChild(ivTd);
+                tr.appendChild(statusTd);
+                tr.appendChild(countTd);
+                tr.appendChild(actionTd);
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+
+        if (typeof EventSource !== 'undefined') {
+            var es = new EventSource('/scrapes/stream');
+            es.onmessage = function(e) {
+                try {
+                    renderTasks(JSON.parse(e.data));
+                } catch (err) {}
+            };
+            es.onerror = function() {
+                // On error the browser will auto-reconnect; nothing to do
+            };
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function() {});
+            if ('Notification' in window && 'PushManager' in window) {
+                updateNotifBar(Notification.permission);
+            }
+        }
     </script>
 </body>
 </html>

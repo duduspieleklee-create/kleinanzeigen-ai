@@ -1,13 +1,60 @@
-from app.worker.celery_app import celery_app
-from app.shared.url_builder import build_kleinanzeigen_url
-from app.shared.database import SessionLocal
-from app.shared.models import ScrapeTask, ScrapeResult
-from app.api.config import settings
-import requests
-from bs4 import BeautifulSoup
+import json
 import logging
 
+import requests
+from bs4 import BeautifulSoup
+
+from app.api.config import settings
+from app.shared.database import SessionLocal
+from app.shared.models import PushSubscription, ScrapeTask, ScrapeResult
+from app.shared.url_builder import build_kleinanzeigen_url
+from app.worker.celery_app import celery_app
+
 logger = logging.getLogger("kleinanzeigen-ai")
+
+
+def _send_push_notifications(db, user_id: int, result_count: int, keywords: str) -> None:
+    if not settings.vapid_private_key or not settings.vapid_public_key:
+        return
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        return
+
+    subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
+    if not subs:
+        return
+
+    payload = json.dumps({
+        "title": "kleinanzeigen-ai",
+        "body": f"{result_count} new listing(s) found for \"{keywords}\"",
+    })
+    private_key = settings.vapid_private_key.replace("\\n", "\n")
+
+    stale = []
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                },
+                data=payload,
+                vapid_private_key=private_key,
+                vapid_claims={"sub": settings.vapid_email},
+            )
+        except WebPushException as e:
+            # 404/410 means the subscription has expired — clean it up
+            if e.response is not None and e.response.status_code in (404, 410):
+                stale.append(sub.id)
+            else:
+                logger.warning(f"Push failed for sub {sub.id}: {e}")
+        except Exception as e:
+            logger.warning(f"Push failed for sub {sub.id}: {e}")
+
+    if stale:
+        db.query(PushSubscription).filter(PushSubscription.id.in_(stale)).delete(synchronize_session=False)
+        db.commit()
 
 
 def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int, object | None]:
@@ -47,6 +94,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     under settings.system_user_id so that ScrapeResult FK constraints are satisfied.
     """
     db = SessionLocal()
+    resolved_task_id = None
     task = None
     try:
         resolved_task_id, task = _ensure_task(db, task_id, parameters)
@@ -120,16 +168,28 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         db.commit()
 
         if task:
-            task.status = "completed"
-            db.commit()
+            # Re-fetch to respect a cancellation that arrived while the task was running.
+            task = db.query(ScrapeTask).filter(ScrapeTask.id == resolved_task_id).first()
+            if task and task.status != "cancelled":
+                task.status = "completed"
+                db.commit()
 
         logger.info(f"Saved {saved_count} results from {url}")
 
+        # ── Push notifications ──────────────────────────────────────────────
+        if task and saved_count > 0:
+            _send_push_notifications(
+                db,
+                user_id=task.user_id,
+                result_count=saved_count,
+                keywords=parameters.get("keywords", "your search"),
+            )
+        # ───────────────────────────────────────────────────────────────────
+
         # ── Self-re-scheduling ──────────────────────────────────────────────
-        # Re-queue this same task after the user-chosen interval so searches
-        # repeat automatically until the task is cancelled.
+        # Only re-queue if the task wasn't cancelled between start and now.
         interval = parameters.get("interval_seconds")
-        if interval:
+        if interval and task and task.status == "completed":
             logger.info(f"Re-scheduling scrape in {interval}s (task_id={resolved_task_id})")
             scrape_kleinanzeigen.apply_async(
                 args=[parameters, resolved_task_id],
@@ -148,10 +208,13 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         db.rollback()
 
         try:
-            if task_id is not None:
-                task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
-                if task:
-                    task.status = "failed"
+            # resolved_task_id covers both API-triggered and Beat-triggered paths;
+            # fall back to task_id only if _ensure_task itself raised before setting it.
+            update_id = resolved_task_id if resolved_task_id is not None else task_id
+            if update_id is not None:
+                failed_task = db.query(ScrapeTask).filter(ScrapeTask.id == update_id).first()
+                if failed_task:
+                    failed_task.status = "failed"
                     db.commit()
         except Exception:
             pass
