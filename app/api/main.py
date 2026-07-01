@@ -1,5 +1,5 @@
 import os
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -8,7 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.config import settings
-from app.api.routers import admin, scrapes, push, locations
+from app.api.routers import admin, auth, scrapes, push, locations
 from app.api.dependencies import get_current_user
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, ScrapeTask, ScrapeResult
@@ -32,6 +32,7 @@ if os.path.isdir(_static_dir):
 
 templates = Jinja2Templates(directory="app/api/templates")
 
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 app.include_router(push.router, prefix="/push", tags=["Push"])
 app.include_router(locations.router, prefix="/locations", tags=["Locations"])
@@ -56,8 +57,8 @@ async def offline(request: Request):
 
 
 @app.get("/", tags=["Web"])
-async def home():
-    return RedirectResponse(url="/dashboard")
+async def home(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 @app.get("/dashboard", tags=["Web"])
@@ -65,7 +66,10 @@ async def dashboard(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    current_user = get_current_user()
+    try:
+        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
+    except HTTPException:
+        return RedirectResponse(url="/")
 
     flash_success = request.cookies.get("flash_success")
     flash_error = request.cookies.get("flash_error")
@@ -85,7 +89,11 @@ async def dashboard(
         task.result_count = count
         tasks_with_counts.append(task)
 
-    admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
+    admin_searches = []
+    try:
+        admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
+    except Exception:
+        pass
 
     response = templates.TemplateResponse(
         "dashboard.html",
