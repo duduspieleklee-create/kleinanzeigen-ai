@@ -50,5 +50,15 @@ class Settings(BaseSettings):
     proxy_test_url: str = "https://www.kleinanzeigen.de/"
     proxy_test_timeout: int = 15
 
+    # Welcome-task reward + free/premium tiering. Finishing all welcome tasks
+    # grants `premium_days` of premium: a higher daily search limit and faster
+    # (sub-hourly) intervals. Free users are capped to hourly+ intervals.
+    premium_days: int = 3
+    premium_daily_limit: int = 25          # premium searches/day (free is daily_limit=3)
+    free_min_interval_seconds: int = 3600  # free users: hourly or slower
+    premium_min_interval_seconds: int = 300  # premium: down to 5 minutes
+    # External page users are sent to for the "leave a review" task. Empty hides it.
+    review_url: str = ""
+
 
 settings = Settings()

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.config import settings
 from app.api.dependencies import get_current_user
 from app.shared.database import get_db
+from app.shared.entitlements import mark_task
 from app.shared.models import PushSubscription
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ def subscribe(
         existing.p256dh = payload.keys.p256dh
         existing.auth = payload.keys.auth
         db.commit()
+        mark_task(db, current_user["id"], "enable_notifications")
         return {"status": "updated"}
 
     sub = PushSubscription(
@@ -55,6 +57,7 @@ def subscribe(
     )
     db.add(sub)
     db.commit()
+    mark_task(db, current_user["id"], "enable_notifications")
     return {"status": "subscribed"}
 
 

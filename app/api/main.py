@@ -10,10 +10,18 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.config import settings
-from app.api.routers import admin, auth, scrapes, push, locations
+from app.api.routers import admin, auth, scrapes, push, locations, welcome
 from app.api.dependencies import get_current_user
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
+from app.shared.entitlements import (
+    REQUIRED_TASK_KEYS,
+    completed_task_keys,
+    effective_daily_limit,
+    is_premium,
+    is_privileged,
+    premium_days_left,
+)
 from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User
 from app.shared.pricing import deal_badge, median_price
 from app.shared.proxy import is_rotating_enabled
@@ -43,6 +51,7 @@ app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 app.include_router(push.router, prefix="/push", tags=["Push"])
 app.include_router(locations.router, prefix="/locations", tags=["Locations"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(welcome.router, prefix="/welcome", tags=["Welcome"])
 
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
@@ -114,9 +123,10 @@ async def dashboard(
     except Exception:
         pass
 
-    # Daily search quota (0 == unlimited, e.g. admin)
+    # Daily search quota — effective limit depends on free/premium tier
+    # (0 == unlimited, e.g. admin).
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
-    daily_limit = db_user.daily_limit if db_user else 0
+    daily_limit = effective_daily_limit(db_user, settings) if db_user else 0
     used_today = 0
     if daily_limit and daily_limit > 0:
         start_of_day = datetime.now(timezone.utc).replace(
@@ -130,6 +140,21 @@ async def dashboard(
             )
             .count()
         )
+
+    # Welcome-task checklist + premium state
+    premium = is_premium(db_user)
+    done_keys = completed_task_keys(db, current_user["id"]) if db_user else set()
+    welcome_done = db_user.welcome_completed_at is not None if db_user else True
+    welcome = {
+        "show": db_user is not None and not welcome_done,
+        "required": REQUIRED_TASK_KEYS,
+        "completed": done_keys,
+        "count_done": len([k for k in REQUIRED_TASK_KEYS if k in done_keys]),
+        "total": len(REQUIRED_TASK_KEYS),
+        "review_url": settings.review_url,
+    }
+    # Premium was earned before but has since lapsed → show the upgrade prompt.
+    show_upgrade_prompt = bool(db_user and welcome_done and not premium)
 
     # "New since your last visit" — listings that arrived after last_seen_at.
     # Skipped for brand-new accounts (NULL) so they aren't flooded on first login.
@@ -177,6 +202,11 @@ async def dashboard(
             "proxies": proxies,
             "rotating_proxy_enabled": rotating_proxy_enabled,
             "new_results": new_results,
+            "is_premium": premium,
+            "premium_days_left": premium_days_left(db_user),
+            "is_privileged": is_privileged(db_user),
+            "welcome": welcome,
+            "show_upgrade_prompt": show_upgrade_prompt,
         },
     )
 

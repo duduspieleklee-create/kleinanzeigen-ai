@@ -13,6 +13,7 @@ from app.shared.models import ScrapeTask, ScrapeResult, User
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
+from app.shared.entitlements import effective_daily_limit, mark_task, min_interval_seconds
 from app.shared.pricing import deal_badge, median_price
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
@@ -21,7 +22,6 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
 register_globals(templates)
 
-MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
 
 
 def _clean_str(value: Optional[str]) -> Optional[str]:
@@ -89,11 +89,11 @@ async def create_scrape(
         response.set_cookie("flash_error", " · ".join(errors), max_age=10)
         return response
 
-    # Enforce the per-user daily search limit (daily_limit == 0 means unlimited,
-    # e.g. the admin account). Only user-initiated searches count — interval
-    # re-runs reuse the same task and never reach this endpoint.
+    # Enforce the per-user daily search limit. The effective limit depends on
+    # the free/premium tier (0 == unlimited, e.g. the admin account). Only
+    # user-initiated searches count — interval re-runs reuse the same task.
     user = db.query(User).filter(User.id == current_user["id"]).first()
-    daily_limit = user.daily_limit if user else 0
+    daily_limit = effective_daily_limit(user, settings) if user else 0
     if daily_limit and daily_limit > 0:
         start_of_day = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
@@ -116,10 +116,20 @@ async def create_scrape(
             )
             return response
 
-    # Enforce minimum interval outside dev
-    if interval_v is not None and settings.environment != "dev":
-        if interval_v < MIN_INTERVAL_PROD:
-            interval_v = MIN_INTERVAL_PROD
+    # Enforce the tier's minimum interval. Free users are capped to hourly+;
+    # sub-hourly is a premium perk. Reject (rather than clamp) so the gate is
+    # visible and nudges toward the welcome tasks.
+    floor = min_interval_seconds(user, settings)
+    if interval_v is not None and floor and interval_v < floor:
+        response = RedirectResponse(url="/dashboard", status_code=303)
+        mins = floor // 60
+        response.set_cookie(
+            "flash_error",
+            f"Intervals under {mins} minutes are a premium feature - "
+            "finish your welcome tasks to unlock 3 days free.",
+            max_age=10,
+        )
+        return response
 
     parameters = {
         "keywords": keywords,
@@ -149,6 +159,9 @@ async def create_scrape(
     db.add(task)
     db.commit()
     db.refresh(task)
+
+    # Welcome task: creating a search counts as "run your first search".
+    mark_task(db, current_user["id"], "first_search")
 
     scrape_kleinanzeigen.delay(parameters, task.id)
 

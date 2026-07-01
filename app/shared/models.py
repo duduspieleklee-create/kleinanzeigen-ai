@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import (
+    Boolean, Column, Integer, String, DateTime, ForeignKey, Text, JSON, UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.shared.database import Base
@@ -17,11 +19,17 @@ class User(Base):
     # Last time the user viewed their dashboard — drives the "new since your
     # last visit" overlay. NULL for a brand-new account (no overlay shown).
     last_seen_at = Column(DateTime(timezone=True))
+    # Premium (earned by finishing the welcome tasks) is active while
+    # premium_until is in the future. welcome_completed_at is set when all
+    # tasks are done, so the 3-day reward is granted only once.
+    premium_until = Column(DateTime(timezone=True))
+    welcome_completed_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     scrape_tasks = relationship("ScrapeTask", back_populates="user")
     push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")
+    welcome_tasks = relationship("WelcomeTask", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}')>"
@@ -82,6 +90,26 @@ class PushSubscription(Base):
 
     def __repr__(self):
         return f"<PushSubscription(id={self.id}, user_id={self.user_id})>"
+
+
+class WelcomeTask(Base):
+    """One completed onboarding task per user. Finishing the full set grants
+    a one-time 3-day premium. Key/value so new tasks need no migration."""
+    __tablename__ = "welcome_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    task_key = Column(String(50), nullable=False)
+    completed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="welcome_tasks")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "task_key", name="uq_welcome_user_task"),
+    )
+
+    def __repr__(self):
+        return f"<WelcomeTask(user_id={self.user_id}, key='{self.task_key}')>"
 
 
 class Proxy(Base):

@@ -141,6 +141,24 @@
         .deal-great { background: #e2f6e6; color: #1a7f37; }
         .deal-fair  { background: #eef0f2; color: #57606a; }
         .deal-high  { background: #fdecea; color: #b42318; }
+        /* Welcome checklist + premium status */
+        .premium-bar { background: #fff8e1; border: 1px solid #ffe082; color: #8a6d00;
+                       padding: 10px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
+        .upgrade-bar { background: #fdecea; border: 1px solid #f5c6cb; color: #721c24;
+                       padding: 10px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px;
+                       display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .upgrade-bar button { width: auto; margin: 0; padding: 8px 16px; font-size: 14px; }
+        .welcome-card { border: 2px solid #007bff; }
+        .wt-list { list-style: none; padding: 0; margin: 12px 0 0; }
+        .wt-item { display: flex; align-items: center; gap: 10px; padding: 8px 0;
+                   border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        .wt-item:last-child { border-bottom: none; }
+        .wt-check { width: 22px; height: 22px; border-radius: 50%; flex: none; display: flex;
+                    align-items: center; justify-content: center; font-weight: 700;
+                    background: #eef0f2; color: #9aa0a6; }
+        .wt-check.done { background: #d4edda; color: #1a7f37; }
+        .wt-hint { color: #999; font-size: 12px; }
+        .lock-tag { font-size: 11px; color: #b8860b; margin-left: 6px; }
     </style>
 </head>
 <body>
@@ -200,11 +218,66 @@
             <button id="notif-btn" onclick="handleNotifClick()">Enable notifications</button>
         </div>
 
-        {% if daily_limit and daily_limit > 0 %}
+        {% if is_premium %}
+        <div class="premium-bar">
+            ⭐ <strong>Premium</strong> — {{ premium_days_left }} day(s) left ·
+            up to {{ daily_limit }} searches/day · fast intervals unlocked
+        </div>
+        {% elif show_upgrade_prompt %}
+        <div class="upgrade-bar">
+            <span>Your 3-day premium has ended. Upgrade to keep higher limits &amp; faster intervals.</span>
+            <button type="button" onclick="alert('Upgrades are coming soon!')">Upgrade</button>
+        </div>
+        {% elif daily_limit and daily_limit > 0 %}
         <div class="quota-bar">
-            Free plan: <strong>{{ used_today }} / {{ daily_limit }}</strong> searches used today
+            Free plan: <strong>{{ used_today }} / {{ daily_limit }}</strong> searches today · hourly intervals
             {% if used_today >= daily_limit %} — limit reached, resets at midnight (UTC){% endif %}
         </div>
+        {% endif %}
+
+        {% if welcome and welcome.show %}
+        <div class="card welcome-card">
+            <h3>🎁 Finish these {{ welcome.total }} steps → 3 days free premium</h3>
+            <p style="margin-top:-8px;color:#666;font-size:14px">
+                {{ welcome.count_done }} / {{ welcome.total }} done — premium unlocks higher daily limits
+                and searches faster than once an hour.
+            </p>
+            <ul class="wt-list">
+                <li class="wt-item">
+                    <span class="wt-check {{ 'done' if 'first_search' in welcome.completed else '' }}">{{ '✓' if 'first_search' in welcome.completed else '○' }}</span>
+                    <span>Run your first search <span class="wt-hint">— fill the form below</span></span>
+                </li>
+                <li class="wt-item">
+                    <span class="wt-check {{ 'done' if 'enable_notifications' in welcome.completed else '' }}">{{ '✓' if 'enable_notifications' in welcome.completed else '○' }}</span>
+                    <span>Enable notifications <span class="wt-hint">— use the banner above</span></span>
+                </li>
+                <li class="wt-item">
+                    <span class="wt-check {{ 'done' if 'install_pwa' in welcome.completed else '' }}">{{ '✓' if 'install_pwa' in welcome.completed else '○' }}</span>
+                    <span>Install the app on your phone <span class="wt-hint">— Add to Home Screen, then open it</span></span>
+                </li>
+                <li class="wt-item">
+                    <span class="wt-check {{ 'done' if 'leave_review' in welcome.completed else '' }}">{{ '✓' if 'leave_review' in welcome.completed else '○' }}</span>
+                    <span>
+                        Leave a review
+                        {% if 'leave_review' not in welcome.completed %}
+                            {% if welcome.review_url %}
+                            <a href="{{ welcome.review_url }}" target="_blank" rel="noopener" class="view-link"
+                               onclick="document.getElementById('review-confirm').style.display='inline-block'">Open review page</a>
+                            <button type="button" id="review-confirm" style="display:none;width:auto;margin:0;padding:4px 10px;font-size:12px"
+                                    onclick="markReviewDone()">I've left my review</button>
+                            {% else %}
+                            <span class="wt-hint">— coming soon</span>
+                            {% endif %}
+                        {% endif %}
+                    </span>
+                </li>
+            </ul>
+        </div>
+        <script>
+            function markReviewDone() {
+                fetch('/welcome/review-done', { method: 'POST' }).then(function () { location.reload(); });
+            }
+        </script>
         {% endif %}
 
         {% if flash_success %}
@@ -352,19 +425,19 @@
                 <label>Frequency</label>
                 <div class="frequency-group">
                     <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="5" id="freq-5s">
+                        <input type="radio" name="interval_seconds" value="5" id="freq-5s" {% if not is_privileged %}disabled{% endif %}>
                         Every 5 seconds <em style="color:#888">(dev only)</em>
                     </label>
                     <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="300" checked>
-                        Every 5 minutes
+                        <input type="radio" name="interval_seconds" value="300" {% if is_privileged %}checked{% else %}disabled{% endif %}>
+                        Every 5 minutes{% if not is_privileged %}<span class="lock-tag">🔒 premium</span>{% endif %}
                     </label>
                     <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="1800">
-                        Every 30 minutes
+                        <input type="radio" name="interval_seconds" value="1800" {% if not is_privileged %}disabled{% endif %}>
+                        Every 30 minutes{% if not is_privileged %}<span class="lock-tag">🔒 premium</span>{% endif %}
                     </label>
                     <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="3600">
+                        <input type="radio" name="interval_seconds" value="3600" {% if not is_privileged %}checked{% endif %}>
                         Every 60 minutes
                     </label>
                 </div>
@@ -885,6 +958,11 @@
                     subscribeToPush().catch(function() {});
                 }
             }
+        }
+
+        // Welcome task: if we're running as an installed PWA, tell the server.
+        if (isStandalone()) {
+            fetch('/welcome/pwa-installed', { method: 'POST' }).catch(function() {});
         }
 
         // ── Location autocomplete ─────────────────────────────────────────────
