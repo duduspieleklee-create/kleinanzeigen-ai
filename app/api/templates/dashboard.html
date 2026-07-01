@@ -63,6 +63,13 @@
         .empty-state { text-align: center; padding: 24px; color: #888; }
         .cancel-btn { font-size: 12px; color: #dc3545; background: none; border: none;
                       cursor: pointer; padding: 0; text-decoration: underline; }
+        .suggest-wrap { position: relative; }
+        .suggest-list { position: absolute; top: 100%; left: 0; right: 0; background: white;
+                        border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px;
+                        max-height: 200px; overflow-y: auto; z-index: 100; margin: 0;
+                        padding: 0; list-style: none; display: none; }
+        .suggest-list li { padding: 8px 12px; cursor: pointer; font-size: 14px; }
+        .suggest-list li:hover, .suggest-list li.active { background: #f0f4ff; }
         .notif-bar { display: flex; align-items: center; justify-content: space-between;
                      background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 6px;
                      padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
@@ -101,8 +108,13 @@
                 <label for="category">Category</label>
                 <input type="text" id="category" name="category" placeholder="e.g. handwerk">
 
-                <label for="location">Location</label>
-                <input type="text" id="location" name="location" placeholder="e.g. berlin">
+                <label for="location-input">Location (city or PLZ)</label>
+                <div class="suggest-wrap">
+                    <input type="text" id="location-input" name="location"
+                           placeholder="e.g. Berlin or 10115" autocomplete="off">
+                    <input type="hidden" id="location_id" name="location_id">
+                    <ul id="location-suggestions" class="suggest-list"></ul>
+                </div>
 
                 <div style="display:flex;gap:12px">
                     <div style="flex:1">
@@ -444,6 +456,86 @@
                 updateNotifBar(Notification.permission);
             }
         }
+
+        // ── Location autocomplete ─────────────────────────────────────────────
+        (function() {
+            var inp = document.getElementById('location-input');
+            var idField = document.getElementById('location_id');
+            var list = document.getElementById('location-suggestions');
+            var timer = null;
+            var activeIdx = -1;
+            var suggestions = [];
+
+            function showList(items) {
+                suggestions = items;
+                activeIdx = -1;
+                list.innerHTML = '';
+                if (!items.length) { list.style.display = 'none'; return; }
+                items.forEach(function(item, i) {
+                    var li = document.createElement('li');
+                    li.textContent = item.label;
+                    li.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        selectItem(i);
+                    });
+                    list.appendChild(li);
+                });
+                list.style.display = 'block';
+            }
+
+            function selectItem(i) {
+                var item = suggestions[i];
+                inp.value = item.label;
+                idField.value = item.id;
+                list.style.display = 'none';
+                suggestions = [];
+            }
+
+            function setActive(i) {
+                var items = list.querySelectorAll('li');
+                items.forEach(function(li) { li.classList.remove('active'); });
+                if (i >= 0 && i < items.length) {
+                    items[i].classList.add('active');
+                    activeIdx = i;
+                }
+            }
+
+            inp.addEventListener('input', function() {
+                idField.value = '';  // clear resolved id when user edits freely
+                clearTimeout(timer);
+                var q = inp.value.trim();
+                if (q.length < 2) { list.style.display = 'none'; return; }
+                timer = setTimeout(function() {
+                    fetch('/locations/suggest?q=' + encodeURIComponent(q))
+                        .then(function(r) { return r.json(); })
+                        .then(showList)
+                        .catch(function() { list.style.display = 'none'; });
+                }, 300);
+            });
+
+            inp.addEventListener('keydown', function(e) {
+                if (list.style.display === 'none') return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActive(Math.min(activeIdx + 1, suggestions.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActive(Math.max(activeIdx - 1, 0));
+                } else if (e.key === 'Enter' && activeIdx >= 0) {
+                    e.preventDefault();
+                    selectItem(activeIdx);
+                } else if (e.key === 'Escape') {
+                    list.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!inp.contains(e.target) && !list.contains(e.target)) {
+                    list.style.display = 'none';
+                }
+            });
+        })();
+        // ─────────────────────────────────────────────────────────────────────
     </script>
 </body>
 </html>

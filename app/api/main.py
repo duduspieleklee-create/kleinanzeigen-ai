@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.config import settings
-from app.api.routers import auth, scrapes, push
+from app.api.routers import auth, scrapes, push, locations
 from app.api.dependencies import get_current_user
 from app.shared.database import get_db
 from app.shared.models import ScrapeTask, ScrapeResult
@@ -38,6 +38,7 @@ templates = Jinja2Templates(directory="app/api/templates")
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 app.include_router(push.router, prefix="/push", tags=["Push"])
+app.include_router(locations.router, prefix="/locations", tags=["Locations"])
 
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
