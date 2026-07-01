@@ -213,11 +213,14 @@ jobs:
             --name kleinanzeigen-worker \
             --resource-group kleinanzeigen-ai-rg \
             --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker:${{ github.sha }}" \
+            --min-replicas 1 \
+            --max-replicas 3 \
             --set-env-vars \
               "ENVIRONMENT=production" \
               "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
               "REDIS_URL=${{ secrets.REDIS_URL }}" \
               "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+              "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" \
               "SYSTEM_USER_ID=${{ secrets.SYSTEM_USER_ID }}" \
               "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" \
               "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" \
@@ -230,11 +233,14 @@ jobs:
             --name kleinanzeigen-beat \
             --resource-group kleinanzeigen-ai-rg \
             --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-beat:${{ github.sha }}" \
+            --min-replicas 1 \
+            --max-replicas 1 \
             --set-env-vars \
               "ENVIRONMENT=production" \
               "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
               "REDIS_URL=${{ secrets.REDIS_URL }}" \
-              "SECRET_KEY=${{ secrets.SECRET_KEY }}"
+              "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+              "APP_PASSWORD=${{ secrets.APP_PASSWORD }}"
           echo "✓ kleinanzeigen-beat updated"
 
   # ─────────────────────────────────────────────
