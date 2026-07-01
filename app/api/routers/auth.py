@@ -76,6 +76,7 @@ async def login(
                 email="admin@local",
                 hashed_password=_hash(password),
                 is_active=1,
+                daily_limit=0,  # admin is exempt from the daily search cap
             )
             db.add(user)
             db.commit()

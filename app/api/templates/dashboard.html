@@ -48,6 +48,8 @@
                          padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
         .flash-error   { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;
                          padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+        .quota-bar     { background: #eef3fb; border: 1px solid #d3e0f5; color: #33475b;
+                         padding: 10px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .logout-link { font-size: 14px; color: #666; text-decoration: none; }
         .logout-link:hover { color: #333; }
@@ -107,6 +109,13 @@
             <span id="notif-label">Get notified when new listings are found</span>
             <button id="notif-btn" onclick="handleNotifClick()">Enable notifications</button>
         </div>
+
+        {% if daily_limit and daily_limit > 0 %}
+        <div class="quota-bar">
+            Free plan: <strong>{{ used_today }} / {{ daily_limit }}</strong> searches used today
+            {% if used_today >= daily_limit %} — limit reached, resets at midnight (UTC){% endif %}
+        </div>
+        {% endif %}
 
         {% if flash_success %}
         <div class="flash-success">{{ flash_success }}</div>

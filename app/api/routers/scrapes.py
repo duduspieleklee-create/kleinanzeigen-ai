@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, Query
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.shared.database import get_db, SessionLocal
-from app.shared.models import ScrapeTask, ScrapeResult
+from app.shared.models import ScrapeTask, ScrapeResult, User
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
@@ -86,6 +87,33 @@ async def create_scrape(
         response = RedirectResponse(url="/dashboard", status_code=303)
         response.set_cookie("flash_error", " · ".join(errors), max_age=10)
         return response
+
+    # Enforce the per-user daily search limit (daily_limit == 0 means unlimited,
+    # e.g. the admin account). Only user-initiated searches count — interval
+    # re-runs reuse the same task and never reach this endpoint.
+    user = db.query(User).filter(User.id == current_user["id"]).first()
+    daily_limit = user.daily_limit if user else 0
+    if daily_limit and daily_limit > 0:
+        start_of_day = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        used_today = (
+            db.query(ScrapeTask)
+            .filter(
+                ScrapeTask.user_id == current_user["id"],
+                ScrapeTask.created_at >= start_of_day,
+            )
+            .count()
+        )
+        if used_today >= daily_limit:
+            response = RedirectResponse(url="/dashboard", status_code=303)
+            response.set_cookie(
+                "flash_error",
+                f"Daily limit reached ({daily_limit} searches/day). "
+                "Please try again tomorrow.",
+                max_age=10,
+            )
+            return response
 
     # Enforce minimum interval outside dev
     if interval_v is not None and settings.environment != "dev":
