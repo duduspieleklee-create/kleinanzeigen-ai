@@ -1,17 +1,33 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.api.config import settings
+from app.api.dependencies import get_current_user
 from app.shared.database import get_db
 from app.shared.models import AdminSearch
 
 router = APIRouter()
 
 
+def _require_admin(request: Request) -> dict:
+    try:
+        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
+    except HTTPException:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if settings.allowed_emails:
+        allowed = {e.strip().lower() for e in settings.allowed_emails.split(",") if e.strip()}
+        if current_user.get("email", "").lower() not in allowed:
+            raise HTTPException(status_code=403, detail="Forbidden")
+    return current_user
+
+
 @router.post("/searches")
 def create_admin_search(
+    request: Request,
     keywords: str = Form(...),
     category: Optional[str] = Form(None),
     location: Optional[str] = Form(None),
@@ -22,6 +38,7 @@ def create_admin_search(
     interval_minutes: int = Form(30),
     db: Session = Depends(get_db),
 ):
+    _require_admin(request)
     search = AdminSearch(
         keywords=keywords,
         category=category or None,
@@ -42,8 +59,10 @@ def create_admin_search(
 @router.post("/searches/{search_id}/toggle")
 def toggle_admin_search(
     search_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    _require_admin(request)
     search = db.query(AdminSearch).filter(AdminSearch.id == search_id).first()
     if not search:
         raise HTTPException(status_code=404, detail="Not found")
@@ -55,8 +74,10 @@ def toggle_admin_search(
 @router.post("/searches/{search_id}/delete")
 def delete_admin_search(
     search_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    _require_admin(request)
     search = db.query(AdminSearch).filter(AdminSearch.id == search_id).first()
     if not search:
         raise HTTPException(status_code=404, detail="Not found")
