@@ -1,16 +1,14 @@
 import os
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.api.config import settings
-from app.api.routers import admin, auth, scrapes, push, locations
+from app.api.routers import admin, scrapes, push, locations
 from app.api.dependencies import get_current_user
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, ScrapeTask, ScrapeResult
@@ -19,24 +17,6 @@ from app.shared.logging_config import logger
 logger.info("Starting kleinanzeigen-ai application...")
 
 app = FastAPI(title="kleinanzeigen-ai")
-
-# Trust the X-Forwarded-Proto header from Azure Container Apps' TLS proxy
-# so that request.url_for() generates https:// URLs for OAuth redirects.
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
-
-class ForwardedProtoMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] in ("http", "websocket"):
-            headers = dict(scope.get("headers", []))
-            proto = headers.get(b"x-forwarded-proto", b"").decode()
-            if proto == "https":
-                scope["scheme"] = "https"
-        await self.app(scope, receive, send)
-
-app.add_middleware(ForwardedProtoMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,7 +32,6 @@ if os.path.isdir(_static_dir):
 
 templates = Jinja2Templates(directory="app/api/templates")
 
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 app.include_router(push.router, prefix="/push", tags=["Push"])
 app.include_router(locations.router, prefix="/locations", tags=["Locations"])
@@ -66,7 +45,6 @@ async def healthz():
 
 @app.get("/sw.js", include_in_schema=False)
 async def service_worker():
-    # Served from root so the SW scope covers the whole app, not just /static/
     sw_path = os.path.join(os.path.dirname(__file__), "static", "sw.js")
     return FileResponse(sw_path, media_type="application/javascript",
                         headers={"Service-Worker-Allowed": "/"})
@@ -78,8 +56,8 @@ async def offline(request: Request):
 
 
 @app.get("/", tags=["Web"])
-async def home(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+async def home():
+    return RedirectResponse(url="/dashboard")
 
 
 @app.get("/dashboard", tags=["Web"])
@@ -87,12 +65,7 @@ async def dashboard(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    # Redirect to login instead of returning 401 — keeps standalone PWA UX sane
-    # when the session cookie expires.
-    try:
-        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
-    except HTTPException:
-        return RedirectResponse(url="/")
+    current_user = get_current_user()
 
     flash_success = request.cookies.get("flash_success")
     flash_error = request.cookies.get("flash_error")
@@ -112,13 +85,7 @@ async def dashboard(
         task.result_count = count
         tasks_with_counts.append(task)
 
-    is_admin = False
-    admin_searches = []
-    if settings.allowed_emails:
-        allowed = {e.strip().lower() for e in settings.allowed_emails.split(",") if e.strip()}
-        is_admin = current_user.get("email", "").lower() in allowed
-    if is_admin:
-        admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
+    admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
 
     response = templates.TemplateResponse(
         "dashboard.html",
@@ -127,7 +94,7 @@ async def dashboard(
             "tasks": tasks_with_counts,
             "flash_success": flash_success,
             "flash_error": flash_error,
-            "is_admin": is_admin,
+            "is_admin": True,
             "admin_searches": admin_searches,
         },
     )
