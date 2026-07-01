@@ -56,8 +56,13 @@ ACR_PASS=$(az acr credential show --name "$ACR_NAME" --query "passwords[0].value
 for APP in api worker beat; do
   if [[ "$APP" == "api" ]]; then
     INGRESS_ARGS="--ingress external --target-port 8000"
+    CPU="0.5"; MEM="1.0Gi"
+  elif [[ "$APP" == "beat" ]]; then
+    INGRESS_ARGS=""
+    CPU="0.25"; MEM="0.5Gi"
   else
-    INGRESS_ARGS="--ingress disabled"
+    INGRESS_ARGS=""
+    CPU="0.5"; MEM="1.0Gi"
   fi
   az containerapp create \
     --resource-group "$RG" \
@@ -67,7 +72,7 @@ for APP in api worker beat; do
     --registry-server "$ACR_SERVER" \
     --registry-username "$ACR_NAME" \
     --registry-password "$ACR_PASS" \
-    $INGRESS_ARGS --cpu 0.5 --memory 1.0Gi -o none
+    $INGRESS_ARGS --cpu "$CPU" --memory "$MEM" -o none
   echo "    ✓ kleinanzeigen-$APP"
 done
 
