@@ -6,86 +6,9 @@
     <title>Register - kleinanzeigen-ai</title>
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#007bff">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .register-container {
-            background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 350px;
-            text-align: center;
-        }
-        h2 { margin-bottom: 8px; }
-        .subtitle { color: #666; margin-bottom: 24px; font-size: 14px; }
-        .form-group {
-            text-align: left;
-            margin-bottom: 16px;
-        }
-        label {
-            display: block;
-            font-size: 13px;
-            color: #555;
-            margin-bottom: 4px;
-        }
-        input[type="text"], input[type="password"], input[type="email"] {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 15px;
-            box-sizing: border-box;
-        }
-        input:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
-        }
-        .register-btn {
-            width: 100%;
-            padding: 11px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        .register-btn:hover { background-color: #0069d9; }
-        .error-msg {
-            color: #d93025;
-            margin-top: 14px;
-            font-size: 14px;
-        }
-        .login-link {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #666;
-        }
-        .login-link a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        .login-link a:hover { text-decoration: underline; }
-        .hint {
-            font-size: 12px;
-            color: #999;
-            margin-top: 3px;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="auth-page">
     <div class="register-container">
         <h2>kleinanzeigen-ai</h2>
         <p class="subtitle">Create your account</p>
