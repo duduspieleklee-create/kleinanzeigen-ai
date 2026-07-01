@@ -21,6 +21,7 @@ def build_kleinanzeigen_url(
     keywords: Optional[str] = None,
     category: Optional[str] = None,
     location: Optional[str] = None,
+    location_id: Optional[int] = None,
     price_min: Optional[int] = None,
     price_max: Optional[int] = None,
     radius: Optional[int] = None,
@@ -35,14 +36,11 @@ def build_kleinanzeigen_url(
     """
     Build a kleinanzeigen.de search URL from structured parameters.
 
-    URL shape (reverse-engineered from live site):
-      /[anzeige:{angebote|gesuche}/]
-      /[anbieter:{privat|gewerblich}/]
-      /[versand:{ja|nein}/]
-      /s-{category}/
-      /{location}/          (omitted when no location)
-      /{keyword-slug}/      (omitted when no keywords)
-      /k0[+global.zustand:{condition}]
+    When location_id is provided the canonical URL is used:
+      /s-{location_slug}/{keywords}/k0l{locationId}[r{radius}][+global.zustand:{condition}]
+
+    Without location_id (backward-compat / text-only location):
+      /[filter-prefixes/]s-{category}/{location-slug}/{keywords}/k0[+condition]
       ?minPrice=&maxPrice=&sortingField=&radius=
     """
     base = "https://www.kleinanzeigen.de"
@@ -62,15 +60,20 @@ def build_kleinanzeigen_url(
     else:
         path_parts.append("s-anzeigen")
 
-    # ── Location ────────────────────────────────────────────────────────────
+    # ── Location slug (display / SEO only — the real scoping is via locationId) ──
     if location:
         path_parts.append(_sanitize_path_segment(location))
 
-    # ── Keywords + condition ─────────────────────────────────────────────────
+    # ── Keywords ─────────────────────────────────────────────────────────────
     if keywords:
         path_parts.append(_sanitize_path_segment(keywords))
 
+    # ── k0 token: locationId + radius go here when locationId is known ───────
     k0 = "k0"
+    if location_id:
+        k0 += f"l{int(location_id)}"
+        if radius and int(radius) in _VALID_RADII:
+            k0 += f"r{int(radius)}"
     if condition in _VALID_CONDITIONS:
         k0 += f"+global.zustand:{condition}"
     path_parts.append(k0)
@@ -85,7 +88,8 @@ def build_kleinanzeigen_url(
         query["maxPrice"] = int(price_max)
     if sort and sort in _VALID_SORTS and sort != "SORTING_DATE":
         query["sortingField"] = sort
-    if radius and int(radius) in _VALID_RADII:
+    # Radius falls back to query param only when locationId is absent (old tasks)
+    if radius and int(radius) in _VALID_RADII and not location_id:
         query["radius"] = int(radius)
 
     if query:
