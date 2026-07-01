@@ -164,9 +164,7 @@ jobs:
           space: "Default"
           project: "kleinanzeigen-ai"
           release_number: "1.0.${{ github.run_number }}"
-          environments: "Dev"
-          wait_for_deployment: true
-          deployment_timeout: "00:10:00"
+          environments: "Development"
           variables: |
             DATABASE_URL: ${{ secrets.DATABASE_URL }}
             REDIS_URL: ${{ secrets.REDIS_URL }}
