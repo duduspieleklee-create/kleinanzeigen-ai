@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_admin
 from app.shared.database import get_db
-from app.shared.models import AdminSearch, Proxy
+from app.shared.models import AdminSearch, Proxy, PushSubscription
 from app.shared.proxy import (
     is_rotating_enabled,
     is_safe_proxy_url,
@@ -21,14 +21,33 @@ router = APIRouter()
 
 
 @router.post("/test-notification")
-def send_test_notification(current_user: dict = Depends(require_admin)):
+def send_test_notification(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
     """Queue a test push to the current admin's own devices.
 
     Runs through the same worker + web-push path real notifications use, so a
     successful delivery confirms the whole pipeline works end to end.
     """
-    send_test_push.delay(current_user["id"])
     response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+
+    has_subscription = (
+        db.query(PushSubscription.id)
+        .filter(PushSubscription.user_id == current_user["id"])
+        .first()
+        is not None
+    )
+    if not has_subscription:
+        response.set_cookie(
+            "flash_error",
+            "No active push subscription on this account. Enable notifications "
+            "on the dashboard first, then try the test again.",
+            max_age=10,
+        )
+        return response
+
+    send_test_push.delay(current_user["id"])
     response.set_cookie(
         "flash_success",
         "Test notification queued - check your device in a few seconds.",
