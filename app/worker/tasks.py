@@ -9,6 +9,7 @@ from sqlalchemy import or_
 from app.api.config import settings
 from app.shared.database import SessionLocal
 from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult
+from app.shared.pricing import deal_badge, median_price, parse_price
 from app.shared.proxy import proxies_for_requests
 from app.shared.url_builder import build_kleinanzeigen_url
 from app.worker.celery_app import celery_app
@@ -16,7 +17,9 @@ from app.worker.celery_app import celery_app
 logger = logging.getLogger("kleinanzeigen-ai")
 
 
-def _send_push_notifications(db, user_id: int, result_count: int, keywords: str) -> None:
+def _send_push_notifications(
+    db, user_id: int, result_count: int, keywords: str, highlight: str = None
+) -> None:
     if not settings.vapid_private_key or not settings.vapid_public_key:
         return
     try:
@@ -28,9 +31,11 @@ def _send_push_notifications(db, user_id: int, result_count: int, keywords: str)
     if not subs:
         return
 
+    # Lead with a deal highlight when there is one, otherwise the plain count.
+    body = highlight or f"{result_count} new listing(s) found for \"{keywords}\""
     payload = json.dumps({
         "title": "kleinanzeigen-ai",
-        "body": f"{result_count} new listing(s) found for \"{keywords}\"",
+        "body": body,
     })
     private_key = settings.vapid_private_key.replace("\\n", "\n")
 
@@ -153,6 +158,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         seen_keys = {(r.url or f"{r.title}|{r.price}|{r.location}") for r in existing}
 
         new_count = 0
+        new_results = []
 
         for item in listings[:25]:
             try:
@@ -204,12 +210,14 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     task_id=resolved_task_id,
                     title=title[:255],
                     price=price[:50],
+                    price_value=parse_price(price),
                     location=location[:100],
                     url=item_url,
                     image_url=image_url,
                     description=description,
                 )
                 db.add(result)
+                new_results.append(result)
                 new_count += 1
 
             except Exception as e:
@@ -229,11 +237,28 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
         # ── Push notifications — only for genuinely new listings ────────────
         if task and new_count > 0:
+            # Highlight the best below-market deal among the new listings.
+            highlight = None
+            all_values = [
+                v for (v,) in db.query(ScrapeResult.price_value)
+                .filter(ScrapeResult.task_id == resolved_task_id).all()
+            ]
+            med = median_price(all_values)
+            best = None
+            for r in new_results:
+                badge = deal_badge(r.price_value, med)
+                if badge and badge["cls"] == "deal-great":
+                    if best is None or r.price_value < best[0]:
+                        best = (r.price_value, r.title, badge["label"])
+            if best:
+                highlight = f"🔥 {best[2]}: {best[1]}"
+
             _send_push_notifications(
                 db,
                 user_id=task.user_id,
                 result_count=new_count,
                 keywords=parameters.get("keywords", "your search"),
+                highlight=highlight,
             )
         # ───────────────────────────────────────────────────────────────────
 
