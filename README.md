@@ -8,7 +8,7 @@ A multi-service Python application that scrapes, stores, and surfaces classified
 
 ## Tech Stack
 
-| Layer | Technology |
+| Layer | Technologykl|
 |---|---|
 | API | FastAPI + Uvicorn |
 | Task queue | Celery + Redis |
