@@ -36,5 +36,10 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_email: str = "mailto:admin@example.com"
 
+    # Google OAuth credentials — required for /auth/login/google.
+    # Register at https://console.cloud.google.com/apis/credentials
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
 
 settings = Settings()
