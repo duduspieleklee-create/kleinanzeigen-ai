@@ -1,17 +1,22 @@
 import os
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.config import settings
 from app.api.routers import admin, auth, scrapes, push, locations
 from app.api.dependencies import get_current_user
+from app.api.security import limiter
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User
@@ -22,6 +27,10 @@ logger.info("Starting kleinanzeigen-ai application...")
 
 app = FastAPI(title="kleinanzeigen-ai")
 
+# Rate limiting — brute-force / credential-stuffing protection on auth routes.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if settings.environment == "dev" else [],
@@ -29,6 +38,51 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Signed session cookie — required by Authlib to carry the Google OAuth
+# state/nonce between the redirect and the callback.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.secret_key,
+    same_site="lax",
+    https_only=settings.environment != "dev",
+)
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    # ── CSRF defense: same-origin check for state-changing methods ───────────
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        source = request.headers.get("origin") or request.headers.get("referer")
+        if source:
+            source_host = urlparse(source).netloc
+            if source_host and source_host != request.url.netloc:
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Cross-origin request rejected"},
+                )
+
+    response = await call_next(request)
+
+    # ── Security response headers ────────────────────────────────────────────
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'"
+    )
+    if settings.environment != "dev":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+    return response
+
 
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):
@@ -68,7 +122,10 @@ async def offline(request: Request):
 
 @app.get("/", tags=["Web"])
 async def home(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "google_enabled": bool(settings.google_client_id)},
+    )
 
 
 @app.get("/dashboard", tags=["Web"])
@@ -77,7 +134,9 @@ async def dashboard(
     db: Session = Depends(get_db),
 ):
     try:
-        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
+        current_user = get_current_user(
+            request, token=request.cookies.get("access_token") or "", db=db
+        )
     except HTTPException:
         return RedirectResponse(url="/")
 
@@ -99,19 +158,21 @@ async def dashboard(
         task.result_count = count
         tasks_with_counts.append(task)
 
-    admin_searches = []
-    try:
-        admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
-    except Exception:
-        pass
+    is_admin = current_user["is_admin"]
 
+    admin_searches = []
     proxies = []
     rotating_proxy_enabled = False
-    try:
-        proxies = db.query(Proxy).order_by(Proxy.created_at.desc()).all()
-        rotating_proxy_enabled = is_rotating_enabled(db)
-    except Exception:
-        pass
+    if is_admin:
+        try:
+            admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
+        except Exception:
+            pass
+        try:
+            proxies = db.query(Proxy).order_by(Proxy.created_at.desc()).all()
+            rotating_proxy_enabled = is_rotating_enabled(db)
+        except Exception:
+            pass
 
     # Daily search quota (0 == unlimited, e.g. admin)
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
@@ -137,7 +198,7 @@ async def dashboard(
             "tasks": tasks_with_counts,
             "flash_success": flash_success,
             "flash_error": flash_error,
-            "is_admin": True,
+            "is_admin": is_admin,
             "admin_searches": admin_searches,
             "daily_limit": daily_limit,
             "used_today": used_today,
