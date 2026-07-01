@@ -14,6 +14,9 @@ class User(Base):
     is_active = Column(Integer, default=1)
     # Max searches a user may start per calendar day. 0 = unlimited (admin).
     daily_limit = Column(Integer, nullable=False, server_default="3")
+    # Last time the user viewed their dashboard — drives the "new since your
+    # last visit" overlay. NULL for a brand-new account (no overlay shown).
+    last_seen_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

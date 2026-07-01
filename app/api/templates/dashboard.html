@@ -96,9 +96,99 @@
                       padding: 0; text-decoration: underline; }
         .action-btn.danger { color: #dc3545; }
         .action-btn.muted  { color: #6c757d; }
+        /* "New since last visit" overlay */
+        .whatsnew-backdrop {
+            position: fixed; inset: 0; background: rgba(17,24,39,0.55);
+            backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px; animation: wn-fade .18s ease-out;
+        }
+        @keyframes wn-fade { from { opacity: 0; } to { opacity: 1; } }
+        .whatsnew-modal {
+            background: #fff; border-radius: 14px; width: 100%; max-width: 860px;
+            max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.35); animation: wn-pop .2s ease-out;
+        }
+        @keyframes wn-pop { from { transform: translateY(12px) scale(.98); } to { transform: none; } }
+        .whatsnew-head {
+            padding: 18px 22px; border-bottom: 1px solid #eee; display: flex;
+            align-items: center; justify-content: space-between; gap: 12px;
+        }
+        .whatsnew-head h3 { margin: 0; font-size: 18px; }
+        .whatsnew-head .sub { color: #6b7280; font-size: 13px; margin-top: 2px; }
+        .whatsnew-close {
+            background: none; border: none; font-size: 26px; line-height: 1;
+            color: #9ca3af; cursor: pointer; padding: 0 4px;
+        }
+        .whatsnew-close:hover { color: #374151; }
+        .whatsnew-body { padding: 18px 22px; overflow-y: auto; }
+        .wn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+        .wn-card {
+            border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;
+            text-decoration: none; color: inherit; display: flex; flex-direction: column;
+            transition: box-shadow .12s, transform .12s;
+        }
+        .wn-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.12); transform: translateY(-2px); }
+        .wn-thumb { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #eee; display: block; }
+        .wn-thumb-ph { width: 100%; aspect-ratio: 4/3; background: #eef0f2; display: flex;
+                       align-items: center; justify-content: center; color: #b0b6bd; font-size: 12px; }
+        .wn-cardbody { padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+        .wn-price-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .wn-price { font-weight: 700; font-size: 15px; }
+        .wn-title { font-size: 13px; line-height: 1.3; max-height: 3.4em; overflow: hidden; }
+        .wn-loc { font-size: 11px; color: #888; }
+        .deal { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 9px; white-space: nowrap; }
+        .deal-great { background: #e2f6e6; color: #1a7f37; }
+        .deal-fair  { background: #eef0f2; color: #57606a; }
+        .deal-high  { background: #fdecea; color: #b42318; }
     </style>
 </head>
 <body>
+    {% if new_results %}
+    <div class="whatsnew-backdrop" id="whatsnew" onclick="if(event.target===this)this.remove()">
+        <div class="whatsnew-modal">
+            <div class="whatsnew-head">
+                <div>
+                    <h3>👋 Welcome back — {{ new_results | length }} new listing(s)</h3>
+                    <div class="sub">Found across your searches since your last visit</div>
+                </div>
+                <button class="whatsnew-close" onclick="document.getElementById('whatsnew').remove()" aria-label="Close">&times;</button>
+            </div>
+            <div class="whatsnew-body">
+                <div class="wn-grid">
+                    {% for r in new_results %}
+                    <a class="wn-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
+                        {% if r.image_url %}
+                        <img class="wn-thumb" src="{{ r.image_url }}" alt="" loading="lazy"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="wn-thumb-ph" style="display:none">No image</div>
+                        {% else %}
+                        <div class="wn-thumb-ph">No image</div>
+                        {% endif %}
+                        <div class="wn-cardbody">
+                            <span class="wn-price-row">
+                                <span class="wn-price">{{ r.price }}</span>
+                                {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
+                            </span>
+                            <span class="wn-title">{{ r.title }}</span>
+                            <span class="wn-loc">{{ r.location }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                var o = document.getElementById('whatsnew');
+                if (o) o.remove();
+            }
+        });
+    </script>
+    {% endif %}
+
     <div class="container">
         <div class="header-row">
             <h2 style="margin:0">kleinanzeigen-ai</h2>

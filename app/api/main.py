@@ -15,6 +15,7 @@ from app.api.dependencies import get_current_user
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User
+from app.shared.pricing import deal_badge, median_price
 from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
 
@@ -130,6 +131,38 @@ async def dashboard(
             .count()
         )
 
+    # "New since your last visit" — listings that arrived after last_seen_at.
+    # Skipped for brand-new accounts (NULL) so they aren't flooded on first login.
+    new_results = []
+    last_seen = db_user.last_seen_at if db_user else None
+    if db_user and last_seen is not None:
+        new_results = (
+            db.query(ScrapeResult)
+            .join(ScrapeTask, ScrapeResult.task_id == ScrapeTask.id)
+            .filter(
+                ScrapeTask.user_id == current_user["id"],
+                ScrapeResult.created_at > last_seen,
+            )
+            .order_by(ScrapeResult.created_at.desc())
+            .limit(60)
+            .all()
+        )
+        # Deal badge per listing, relative to its own search's median price.
+        medians = {}
+        for tid in {r.task_id for r in new_results}:
+            vals = [
+                v for (v,) in db.query(ScrapeResult.price_value)
+                .filter(ScrapeResult.task_id == tid).all()
+            ]
+            medians[tid] = median_price(vals)
+        for r in new_results:
+            r.deal = deal_badge(r.price_value, medians.get(r.task_id))
+
+    # Advance the visit marker so the overlay only shows each new listing once.
+    if db_user:
+        db_user.last_seen_at = datetime.now(timezone.utc)
+        db.commit()
+
     response = templates.TemplateResponse(
         "dashboard.html",
         {
@@ -143,6 +176,7 @@ async def dashboard(
             "used_today": used_today,
             "proxies": proxies,
             "rotating_proxy_enabled": rotating_proxy_enabled,
+            "new_results": new_results,
         },
     )
 
