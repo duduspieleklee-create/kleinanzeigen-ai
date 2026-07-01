@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import require_admin
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, Proxy
 from app.shared.proxy import (
     is_rotating_enabled,
+    is_safe_proxy_url,
     mark_tested,
     set_rotating_enabled,
     test_proxy,
@@ -29,6 +30,7 @@ def create_admin_search(
     radius: Optional[int] = Form(None),
     interval_minutes: int = Form(30),
     db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
 ):
     search = AdminSearch(
         keywords=keywords,
@@ -51,6 +53,7 @@ def create_admin_search(
 def toggle_admin_search(
     search_id: int,
     db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
 ):
     search = db.query(AdminSearch).filter(AdminSearch.id == search_id).first()
     if not search:
@@ -64,6 +67,7 @@ def toggle_admin_search(
 def delete_admin_search(
     search_id: int,
     db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
 ):
     search = db.query(AdminSearch).filter(AdminSearch.id == search_id).first()
     if not search:
@@ -88,7 +92,7 @@ def _proxy_redirect(flash_key: str = None, message: str = None) -> RedirectRespo
 @router.post("/proxy/toggle")
 def toggle_rotating_proxy(
     db: Session = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    _: dict = Depends(require_admin),
 ):
     new_state = not is_rotating_enabled(db)
     set_rotating_enabled(db, new_state)
@@ -102,13 +106,18 @@ def toggle_rotating_proxy(
 def add_proxy(
     url: str = Form(...),
     db: Session = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    _: dict = Depends(require_admin),
 ):
     url = (url or "").strip()
     if not url:
         return _proxy_redirect("flash_error", "Proxy URL is required")
     if db.query(Proxy).filter(Proxy.url == url).first():
         return _proxy_redirect("flash_error", "That proxy is already in the list")
+
+    # SSRF guard — refuse proxies pointing at internal/reserved addresses.
+    safe, reason = is_safe_proxy_url(url)
+    if not safe:
+        return _proxy_redirect("flash_error", f"Proxy URL rejected: {reason}")
 
     # Live test — only add the proxy if it can actually reach the target.
     ok, detail = test_proxy(url)
@@ -130,11 +139,18 @@ def add_proxy(
 def retest_proxy(
     proxy_id: int,
     db: Session = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    _: dict = Depends(require_admin),
 ):
     proxy = db.query(Proxy).filter(Proxy.id == proxy_id).first()
     if not proxy:
         raise HTTPException(status_code=404, detail="Not found")
+
+    # SSRF guard — a stored URL could have been added before this check existed.
+    safe, reason = is_safe_proxy_url(proxy.url)
+    if not safe:
+        mark_tested(db, proxy, False)
+        return _proxy_redirect("flash_error", f"Proxy URL rejected: {reason}")
+
     ok, detail = test_proxy(proxy.url)
     mark_tested(db, proxy, ok)
     key = "flash_success" if ok else "flash_error"
@@ -145,7 +161,7 @@ def retest_proxy(
 def delete_proxy(
     proxy_id: int,
     db: Session = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    _: dict = Depends(require_admin),
 ):
     proxy = db.query(Proxy).filter(Proxy.id == proxy_id).first()
     if not proxy:
