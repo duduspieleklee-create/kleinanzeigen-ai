@@ -52,6 +52,7 @@ class ScrapeResult(Base):
     price = Column(String(50))
     location = Column(String(100))
     url = Column(Text)
+    image_url = Column(Text)                        # listing thumbnail
     description = Column(Text)
     raw_data = Column(JSON)                         # Optional: store full raw data
     created_at = Column(DateTime(timezone=True), server_default=func.now())
