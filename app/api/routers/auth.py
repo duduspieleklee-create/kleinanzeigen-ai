@@ -1,9 +1,9 @@
 from datetime import timedelta
 
+import bcrypt
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.api.config import settings
@@ -13,15 +13,23 @@ from app.shared.models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _pw_bytes(plain: str) -> bytes:
+    # bcrypt only uses the first 72 bytes and raises on longer input, so
+    # truncate explicitly to stay compatible with all bcrypt versions.
+    return plain.encode("utf-8")[:72]
 
 
 def _verify(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(_pw_bytes(plain), hashed.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 def _hash(plain: str) -> str:
-    return pwd_context.hash(plain)
+    return bcrypt.hashpw(_pw_bytes(plain), bcrypt.gensalt()).decode("utf-8")
 
 
 def _issue_cookie(user_id: int, username: str) -> RedirectResponse:
