@@ -85,9 +85,6 @@ services:
       DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
       REDIS_URL: redis://redis:6379/0
       SYSTEM_USER_ID: ${SYSTEM_USER_ID:-1}
-      BEAT_KEYWORDS: ${BEAT_KEYWORDS:-handwerker}
-      BEAT_LOCATION: ${BEAT_LOCATION:-berlin}
-      BEAT_PRICE_MAX: ${BEAT_PRICE_MAX:-200}
     depends_on:
       db:
         condition: service_healthy

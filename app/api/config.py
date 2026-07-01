@@ -23,11 +23,6 @@ class Settings(BaseSettings):
     # Example: "alice@example.com,bob@example.com"
     allowed_emails: str = ""
 
-    # Celery Beat scheduled search parameters — override via env vars.
-    beat_keywords: str = "handwerker"
-    beat_location: str = "berlin"
-    beat_price_max: int = 200
-
     # VAPID keys for Web Push notifications.
     # Generate with: python3 -c "from py_vapid import Vapid; v=Vapid(); v.generate_keys(); print(v.private_pem())"
     # Set VAPID_PUBLIC_KEY to the base64url-encoded uncompressed EC public key (87 chars).

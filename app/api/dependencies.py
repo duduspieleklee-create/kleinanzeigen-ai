@@ -45,4 +45,4 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
 
-    return {"id": int(user_id), "username": payload.get("username", "unknown")}
+    return {"id": int(user_id), "username": payload.get("username", "unknown"), "email": payload.get("email", "")}

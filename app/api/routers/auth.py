@@ -49,7 +49,7 @@ async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(user.id), "username": user.username},
+        data={"sub": str(user.id), "username": user.username, "email": email},
         expires_delta=access_token_expires,
     )
 
