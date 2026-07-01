@@ -79,6 +79,32 @@ class PushSubscription(Base):
         return f"<PushSubscription(id={self.id}, user_id={self.user_id})>"
 
 
+class Proxy(Base):
+    __tablename__ = "proxies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String(500), nullable=False, unique=True)  # e.g. http://user:pass@host:port
+    # Only proxies that passed the live test are active and used by the scraper.
+    is_active = Column(Boolean, nullable=False, default=True)
+    last_status = Column(String(20))  # 'ok' | 'failed'
+    last_tested_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self):
+        return f"<Proxy(id={self.id}, active={self.is_active})>"
+
+
+class SystemSetting(Base):
+    """Simple key/value store for global feature flags (e.g. rotating proxy)."""
+    __tablename__ = "system_settings"
+
+    key = Column(String(100), primary_key=True)
+    value = Column(String(500))
+
+    def __repr__(self):
+        return f"<SystemSetting(key='{self.key}', value='{self.value}')>"
+
+
 class AdminSearch(Base):
     __tablename__ = "admin_searches"
 
