@@ -43,5 +43,12 @@ class Settings(BaseSettings):
     build_number: str = "0"       # CI run number / deployment number
     build_time: str = "unknown"   # ISO-8601 UTC build timestamp
 
+    # Rotating proxy support. When an admin adds a proxy it must pass a live
+    # test — fetching this URL through the proxy — before it joins the pool.
+    # The kleinanzeigen homepage is the right target: a proxy that can't reach
+    # it is useless for scraping.
+    proxy_test_url: str = "https://www.kleinanzeigen.de/"
+    proxy_test_timeout: int = 15
+
 
 settings = Settings()

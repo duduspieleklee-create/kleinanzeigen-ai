@@ -9,6 +9,7 @@ from sqlalchemy import or_
 from app.api.config import settings
 from app.shared.database import SessionLocal
 from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult
+from app.shared.proxy import proxies_for_requests
 from app.shared.url_builder import build_kleinanzeigen_url
 from app.worker.celery_app import celery_app
 
@@ -119,7 +120,13 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
 
-        response = requests.get(url, headers=headers, timeout=20)
+        # Route through a rotating proxy when the admin has enabled the feature
+        # and at least one active proxy exists; otherwise a direct request.
+        proxies = proxies_for_requests(db)
+        if proxies:
+            logger.info(f"Using rotating proxy for scrape (task_id={resolved_task_id})")
+
+        response = requests.get(url, headers=headers, timeout=20, proxies=proxies)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "lxml")

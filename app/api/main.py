@@ -14,7 +14,8 @@ from app.api.routers import admin, auth, scrapes, push, locations
 from app.api.dependencies import get_current_user
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
-from app.shared.models import AdminSearch, ScrapeTask, ScrapeResult, User
+from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User
+from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
 
 logger.info("Starting kleinanzeigen-ai application...")
@@ -104,6 +105,14 @@ async def dashboard(
     except Exception:
         pass
 
+    proxies = []
+    rotating_proxy_enabled = False
+    try:
+        proxies = db.query(Proxy).order_by(Proxy.created_at.desc()).all()
+        rotating_proxy_enabled = is_rotating_enabled(db)
+    except Exception:
+        pass
+
     # Daily search quota (0 == unlimited, e.g. admin)
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
     daily_limit = db_user.daily_limit if db_user else 0
@@ -132,6 +141,8 @@ async def dashboard(
             "admin_searches": admin_searches,
             "daily_limit": daily_limit,
             "used_today": used_today,
+            "proxies": proxies,
+            "rotating_proxy_enabled": rotating_proxy_enabled,
         },
     )
 
