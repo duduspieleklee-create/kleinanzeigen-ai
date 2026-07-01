@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.api.config import settings
 from app.api.dependencies import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token
+from app.api.version import register_globals
 from app.shared.database import get_db
 from app.shared.models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
+register_globals(templates)
 
 
 def _pw_bytes(plain: str) -> bytes:
