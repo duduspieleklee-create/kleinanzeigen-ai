@@ -104,8 +104,84 @@
                 <label for="location">Location</label>
                 <input type="text" id="location" name="location" placeholder="e.g. berlin">
 
-                <label for="price_max">Max Price (&euro;)</label>
-                <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
+                <div style="display:flex;gap:12px">
+                    <div style="flex:1">
+                        <label for="price_min">Min Price (&euro;)</label>
+                        <input type="number" id="price_min" name="price_min" placeholder="e.g. 0">
+                    </div>
+                    <div style="flex:1">
+                        <label for="price_max">Max Price (&euro;)</label>
+                        <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:4px">
+                    <div style="flex:1">
+                        <label for="radius">Radius</label>
+                        <select id="radius" name="radius" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="5">5 km</option>
+                            <option value="10">10 km</option>
+                            <option value="20">20 km</option>
+                            <option value="30">30 km</option>
+                            <option value="50">50 km</option>
+                            <option value="100">100 km</option>
+                            <option value="150">150 km</option>
+                            <option value="200">200 km</option>
+                        </select>
+                    </div>
+                    <div style="flex:1">
+                        <label for="sort">Sortierung</label>
+                        <select id="sort" name="sort" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="SORTING_DATE">Neueste zuerst</option>
+                            <option value="SORTING_PRICE_ASC">Preis aufsteigend</option>
+                            <option value="SORTING_PRICE_DESC">Preis absteigend</option>
+                            <option value="SORTING_RELEVANCE">Relevanz</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px">
+                    <div style="flex:1">
+                        <label for="ad_type">Angebotstyp</label>
+                        <select id="ad_type" name="ad_type" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="angebote">Angebote</option>
+                            <option value="gesuche">Gesuche</option>
+                        </select>
+                    </div>
+                    <div style="flex:1">
+                        <label for="poster_type">Anbieter</label>
+                        <select id="poster_type" name="poster_type" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="privat">Privat</option>
+                            <option value="gewerblich">Gewerblich</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px">
+                    <div style="flex:1">
+                        <label for="condition">Zustand</label>
+                        <select id="condition" name="condition" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Alle</option>
+                            <option value="new_with_tag">Neu mit Etikett</option>
+                            <option value="new">Neu</option>
+                            <option value="like_new">Sehr Gut</option>
+                            <option value="ok">Gut</option>
+                            <option value="alright">In Ordnung</option>
+                            <option value="defect">Defekt</option>
+                        </select>
+                    </div>
+                    <div style="flex:1">
+                        <label for="shipping">Versand</label>
+                        <select id="shipping" name="shipping" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                            <option value="">Egal</option>
+                            <option value="ja">Versand möglich</option>
+                            <option value="nein">Nur Abholung</option>
+                        </select>
+                    </div>
+                </div>
 
                 <label>Frequency</label>
                 <div class="frequency-group">
@@ -145,6 +221,7 @@
                         <th>#</th>
                         <th>Keywords</th>
                         <th>Location</th>
+                        <th>Filters</th>
                         <th>Interval</th>
                         <th>Status</th>
                         <th>Results</th>
@@ -157,6 +234,17 @@
                         <td>{{ task.id }}</td>
                         <td>{{ task.parameters.get('keywords', '&mdash;') }}</td>
                         <td>{{ task.parameters.get('location', '&mdash;') }}</td>
+                        <td style="font-size:12px;color:#666">
+                            {% set parts = [] %}
+                            {% if task.parameters.get('ad_type') %}{% set _ = parts.append(task.parameters.get('ad_type')) %}{% endif %}
+                            {% if task.parameters.get('poster_type') %}{% set _ = parts.append(task.parameters.get('poster_type')) %}{% endif %}
+                            {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
+                            {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
+                                {% set _ = parts.append(task.parameters.get('price_min', '0') ~ '–' ~ task.parameters.get('price_max', '∞') ~ ' €') %}
+                            {% endif %}
+                            {% if task.parameters.get('radius') %}{% set _ = parts.append(task.parameters.get('radius') ~ ' km') %}{% endif %}
+                            {{ parts | join(', ') if parts else '&mdash;' }}
+                        </td>
                         <td>
                             {% set iv = task.parameters.get('interval_seconds') %}
                             {% if iv == 5 %}5 s
@@ -263,7 +351,7 @@
 
             var table = document.createElement('table');
             var thead = document.createElement('thead');
-            thead.innerHTML = '<tr><th>#</th><th>Keywords</th><th>Location</th><th>Interval</th><th>Status</th><th>Results</th><th></th></tr>';
+            thead.innerHTML = '<tr><th>#</th><th>Keywords</th><th>Location</th><th>Filters</th><th>Interval</th><th>Status</th><th>Results</th><th></th></tr>';
             table.appendChild(thead);
 
             var tbody = document.createElement('tbody');
@@ -283,6 +371,18 @@
 
                 var locTd = document.createElement('td');
                 locTd.textContent = params.location || '—';
+
+                var filterParts = [];
+                if (params.ad_type) filterParts.push(params.ad_type);
+                if (params.poster_type) filterParts.push(params.poster_type);
+                if (params.condition) filterParts.push(params.condition.replace(/_/g, ' '));
+                if (params.price_min || params.price_max)
+                    filterParts.push((params.price_min || '0') + '–' + (params.price_max || '∞') + ' €');
+                if (params.radius) filterParts.push(params.radius + ' km');
+                var filterTd = document.createElement('td');
+                filterTd.textContent = filterParts.length ? filterParts.join(', ') : '—';
+                filterTd.style.fontSize = '12px';
+                filterTd.style.color = '#666';
 
                 var ivTd = document.createElement('td');
                 ivTd.textContent = formatInterval(params.interval_seconds);
@@ -313,6 +413,7 @@
                 tr.appendChild(idTd);
                 tr.appendChild(kwTd);
                 tr.appendChild(locTd);
+                tr.appendChild(filterTd);
                 tr.appendChild(ivTd);
                 tr.appendChild(statusTd);
                 tr.appendChild(countTd);
