@@ -31,10 +31,9 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_email: str = "mailto:admin@example.com"
 
-    # Google OAuth credentials — required for /auth/login/google.
-    # Register at https://console.cloud.google.com/apis/credentials
-    google_client_id: str = ""
-    google_client_secret: str = ""
+    # Login credentials — set APP_USERNAME / APP_PASSWORD env vars to override.
+    app_username: str = "admin"
+    app_password: str = "KaSearch2026"
 
 
 settings = Settings()
