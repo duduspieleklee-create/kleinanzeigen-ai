@@ -148,11 +148,10 @@ jobs:
         run: alembic upgrade head
 
   # ─────────────────────────────────────────────
-  # 5. Trigger Octopus Deploy release
+  # 5. Deploy to Azure Container Apps directly
   #
   #    Required GitHub secrets:
-  #      OCTOPUS_SERVER_URL    — e.g. https://your-instance.octopus.app
-  #      OCTOPUS_API_KEY       — API key from Octopus → Profile → API Keys
+  #      AZURE_CREDENTIALS     — service principal JSON (az ad sp create-for-rbac --sdk-auth)
   #      ACR_LOGIN_SERVER, ACR_USERNAME, ACR_PASSWORD  — Azure Container Registry
   #      DATABASE_URL          — also used by the migrate job above
   #      REDIS_URL
@@ -170,57 +169,53 @@ jobs:
     needs: migrate
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Octopus CLI
-        uses: OctopusDeploy/install-octopus-cli-action@v3
+      - name: Azure login
+        uses: azure/login@v2
         with:
-          version: latest
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Push build information to Octopus
-        uses: OctopusDeploy/push-build-information-action@v3
-        with:
-          server: ${{ secrets.OCTOPUS_SERVER_URL }}
-          api_key: ${{ secrets.OCTOPUS_API_KEY }}
-          space: "Default"
-          packages: |
-            kleinanzeigen-ai-api
-            kleinanzeigen-ai-worker
-            kleinanzeigen-ai-beat
-          version: "1.0.${{ github.run_number }}"
+      - name: Update API (image + env vars)
+        run: |
+          az containerapp update \
+            --name kleinanzeigen-api \
+            --resource-group kleinanzeigen-ai-rg \
+            --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-api:${{ github.sha }}" \
+            --set-env-vars \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "REDIS_URL=${{ secrets.REDIS_URL }}" \
+              "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+              "APP_USERNAME=${{ secrets.APP_USERNAME }}" \
+              "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" \
+              "ALLOWED_EMAILS=${{ secrets.ALLOWED_EMAILS }}" \
+              "SYSTEM_USER_ID=${{ secrets.SYSTEM_USER_ID }}" \
+              "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" \
+              "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" \
+              "VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}"
+          echo "✓ kleinanzeigen-api updated"
 
-      - name: Create Octopus release
-        uses: OctopusDeploy/create-release-action@v3
-        id: create_release
-        with:
-          server: ${{ secrets.OCTOPUS_SERVER_URL }}
-          api_key: ${{ secrets.OCTOPUS_API_KEY }}
-          space: "Default"
-          project: "kleinanzeigen-ai"
-          release_number: "1.0.${{ github.run_number }}"
-          default_package_version: "1.0.${{ github.run_number }}"
+      - name: Update Worker image
+        run: |
+          az containerapp update \
+            --name kleinanzeigen-worker \
+            --resource-group kleinanzeigen-ai-rg \
+            --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker:${{ github.sha }}" \
+            --set-env-vars \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "REDIS_URL=${{ secrets.REDIS_URL }}" \
+              "SECRET_KEY=${{ secrets.SECRET_KEY }}"
+          echo "✓ kleinanzeigen-worker updated"
 
-      - name: Deploy release to Dev
-        uses: OctopusDeploy/deploy-release-action@v3
-        with:
-          server: ${{ secrets.OCTOPUS_SERVER_URL }}
-          api_key: ${{ secrets.OCTOPUS_API_KEY }}
-          space: "Default"
-          project: "kleinanzeigen-ai"
-          release_number: "1.0.${{ github.run_number }}"
-          environments: "Development"
-          variables: |
-            DATABASE_URL: ${{ secrets.DATABASE_URL }}
-            REDIS_URL: ${{ secrets.REDIS_URL }}
-            SECRET_KEY: ${{ secrets.SECRET_KEY }}
-            APP_USERNAME: ${{ secrets.APP_USERNAME }}
-            APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
-            ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
-            SYSTEM_USER_ID: ${{ secrets.SYSTEM_USER_ID }}
-            VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-            VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-            VAPID_EMAIL: ${{ secrets.VAPID_EMAIL }}
+      - name: Update Beat image
+        run: |
+          az containerapp update \
+            --name kleinanzeigen-beat \
+            --resource-group kleinanzeigen-ai-rg \
+            --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-beat:${{ github.sha }}" \
+            --set-env-vars \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "REDIS_URL=${{ secrets.REDIS_URL }}" \
+              "SECRET_KEY=${{ secrets.SECRET_KEY }}"
+          echo "✓ kleinanzeigen-beat updated"
 
   # ─────────────────────────────────────────────
   # 6. Post-deploy live smoke test
