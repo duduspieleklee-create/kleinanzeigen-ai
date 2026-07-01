@@ -130,7 +130,22 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             soup.find_all("div", {"data-adid": True})
         )
 
-        saved_count = 0
+        # Dedupe against listings already saved for this (recurring) task so we
+        # only store — and only notify about — genuinely new listings. Keyed by
+        # listing URL, falling back to title|price|location when a URL is absent.
+        existing = (
+            db.query(
+                ScrapeResult.url,
+                ScrapeResult.title,
+                ScrapeResult.price,
+                ScrapeResult.location,
+            )
+            .filter(ScrapeResult.task_id == resolved_task_id)
+            .all()
+        )
+        seen_keys = {(r.url or f"{r.title}|{r.price}|{r.location}") for r in existing}
+
+        new_count = 0
 
         for item in listings[:25]:
             try:
@@ -153,6 +168,11 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                         else href
                     )
 
+                key = item_url or f"{title}|{price}|{location}"
+                if key in seen_keys:
+                    continue  # already seen on a previous run — not new
+                seen_keys.add(key)
+
                 result = ScrapeResult(
                     task_id=resolved_task_id,
                     title=title[:255],
@@ -161,7 +181,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     url=item_url,
                 )
                 db.add(result)
-                saved_count += 1
+                new_count += 1
 
             except Exception as e:
                 logger.warning(f"Failed to parse listing: {e}")
@@ -176,14 +196,14 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 task.status = "completed"
                 db.commit()
 
-        logger.info(f"Saved {saved_count} results from {url}")
+        logger.info(f"Saved {new_count} new result(s) from {url}")
 
-        # ── Push notifications ──────────────────────────────────────────────
-        if task and saved_count > 0:
+        # ── Push notifications — only for genuinely new listings ────────────
+        if task and new_count > 0:
             _send_push_notifications(
                 db,
                 user_id=task.user_id,
-                result_count=saved_count,
+                result_count=new_count,
                 keywords=parameters.get("keywords", "your search"),
             )
         # ───────────────────────────────────────────────────────────────────
@@ -201,7 +221,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
         return {
             "status": "success",
-            "results_saved": saved_count,
+            "results_saved": new_count,
             "url": url,
         }
 

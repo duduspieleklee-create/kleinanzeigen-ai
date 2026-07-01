@@ -210,7 +210,11 @@ jobs:
             --set-env-vars \
               "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
               "REDIS_URL=${{ secrets.REDIS_URL }}" \
-              "SECRET_KEY=${{ secrets.SECRET_KEY }}"
+              "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+              "SYSTEM_USER_ID=${{ secrets.SYSTEM_USER_ID }}" \
+              "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" \
+              "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" \
+              "VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}"
           echo "✓ kleinanzeigen-worker updated"
 
       - name: Update Beat image
