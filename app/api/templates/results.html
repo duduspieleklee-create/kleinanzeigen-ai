@@ -3,47 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scrape Results - kleinanzeigen-ai</title>
+    <title>Results · {{ task.parameters.get('keywords', 'Search') }} · kleinanzeigen-ai</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#007bff">
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        tr:hover { background-color: #f5f5f5; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; color: #222; }
+        .topbar {
+            background: #fff; border-bottom: 1px solid #e5e5e5; padding: 14px 20px;
+            display: flex; align-items: center; gap: 14px;
+        }
+        .topbar a.back { color: #007bff; text-decoration: none; font-size: 14px; }
+        .topbar a.back:hover { text-decoration: underline; }
+        .wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .summary {
+            background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
+            padding: 16px 20px; margin-bottom: 20px;
+        }
+        .summary h1 { font-size: 20px; margin: 0 0 6px; }
+        .summary .meta { font-size: 13px; color: #666; }
+        .summary .filters { font-size: 13px; color: #444; margin-top: 8px; }
+        table { width: 100%; border-collapse: collapse; background: #fff;
+                border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; }
+        th, td { text-align: left; padding: 10px 12px; font-size: 14px;
+                 border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+        th { background: #fafafa; font-size: 12px; text-transform: uppercase;
+             letter-spacing: .03em; color: #888; }
+        tr:last-child td { border-bottom: none; }
+        td.price { white-space: nowrap; font-weight: 600; }
+        td.when { white-space: nowrap; color: #888; font-size: 12px; }
+        a.listing { color: #007bff; text-decoration: none; }
+        a.listing:hover { text-decoration: underline; }
+        .empty { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
+                 padding: 40px; text-align: center; color: #888; }
+        .count-badge { background: #e7f1ff; color: #0a58ca; border-radius: 12px;
+                       padding: 2px 10px; font-size: 13px; font-weight: 600; }
     </style>
 </head>
 <body>
-    <h2>Your Scrape Results</h2>
+    <div class="topbar">
+        <a class="back" href="/dashboard">&larr; Back to dashboard</a>
+    </div>
 
-    <p><a href="/dashboard">← Back to Dashboard</a></p>
+    <div class="wrap">
+        <div class="summary">
+            <h1>{{ task.parameters.get('keywords', 'Search') }}
+                <span class="count-badge">{{ results | length }} result(s)</span>
+            </h1>
+            <div class="meta">
+                Search #{{ task.id }} · status {{ task.status }}
+                {% if task.parameters.get('location') %} · {{ task.parameters.get('location') }}{% endif %}
+            </div>
+            {% set parts = [] %}
+            {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
+                {% set _ = parts.append((task.parameters.get('price_min', '0')|string) ~ '–' ~ (task.parameters.get('price_max', '∞')|string) ~ ' €') %}
+            {% endif %}
+            {% if task.parameters.get('radius') %}{% set _ = parts.append((task.parameters.get('radius')|string) ~ ' km') %}{% endif %}
+            {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
+            {% if parts %}<div class="filters">Filters: {{ parts | join(', ') }}</div>{% endif %}
+        </div>
 
-    {% if results %}
+        {% if results %}
         <table>
-            <tr>
-                <th>Title</th>
-                <th>Price</th>
-                <th>Location</th>
-                <th>URL</th>
-                <th>Date</th>
-            </tr>
-            {% for result in results %}
-            <tr>
-                <td>{{ result.title or "N/A" }}</td>
-                <td>{{ result.price or "N/A" }}</td>
-                <td>{{ result.location or "N/A" }}</td>
-                <td>
-                    {% if result.url %}
-                        <a href="{{ result.url }}" target="_blank">View</a>
-                    {% else %}
-                        N/A
-                    {% endif %}
-                </td>
-                <td>{{ result.created_at.strftime("%Y-%m-%d %H:%M") if result.created_at else "N/A" }}</td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Price</th>
+                    <th>Location</th>
+                    <th>Found</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td>
+                        {% if r.url %}
+                        <a class="listing" href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a>
+                        {% else %}{{ r.title }}{% endif %}
+                    </td>
+                    <td class="price">{{ r.price }}</td>
+                    <td>{{ r.location }}</td>
+                    <td class="when">{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
-    {% else %}
-        <p>No results found yet. Start a new scrape from the <a href="/dashboard">dashboard</a>.</p>
-    {% endif %}
+        {% else %}
+        <div class="empty">No results delivered yet for this search.</div>
+        {% endif %}
+    </div>
+
+    {% include "_version_footer.html" %}
 </body>
 </html>

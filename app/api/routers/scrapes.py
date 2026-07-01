@@ -2,6 +2,7 @@ import asyncio
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, Query
 from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -10,10 +11,13 @@ from app.shared.database import get_db, SessionLocal
 from app.shared.models import ScrapeTask, ScrapeResult
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
+from app.api.version import register_globals
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
 
 router = APIRouter()
+templates = Jinja2Templates(directory="app/api/templates")
+register_globals(templates)
 
 MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
 
@@ -169,6 +173,39 @@ async def stream_task_updates(
         event_generator(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get("/{task_id}/results", response_model=None)
+async def view_results(
+    task_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    # Mirror the dashboard's auth handling: redirect to login instead of 401
+    # so a missed-session user lands on a friendly page.
+    try:
+        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
+    except HTTPException:
+        return RedirectResponse(url="/")
+
+    task = db.query(ScrapeTask).filter(
+        ScrapeTask.id == task_id,
+        ScrapeTask.user_id == current_user["id"],
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Search not found")
+
+    results = (
+        db.query(ScrapeResult)
+        .filter(ScrapeResult.task_id == task_id)
+        .order_by(ScrapeResult.created_at.desc())
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "results.html",
+        {"request": request, "task": task, "results": results},
     )
 
 

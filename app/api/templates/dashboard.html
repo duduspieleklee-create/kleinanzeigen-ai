@@ -63,6 +63,7 @@
         .empty-state { text-align: center; padding: 24px; color: #888; }
         .cancel-btn { font-size: 12px; color: #dc3545; background: none; border: none;
                       cursor: pointer; padding: 0; text-decoration: underline; }
+        .view-link { font-size: 12px; color: #007bff; text-decoration: underline; margin-right: 10px; }
         .suggest-wrap { position: relative; }
         .suggest-list { position: absolute; top: 100%; left: 0; right: 0; background: white;
                         border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px;
@@ -320,10 +321,11 @@
                             {% else %}one-shot{% endif %}
                         </td>
                         <td><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
-                        <td>{{ task.result_count }}</td>
+                        <td><a href="/scrapes/{{ task.id }}/results" title="View all delivered results">{{ task.result_count }}</a></td>
                         <td>
+                            <a href="/scrapes/{{ task.id }}/results" class="view-link">View</a>
                             {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
-                            <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0">
+                            <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0;display:inline">
                                 <button type="submit" class="cancel-btn">Cancel</button>
                             </form>
                             {% endif %}
