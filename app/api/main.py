@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.api.config import settings
 from app.api.routers import admin, auth, scrapes, push, locations
@@ -19,7 +20,23 @@ logger.info("Starting kleinanzeigen-ai application...")
 
 app = FastAPI(title="kleinanzeigen-ai")
 
+# Trust the X-Forwarded-Proto header from Azure Container Apps' TLS proxy
+# so that request.url_for() generates https:// URLs for OAuth redirects.
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+
+class ForwardedProtoMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in ("http", "websocket"):
+            headers = dict(scope.get("headers", []))
+            proto = headers.get(b"x-forwarded-proto", b"").decode()
+            if proto == "https":
+                scope["scheme"] = "https"
+        await self.app(scope, receive, send)
+
+app.add_middleware(ForwardedProtoMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
