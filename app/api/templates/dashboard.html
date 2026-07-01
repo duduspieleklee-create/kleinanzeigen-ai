@@ -635,12 +635,16 @@
                     applicationServerKey: urlBase64ToUint8Array(publicKey),
                 });
             }
-            await fetch('/push/subscribe', {
+            var subResp = await fetch('/push/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sub),
             });
-            return true;
+            // A 401 here means the login session expired between page load and
+            // now — the browser-level permission is still 'granted', but the
+            // server never learns about the subscription, so no push ever
+            // arrives and the banner would otherwise lie about being enabled.
+            return subResp.ok;
         }
 
         async function handleNotifClick() {
@@ -654,8 +658,9 @@
 
                 var ok = await subscribeToPush();
                 if (!ok) {
-                    label.textContent = 'Push notifications are not configured on the server';
-                    btn.textContent = 'Unavailable';
+                    label.textContent = 'Could not save your subscription — please log in again and retry';
+                    btn.textContent = 'Retry';
+                    btn.disabled = false;
                     return;
                 }
                 updateNotifBar('granted');
@@ -867,3 +872,4 @@
     {% include "_version_footer.html" %}
 </body>
 </html>
+
