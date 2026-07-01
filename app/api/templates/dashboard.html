@@ -104,7 +104,7 @@
         </div>
 
         <div id="notif-bar" class="notif-bar" style="display:none">
-            <span>Get notified when new listings are found</span>
+            <span id="notif-label">Get notified when new listings are found</span>
             <button id="notif-btn" onclick="handleNotifClick()">Enable notifications</button>
         </div>
 
@@ -484,47 +484,79 @@
             return Uint8Array.from(Array.from(raw).map(function(c) { return c.charCodeAt(0); }));
         }
 
+        function notifSupported() {
+            return ('Notification' in window) && ('PushManager' in window)
+                && ('serviceWorker' in navigator);
+        }
+
         function updateNotifBar(perm) {
             var bar = document.getElementById('notif-bar');
             var btn = document.getElementById('notif-btn');
-            if (!('PushManager' in window) || !('serviceWorker' in navigator)) return;
+            var label = document.getElementById('notif-label');
+            if (!notifSupported()) {
+                bar.style.display = 'none';
+                return;
+            }
+            // Always show the bar so the current state is visible.
+            bar.style.display = 'flex';
             if (perm === 'granted') {
-                btn.textContent = 'Notifications on ✓';
+                label.textContent = '🔔 Notifications are enabled';
+                btn.textContent = 'Enabled ✓';
                 btn.disabled = true;
             } else if (perm === 'denied') {
-                btn.textContent = 'Blocked by browser';
+                label.textContent = 'Notifications are blocked — enable them in your browser settings';
+                btn.textContent = 'Blocked';
                 btn.disabled = true;
             } else {
-                bar.style.display = 'flex';
+                label.textContent = 'Get notified when new listings are found';
+                btn.textContent = 'Enable notifications';
+                btn.disabled = false;
             }
+        }
+
+        // Ensure the browser has a push subscription and the server knows about
+        // it. Reuses an existing subscription if present, so it is safe to call
+        // on every load when permission is already granted.
+        async function subscribeToPush() {
+            var keyResp = await fetch('/push/vapid-public-key');
+            if (!keyResp.ok) return false;
+            var publicKey = (await keyResp.json()).publicKey;
+
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                });
+            }
+            await fetch('/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub),
+            });
+            return true;
         }
 
         async function handleNotifClick() {
             var btn = document.getElementById('notif-btn');
+            var label = document.getElementById('notif-label');
             btn.disabled = true;
             btn.textContent = 'Requesting…';
             try {
                 var perm = await Notification.requestPermission();
                 if (perm !== 'granted') { updateNotifBar(perm); return; }
 
-                var keyResp = await fetch('/push/vapid-public-key');
-                if (!keyResp.ok) { btn.textContent = 'Not configured'; return; }
-                var publicKey = (await keyResp.json()).publicKey;
-
-                var reg = await navigator.serviceWorker.ready;
-                var sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(publicKey),
-                });
-
-                await fetch('/push/subscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(sub),
-                });
+                var ok = await subscribeToPush();
+                if (!ok) {
+                    label.textContent = 'Push notifications are not configured on the server';
+                    btn.textContent = 'Unavailable';
+                    return;
+                }
                 updateNotifBar('granted');
             } catch (err) {
-                btn.textContent = 'Failed — try again';
+                label.textContent = 'Could not enable notifications — please try again';
+                btn.textContent = 'Retry';
                 btn.disabled = false;
             }
         }
@@ -636,8 +668,14 @@
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(function() {});
-            if ('Notification' in window && 'PushManager' in window) {
+            if (notifSupported()) {
                 updateNotifBar(Notification.permission);
+                // Already granted on this device? Make sure the server still has
+                // a live subscription (e.g. after a DB reset or a new device),
+                // otherwise "enabled" would be a lie and no push would arrive.
+                if (Notification.permission === 'granted') {
+                    subscribeToPush().catch(function() {});
+                }
             }
         }
 
