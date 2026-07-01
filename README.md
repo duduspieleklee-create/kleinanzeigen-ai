@@ -1,6 +1,6 @@
 # kleinanzeigen-ai
 
-Intelligent scraping and analytics platform for kleinanzeigen.de.
+Intelligent scraping and analytics platform for kleinanzeigen.de.j
 
 ## Overview
 
