@@ -143,7 +143,7 @@ jobs:
             kleinanzeigen-ai-api
             kleinanzeigen-ai-worker
             kleinanzeigen-ai-beat
-          version: ${{ github.sha }}
+          version: "1.0.${{ github.run_number }}"
 
       - name: Create Octopus release
         uses: OctopusDeploy/create-release-action@v3
@@ -153,8 +153,8 @@ jobs:
           api_key: ${{ secrets.OCTOPUS_API_KEY }}
           space: "Default"
           project: "kleinanzeigen-ai"
-          release_number: ${{ github.sha }}
-          default_package_version: ${{ github.sha }}
+          release_number: "1.0.${{ github.run_number }}"
+          default_package_version: "1.0.${{ github.run_number }}"
 
       - name: Deploy release to Dev
         uses: OctopusDeploy/deploy-release-action@v3
@@ -163,7 +163,7 @@ jobs:
           api_key: ${{ secrets.OCTOPUS_API_KEY }}
           space: "Default"
           project: "kleinanzeigen-ai"
-          release_number: ${{ github.sha }}
+          release_number: "1.0.${{ github.run_number }}"
           environments: "Dev"
           wait_for_deployment: true
           deployment_timeout: "00:10:00"
