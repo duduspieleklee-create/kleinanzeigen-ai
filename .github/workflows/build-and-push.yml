@@ -171,8 +171,8 @@ jobs:
   #      VAPID_PRIVATE_KEY     — Web push (leave empty to disable)
   #      VAPID_PUBLIC_KEY      — Web push (leave empty to disable)
   #      VAPID_EMAIL           — Web push contact (default mailto:admin@example.com)
-      GOOGLE_CLIENT_ID      — Google OAuth client ID (leave unset to disable Google login)
-      GOOGLE_CLIENT_SECRET  — Google OAuth client secret
+  #      GOOGLE_CLIENT_ID      — Google OAuth client ID (leave unset to disable Google login)
+  #      GOOGLE_CLIENT_SECRET  — Google OAuth client secret
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
