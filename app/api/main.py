@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.config import settings
-from app.api.routers import auth, scrapes, push, locations
+from app.api.routers import admin, auth, scrapes, push, locations
 from app.api.dependencies import get_current_user
 from app.shared.database import get_db
-from app.shared.models import ScrapeTask, ScrapeResult
+from app.shared.models import AdminSearch, ScrapeTask, ScrapeResult
 from app.shared.logging_config import logger
 
 logger.info("Starting kleinanzeigen-ai application...")
@@ -39,6 +39,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 app.include_router(push.router, prefix="/push", tags=["Push"])
 app.include_router(locations.router, prefix="/locations", tags=["Locations"])
+app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
@@ -94,6 +95,14 @@ async def dashboard(
         task.result_count = count
         tasks_with_counts.append(task)
 
+    is_admin = False
+    admin_searches = []
+    if settings.allowed_emails:
+        allowed = {e.strip().lower() for e in settings.allowed_emails.split(",") if e.strip()}
+        is_admin = current_user.get("email", "").lower() in allowed
+    if is_admin:
+        admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
+
     response = templates.TemplateResponse(
         "dashboard.html",
         {
@@ -101,6 +110,8 @@ async def dashboard(
             "tasks": tasks_with_counts,
             "flash_success": flash_success,
             "flash_error": flash_error,
+            "is_admin": is_admin,
+            "admin_searches": admin_searches,
         },
     )
 

@@ -1,18 +1,12 @@
-from celery.schedules import crontab
 from app.worker.celery_app import celery_app
-from app.api.config import settings
 
-# Celery Beat Schedule — configure search params via env vars:
-# BEAT_KEYWORDS, BEAT_LOCATION, BEAT_PRICE_MAX
+# Beat dispatches all active AdminSearch entries every 60 seconds.
+# The task itself skips entries whose next_run_at is still in the future,
+# so the effective poll interval per search is controlled by interval_minutes.
 celery_app.conf.beat_schedule = {
-    "scheduled-scrape-every-30-minutes": {
-        "task": "scrape.kleinanzeigen",
-        "schedule": crontab(minute="*/30"),
-        "args": [{
-            "keywords": settings.beat_keywords,
-            "location": settings.beat_location,
-            "price_max": settings.beat_price_max,
-        }]
+    "dispatch-admin-searches": {
+        "task": "scrape.dispatch_admin_searches",
+        "schedule": 60.0,
     },
 }
 

@@ -1,12 +1,14 @@
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 
 import requests
 from bs4 import BeautifulSoup
+from sqlalchemy import or_
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
-from app.shared.models import PushSubscription, ScrapeTask, ScrapeResult
+from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult
 from app.shared.url_builder import build_kleinanzeigen_url
 from app.worker.celery_app import celery_app
 
@@ -221,5 +223,42 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
         raise self.retry(exc=exc, countdown=120)
 
+    finally:
+        db.close()
+
+
+@celery_app.task(name="scrape.dispatch_admin_searches", bind=False)
+def dispatch_admin_searches():
+    """Dispatches scrape tasks for all due admin-configured searches."""
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        searches = (
+            db.query(AdminSearch)
+            .filter(
+                AdminSearch.is_active.is_(True),
+                or_(AdminSearch.next_run_at.is_(None), AdminSearch.next_run_at <= now),
+            )
+            .all()
+        )
+        for search in searches:
+            parameters = {k: v for k, v in {
+                "keywords": search.keywords,
+                "category": search.category,
+                "location": search.location,
+                "location_id": search.location_id,
+                "price_min": search.price_min,
+                "price_max": search.price_max,
+                "radius": search.radius,
+            }.items() if v is not None}
+            scrape_kleinanzeigen.apply_async(args=[parameters])
+            search.last_run_at = now
+            search.next_run_at = now + timedelta(minutes=search.interval_minutes)
+            logger.info(f"Dispatched admin search id={search.id} keywords={search.keywords}")
+        if searches:
+            db.commit()
+    except Exception as e:
+        logger.error(f"dispatch_admin_searches failed: {e}")
+        db.rollback()
     finally:
         db.close()

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.shared.database import Base
@@ -75,3 +75,24 @@ class PushSubscription(Base):
 
     def __repr__(self):
         return f"<PushSubscription(id={self.id}, user_id={self.user_id})>"
+
+
+class AdminSearch(Base):
+    __tablename__ = "admin_searches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    keywords = Column(String(255), nullable=False)
+    category = Column(String(100))
+    location = Column(String(255))
+    location_id = Column(Integer)
+    price_min = Column(Integer)
+    price_max = Column(Integer)
+    radius = Column(Integer)
+    interval_minutes = Column(Integer, nullable=False, default=30)
+    is_active = Column(Boolean, nullable=False, default=True)
+    last_run_at = Column(DateTime(timezone=True))
+    next_run_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self):
+        return f"<AdminSearch(id={self.id}, keywords='{self.keywords}')>"

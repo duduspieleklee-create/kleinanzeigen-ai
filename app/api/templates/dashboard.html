@@ -77,6 +77,22 @@
                             padding: 6px 14px; cursor: pointer; font-size: 13px; }
         .notif-bar button:hover { background: #0056b3; }
         .notif-bar button:disabled { background: #6c757d; cursor: default; }
+        .tab-nav { display: flex; border-bottom: 2px solid #dee2e6; margin-bottom: 24px; }
+        .tab-btn { background: none; border: none; padding: 10px 20px; font-size: 15px;
+                   cursor: pointer; color: #666; border-bottom: 2px solid transparent;
+                   margin-bottom: -2px; }
+        .tab-btn.active { color: #007bff; border-bottom-color: #007bff; font-weight: bold; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .admin-table th, .admin-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
+        .admin-table th { background: #f8f9fa; color: #555; font-weight: bold; }
+        .toggle-on  { color: #28a745; font-weight: bold; }
+        .toggle-off { color: #6c757d; }
+        .action-btn { font-size: 12px; background: none; border: none; cursor: pointer;
+                      padding: 0; text-decoration: underline; }
+        .action-btn.danger { color: #dc3545; }
+        .action-btn.muted  { color: #6c757d; }
     </style>
 </head>
 <body>
@@ -97,6 +113,15 @@
         {% if flash_error %}
         <div class="flash-error">{{ flash_error }}</div>
         {% endif %}
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="showTab('my-searches', this)">My Searches</button>
+            {% if is_admin %}
+            <button class="tab-btn" onclick="showTab('admin', this)">Admin</button>
+            {% endif %}
+        </div>
+
+        <div id="tab-my-searches" class="tab-pane active">
 
         <!-- Create new search -->
         <div class="card">
@@ -312,9 +337,137 @@
             {% endif %}
             </div>
         </div>
+
+        </div><!-- /tab-my-searches -->
+
+        {% if is_admin %}
+        <div id="tab-admin" class="tab-pane">
+
+            <!-- Add admin search -->
+            <div class="card">
+                <h3>Add Background Search</h3>
+                <form action="/admin/searches" method="post">
+                    <label for="adm-keywords">Keywords</label>
+                    <input type="text" id="adm-keywords" name="keywords" placeholder="e.g. werkzeug" required>
+
+                    <label for="adm-location">Location</label>
+                    <input type="text" id="adm-location" name="location" placeholder="e.g. Berlin">
+
+                    <div style="display:flex;gap:12px">
+                        <div style="flex:1">
+                            <label for="adm-price_min">Min Price (€)</label>
+                            <input type="number" id="adm-price_min" name="price_min" placeholder="0">
+                        </div>
+                        <div style="flex:1">
+                            <label for="adm-price_max">Max Price (€)</label>
+                            <input type="number" id="adm-price_max" name="price_max" placeholder="500">
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:12px">
+                        <div style="flex:1">
+                            <label for="adm-radius">Radius (km)</label>
+                            <input type="number" id="adm-radius" name="radius" placeholder="50">
+                        </div>
+                        <div style="flex:1">
+                            <label for="adm-interval">Interval (minutes)</label>
+                            <select id="adm-interval" name="interval_minutes" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                                <option value="15">Every 15 min</option>
+                                <option value="30" selected>Every 30 min</option>
+                                <option value="60">Every 60 min</option>
+                                <option value="180">Every 3 hours</option>
+                                <option value="720">Every 12 hours</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit">Add Search</button>
+                </form>
+            </div>
+
+            <!-- List admin searches -->
+            <div class="card">
+                <h3>Background Searches</h3>
+                {% if admin_searches %}
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Keywords</th>
+                            <th>Location</th>
+                            <th>Price</th>
+                            <th>Interval</th>
+                            <th>Last Run</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in admin_searches %}
+                        <tr>
+                            <td>{{ s.id }}</td>
+                            <td>{{ s.keywords }}</td>
+                            <td>{{ s.location or '&mdash;' }}</td>
+                            <td style="font-size:12px;color:#666">
+                                {% if s.price_min or s.price_max %}
+                                    {{ s.price_min or '0' }}–{{ s.price_max or '∞' }} €
+                                {% else %}&mdash;{% endif %}
+                            </td>
+                            <td>{{ s.interval_minutes }} min</td>
+                            <td style="font-size:12px;color:#666">
+                                {{ s.last_run_at.strftime('%d.%m %H:%M') if s.last_run_at else 'never' }}
+                            </td>
+                            <td>
+                                {% if s.is_active %}
+                                <span class="toggle-on">● Active</span>
+                                {% else %}
+                                <span class="toggle-off">○ Paused</span>
+                                {% endif %}
+                            </td>
+                            <td style="white-space:nowrap">
+                                <form method="post" action="/admin/searches/{{ s.id }}/toggle" style="display:inline">
+                                    <button type="submit" class="action-btn muted">
+                                        {{ 'Pause' if s.is_active else 'Resume' }}
+                                    </button>
+                                </form>
+                                &nbsp;
+                                <form method="post" action="/admin/searches/{{ s.id }}/delete" style="display:inline"
+                                      onsubmit="return confirm('Delete this search?')">
+                                    <button type="submit" class="action-btn danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">No background searches yet. Add one above.</div>
+                {% endif %}
+            </div>
+
+        </div><!-- /tab-admin -->
+        {% endif %}
+
     </div>
 
     <script>
+        function showTab(name, btn) {
+            document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            var pane = document.getElementById('tab-' + name);
+            if (pane) pane.classList.add('active');
+            if (btn) btn.classList.add('active');
+        }
+
+        // Restore tab from URL hash (e.g. after form POST redirects to /dashboard#tab-admin)
+        (function() {
+            var hash = window.location.hash;
+            if (hash === '#tab-admin') {
+                var btn = document.querySelector('.tab-btn:nth-child(2)');
+                showTab('admin', btn);
+            }
+        })();
+
         document.querySelectorAll('input[name="interval_seconds"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 document.getElementById('fast-warning').style.display =

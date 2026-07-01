@@ -119,9 +119,6 @@ jobs:
   #      VAPID_PRIVATE_KEY     — Web push (leave empty to disable)
   #      VAPID_PUBLIC_KEY      — Web push (leave empty to disable)
   #      VAPID_EMAIL           — Web push contact (default mailto:admin@example.com)
-  #      BEAT_KEYWORDS         — Scheduled search keywords (default handwerker)
-  #      BEAT_LOCATION         — Scheduled search location (default berlin)
-  #      BEAT_PRICE_MAX        — Scheduled search max price (default 200)
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -178,6 +175,3 @@ jobs:
             VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
             VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
             VAPID_EMAIL: ${{ secrets.VAPID_EMAIL }}
-            BEAT_KEYWORDS: ${{ secrets.BEAT_KEYWORDS }}
-            BEAT_LOCATION: ${{ secrets.BEAT_LOCATION }}
-            BEAT_PRICE_MAX: ${{ secrets.BEAT_PRICE_MAX }}
