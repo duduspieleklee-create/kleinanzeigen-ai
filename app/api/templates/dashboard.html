@@ -332,7 +332,7 @@
                         <td><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
                         <td><a href="/scrapes/{{ task.id }}/results" title="View all delivered results">{{ task.result_count }}</a></td>
                         <td>
-                            <a href="/scrapes/{{ task.id }}/results" class="view-link">View</a>
+                            <a href="/scrapes/{{ task.id }}/results" class="view-link">View results</a>
                             {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
                             <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0;display:inline">
                                 <button type="submit" class="cancel-btn">Cancel</button>
@@ -726,15 +726,28 @@
                 badge.textContent = task.status;
                 statusTd.appendChild(badge);
 
+                var resultsHref = '/scrapes/' + task.id + '/results';
+
                 var countTd = document.createElement('td');
-                countTd.textContent = task.result_count;
+                var countLink = document.createElement('a');
+                countLink.href = resultsHref;
+                countLink.title = 'View all delivered results';
+                countLink.textContent = task.result_count;
+                countTd.appendChild(countLink);
 
                 var actionTd = document.createElement('td');
+                actionTd.style.whiteSpace = 'nowrap';
+                var viewLink = document.createElement('a');
+                viewLink.href = resultsHref;
+                viewLink.className = 'view-link';
+                viewLink.textContent = 'View results';
+                actionTd.appendChild(viewLink);
                 if (canCancel) {
                     var form = document.createElement('form');
                     form.method = 'post';
                     form.action = '/scrapes/' + task.id + '/cancel';
                     form.style.margin = '0';
+                    form.style.display = 'inline';
                     var btn = document.createElement('button');
                     btn.type = 'submit';
                     btn.className = 'cancel-btn';
