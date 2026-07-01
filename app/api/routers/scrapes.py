@@ -1,19 +1,24 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, Query
 from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.shared.database import get_db, SessionLocal
-from app.shared.models import ScrapeTask, ScrapeResult
+from app.shared.models import ScrapeTask, ScrapeResult, User
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
+from app.api.version import register_globals
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
 
 router = APIRouter()
+templates = Jinja2Templates(directory="app/api/templates")
+register_globals(templates)
 
 MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
 
@@ -82,6 +87,33 @@ async def create_scrape(
         response = RedirectResponse(url="/dashboard", status_code=303)
         response.set_cookie("flash_error", " · ".join(errors), max_age=10)
         return response
+
+    # Enforce the per-user daily search limit (daily_limit == 0 means unlimited,
+    # e.g. the admin account). Only user-initiated searches count — interval
+    # re-runs reuse the same task and never reach this endpoint.
+    user = db.query(User).filter(User.id == current_user["id"]).first()
+    daily_limit = user.daily_limit if user else 0
+    if daily_limit and daily_limit > 0:
+        start_of_day = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        used_today = (
+            db.query(ScrapeTask)
+            .filter(
+                ScrapeTask.user_id == current_user["id"],
+                ScrapeTask.created_at >= start_of_day,
+            )
+            .count()
+        )
+        if used_today >= daily_limit:
+            response = RedirectResponse(url="/dashboard", status_code=303)
+            response.set_cookie(
+                "flash_error",
+                f"Daily limit reached ({daily_limit} searches/day). "
+                "Please try again tomorrow.",
+                max_age=10,
+            )
+            return response
 
     # Enforce minimum interval outside dev
     if interval_v is not None and settings.environment != "dev":
@@ -169,6 +201,39 @@ async def stream_task_updates(
         event_generator(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get("/{task_id}/results", response_model=None)
+async def view_results(
+    task_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    # Mirror the dashboard's auth handling: redirect to login instead of 401
+    # so a missed-session user lands on a friendly page.
+    try:
+        current_user = get_current_user(request, token=request.cookies.get("access_token") or "")
+    except HTTPException:
+        return RedirectResponse(url="/")
+
+    task = db.query(ScrapeTask).filter(
+        ScrapeTask.id == task_id,
+        ScrapeTask.user_id == current_user["id"],
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Search not found")
+
+    results = (
+        db.query(ScrapeResult)
+        .filter(ScrapeResult.task_id == task_id)
+        .order_by(ScrapeResult.created_at.desc())
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "results.html",
+        {"request": request, "task": task, "results": results},
     )
 
 

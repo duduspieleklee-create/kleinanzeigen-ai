@@ -48,6 +48,8 @@
                          padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
         .flash-error   { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;
                          padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+        .quota-bar     { background: #eef3fb; border: 1px solid #d3e0f5; color: #33475b;
+                         padding: 10px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .logout-link { font-size: 14px; color: #666; text-decoration: none; }
         .logout-link:hover { color: #333; }
@@ -63,6 +65,7 @@
         .empty-state { text-align: center; padding: 24px; color: #888; }
         .cancel-btn { font-size: 12px; color: #dc3545; background: none; border: none;
                       cursor: pointer; padding: 0; text-decoration: underline; }
+        .view-link { font-size: 12px; color: #007bff; text-decoration: underline; margin-right: 10px; }
         .suggest-wrap { position: relative; }
         .suggest-list { position: absolute; top: 100%; left: 0; right: 0; background: white;
                         border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px;
@@ -103,9 +106,16 @@
         </div>
 
         <div id="notif-bar" class="notif-bar" style="display:none">
-            <span>Get notified when new listings are found</span>
+            <span id="notif-label">Get notified when new listings are found</span>
             <button id="notif-btn" onclick="handleNotifClick()">Enable notifications</button>
         </div>
+
+        {% if daily_limit and daily_limit > 0 %}
+        <div class="quota-bar">
+            Free plan: <strong>{{ used_today }} / {{ daily_limit }}</strong> searches used today
+            {% if used_today >= daily_limit %} — limit reached, resets at midnight (UTC){% endif %}
+        </div>
+        {% endif %}
 
         {% if flash_success %}
         <div class="flash-success">{{ flash_success }}</div>
@@ -320,10 +330,11 @@
                             {% else %}one-shot{% endif %}
                         </td>
                         <td><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
-                        <td>{{ task.result_count }}</td>
+                        <td><a href="/scrapes/{{ task.id }}/results" title="View all delivered results">{{ task.result_count }}</a></td>
                         <td>
+                            <a href="/scrapes/{{ task.id }}/results" class="view-link">View</a>
                             {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
-                            <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0">
+                            <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0;display:inline">
                                 <button type="submit" class="cancel-btn">Cancel</button>
                             </form>
                             {% endif %}
@@ -482,47 +493,100 @@
             return Uint8Array.from(Array.from(raw).map(function(c) { return c.charCodeAt(0); }));
         }
 
+        function notifSupported() {
+            return ('Notification' in window) && ('PushManager' in window)
+                && ('serviceWorker' in navigator);
+        }
+
+        function isStandalone() {
+            return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                || window.navigator.standalone === true;
+        }
+
+        function isIOS() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent)
+                || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
         function updateNotifBar(perm) {
             var bar = document.getElementById('notif-bar');
             var btn = document.getElementById('notif-btn');
-            if (!('PushManager' in window) || !('serviceWorker' in navigator)) return;
+            var label = document.getElementById('notif-label');
+            if (!notifSupported()) {
+                // iOS only allows web push from an installed (Home Screen) app,
+                // never from a Safari tab. Guide the user to install first
+                // instead of hiding the bar and showing nothing.
+                if (isIOS() && !isStandalone()) {
+                    bar.style.display = 'flex';
+                    btn.style.display = 'none';
+                    label.textContent = '📲 On iPhone/iPad: tap Share → “Add to Home Screen”, '
+                        + 'then open the app to turn on notifications';
+                } else {
+                    bar.style.display = 'none';
+                }
+                return;
+            }
+            // Always show the bar so the current state is visible.
+            btn.style.display = '';
+            bar.style.display = 'flex';
             if (perm === 'granted') {
-                btn.textContent = 'Notifications on ✓';
+                label.textContent = '🔔 Notifications are enabled';
+                btn.textContent = 'Enabled ✓';
                 btn.disabled = true;
             } else if (perm === 'denied') {
-                btn.textContent = 'Blocked by browser';
+                label.textContent = 'Notifications are blocked — enable them in your browser settings';
+                btn.textContent = 'Blocked';
                 btn.disabled = true;
             } else {
-                bar.style.display = 'flex';
+                label.textContent = 'Get notified when new listings are found';
+                btn.textContent = 'Enable notifications';
+                btn.disabled = false;
             }
+        }
+
+        // Ensure the browser has a push subscription and the server knows about
+        // it. Reuses an existing subscription if present, so it is safe to call
+        // on every load when permission is already granted.
+        async function subscribeToPush() {
+            var keyResp = await fetch('/push/vapid-public-key');
+            if (!keyResp.ok) return false;
+            var publicKey = (await keyResp.json()).publicKey;
+
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                });
+            }
+            await fetch('/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub),
+            });
+            return true;
         }
 
         async function handleNotifClick() {
             var btn = document.getElementById('notif-btn');
+            var label = document.getElementById('notif-label');
             btn.disabled = true;
             btn.textContent = 'Requesting…';
             try {
                 var perm = await Notification.requestPermission();
                 if (perm !== 'granted') { updateNotifBar(perm); return; }
 
-                var keyResp = await fetch('/push/vapid-public-key');
-                if (!keyResp.ok) { btn.textContent = 'Not configured'; return; }
-                var publicKey = (await keyResp.json()).publicKey;
-
-                var reg = await navigator.serviceWorker.ready;
-                var sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(publicKey),
-                });
-
-                await fetch('/push/subscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(sub),
-                });
+                var ok = await subscribeToPush();
+                if (!ok) {
+                    label.textContent = 'Push notifications are not configured on the server';
+                    btn.textContent = 'Unavailable';
+                    return;
+                }
                 updateNotifBar('granted');
             } catch (err) {
-                btn.textContent = 'Failed — try again';
+                label.textContent = 'Could not enable notifications — please try again';
+                btn.textContent = 'Retry';
                 btn.disabled = false;
             }
         }
@@ -634,8 +698,14 @@
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(function() {});
-            if ('Notification' in window && 'PushManager' in window) {
+            if (notifSupported()) {
                 updateNotifBar(Notification.permission);
+                // Already granted on this device? Make sure the server still has
+                // a live subscription (e.g. after a DB reset or a new device),
+                // otherwise "enabled" would be a lie and no push would arrive.
+                if (Notification.permission === 'granted') {
+                    subscribeToPush().catch(function() {});
+                }
             }
         }
 

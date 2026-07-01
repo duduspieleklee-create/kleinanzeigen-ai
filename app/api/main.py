@@ -1,4 +1,6 @@
 import os
+from datetime import datetime, timezone
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -12,7 +14,7 @@ from app.api.routers import admin, auth, scrapes, push, locations
 from app.api.dependencies import get_current_user
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
-from app.shared.models import AdminSearch, ScrapeTask, ScrapeResult
+from app.shared.models import AdminSearch, ScrapeTask, ScrapeResult, User
 from app.shared.logging_config import logger
 
 logger.info("Starting kleinanzeigen-ai application...")
@@ -102,6 +104,23 @@ async def dashboard(
     except Exception:
         pass
 
+    # Daily search quota (0 == unlimited, e.g. admin)
+    db_user = db.query(User).filter(User.id == current_user["id"]).first()
+    daily_limit = db_user.daily_limit if db_user else 0
+    used_today = 0
+    if daily_limit and daily_limit > 0:
+        start_of_day = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        used_today = (
+            db.query(ScrapeTask)
+            .filter(
+                ScrapeTask.user_id == current_user["id"],
+                ScrapeTask.created_at >= start_of_day,
+            )
+            .count()
+        )
+
     response = templates.TemplateResponse(
         "dashboard.html",
         {
@@ -111,6 +130,8 @@ async def dashboard(
             "flash_error": flash_error,
             "is_admin": True,
             "admin_searches": admin_searches,
+            "daily_limit": daily_limit,
+            "used_today": used_today,
         },
     )
 
