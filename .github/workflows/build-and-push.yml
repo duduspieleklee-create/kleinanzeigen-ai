@@ -138,6 +138,7 @@ jobs:
         with:
           server: ${{ secrets.OCTOPUS_SERVER_URL }}
           api_key: ${{ secrets.OCTOPUS_API_KEY }}
+          space: "Default"
           packages: |
             kleinanzeigen-ai-api
             kleinanzeigen-ai-worker
@@ -150,6 +151,7 @@ jobs:
         with:
           server: ${{ secrets.OCTOPUS_SERVER_URL }}
           api_key: ${{ secrets.OCTOPUS_API_KEY }}
+          space: "Default"
           project: "kleinanzeigen-ai"
           release_number: ${{ github.sha }}
           default_package_version: ${{ github.sha }}
@@ -159,6 +161,7 @@ jobs:
         with:
           server: ${{ secrets.OCTOPUS_SERVER_URL }}
           api_key: ${{ secrets.OCTOPUS_API_KEY }}
+          space: "Default"
           project: "kleinanzeigen-ai"
           release_number: ${{ github.sha }}
           environments: "Dev"
