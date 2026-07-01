@@ -19,6 +19,10 @@ ENV GIT_SHA=$GIT_SHA \
     APP_VERSION=$APP_VERSION \
     BUILD_TIME=$BUILD_TIME
 
+# Drop root privileges — run the app as an unprivileged user.
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+USER appuser
+
 # --proxy-headers + --forwarded-allow-ips="*" make uvicorn trust the
 # X-Forwarded-Proto header set by Azure Container Apps' TLS ingress, so
 # generated URLs and redirects use https:// instead of http:// (avoids

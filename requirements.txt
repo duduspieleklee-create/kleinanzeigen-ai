@@ -36,3 +36,6 @@ pywebpush==2.3.0
 
 # Utilities
 python-dotenv==1.0.1
+
+# Security — rate limiting
+slowapi==0.1.9

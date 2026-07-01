@@ -5,8 +5,11 @@ Central helpers used by:
   system-wide rotating-proxy feature, and
 - the Celery worker, to pick an active proxy per scrape run.
 """
+import ipaddress
 import random
+import socket
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import requests
 from sqlalchemy.orm import Session
@@ -15,6 +18,44 @@ from app.api.config import settings
 from app.shared.models import Proxy, SystemSetting
 
 ROTATING_KEY = "rotating_proxy_enabled"
+
+
+def is_safe_proxy_url(url: str) -> tuple[bool, str]:
+    """Reject proxy URLs that resolve to private/loopback/reserved addresses.
+
+    The server makes outbound requests *through* admin-supplied proxy URLs, so
+    an unvalidated URL turns the server into an SSRF pivot to internal hosts
+    (e.g. cloud metadata endpoints). Returns (ok, reason).
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False, "malformed URL"
+    if parsed.scheme not in ("http", "https"):
+        return False, "scheme must be http or https"
+    host = parsed.hostname
+    if not host:
+        return False, "missing host"
+    try:
+        infos = socket.getaddrinfo(host, parsed.port or 80, proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        return False, "host does not resolve"
+    for info in infos:
+        ip = info[4][0]
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        if (
+            addr.is_private
+            or addr.is_loopback
+            or addr.is_link_local
+            or addr.is_reserved
+            or addr.is_multicast
+            or addr.is_unspecified
+        ):
+            return False, f"resolves to a non-public address ({ip})"
+    return True, "ok"
 
 
 def is_rotating_enabled(db: Session) -> bool:
