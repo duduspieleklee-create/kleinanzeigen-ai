@@ -40,6 +40,12 @@ services:
       DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
     depends_on:
       db:
         condition: service_healthy
@@ -57,6 +63,10 @@ services:
     environment:
       DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
       REDIS_URL: redis://redis:6379/0
+      SYSTEM_USER_ID: ${SYSTEM_USER_ID:-1}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
     depends_on:
       db:
         condition: service_healthy
@@ -72,8 +82,15 @@ services:
       context: .
       dockerfile: app/beat/Dockerfile
     environment:
+      DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
       REDIS_URL: redis://redis:6379/0
+      SYSTEM_USER_ID: ${SYSTEM_USER_ID:-1}
+      BEAT_KEYWORDS: ${BEAT_KEYWORDS:-handwerker}
+      BEAT_LOCATION: ${BEAT_LOCATION:-berlin}
+      BEAT_PRICE_MAX: ${BEAT_PRICE_MAX:-200}
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:

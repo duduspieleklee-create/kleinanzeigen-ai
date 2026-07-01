@@ -106,13 +106,22 @@ jobs:
   # 4. Trigger Octopus Deploy release
   #
   #    Required GitHub secrets:
-  #      OCTOPUS_SERVER_URL  — e.g. https://your-instance.octopus.app
-  #      OCTOPUS_API_KEY     — API key from Octopus → Profile → API Keys
-  #
-  #    Octopus project variables consumed at deploy time:
-  #      DATABASE_URL, REDIS_URL, SECRET_KEY,
-  #      GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
-  #      ACR_LOGIN_SERVER, image tag (passed via build info below)
+  #      OCTOPUS_SERVER_URL    — e.g. https://your-instance.octopus.app
+  #      OCTOPUS_API_KEY       — API key from Octopus → Profile → API Keys
+  #      ACR_LOGIN_SERVER, ACR_USERNAME, ACR_PASSWORD  — Azure Container Registry
+  #      DATABASE_URL          — also used by the migrate job above
+  #      REDIS_URL
+  #      SECRET_KEY
+  #      GOOGLE_CLIENT_ID      — Google OAuth app credential
+  #      GOOGLE_CLIENT_SECRET  — Google OAuth app credential
+  #      ALLOWED_EMAILS        — comma-separated allow-list (empty = allow all)
+  #      SYSTEM_USER_ID        — DB user ID for Beat-scheduled tasks (default 1)
+  #      VAPID_PRIVATE_KEY     — Web push (leave empty to disable)
+  #      VAPID_PUBLIC_KEY      — Web push (leave empty to disable)
+  #      VAPID_EMAIL           — Web push contact (default mailto:admin@example.com)
+  #      BEAT_KEYWORDS         — Scheduled search keywords (default handwerker)
+  #      BEAT_LOCATION         — Scheduled search location (default berlin)
+  #      BEAT_PRICE_MAX        — Scheduled search max price (default 200)
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -158,3 +167,17 @@ jobs:
           environments: "Dev"
           wait_for_deployment: true
           deployment_timeout: "00:10:00"
+          variables: |
+            DATABASE_URL: ${{ secrets.DATABASE_URL }}
+            REDIS_URL: ${{ secrets.REDIS_URL }}
+            SECRET_KEY: ${{ secrets.SECRET_KEY }}
+            GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+            ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
+            SYSTEM_USER_ID: ${{ secrets.SYSTEM_USER_ID }}
+            VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+            VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+            VAPID_EMAIL: ${{ secrets.VAPID_EMAIL }}
+            BEAT_KEYWORDS: ${{ secrets.BEAT_KEYWORDS }}
+            BEAT_LOCATION: ${{ secrets.BEAT_LOCATION }}
+            BEAT_PRICE_MAX: ${{ secrets.BEAT_PRICE_MAX }}
