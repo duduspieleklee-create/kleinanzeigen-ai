@@ -15,8 +15,26 @@ from app.shared.proxy import (
     set_rotating_enabled,
     test_proxy,
 )
+from app.worker.tasks import send_test_push
 
 router = APIRouter()
+
+
+@router.post("/test-notification")
+def send_test_notification(current_user: dict = Depends(require_admin)):
+    """Queue a test push to the current admin's own devices.
+
+    Runs through the same worker + web-push path real notifications use, so a
+    successful delivery confirms the whole pipeline works end to end.
+    """
+    send_test_push.delay(current_user["id"])
+    response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+    response.set_cookie(
+        "flash_success",
+        "Test notification queued — check your device in a few seconds.",
+        max_age=10,
+    )
+    return response
 
 
 @router.post("/searches")

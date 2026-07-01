@@ -60,6 +60,10 @@ def _allowed_emails() -> set[str]:
     return {e.strip().lower() for e in settings.allowed_emails.split(",") if e.strip()}
 
 
+def _admin_emails() -> set[str]:
+    return {e.strip().lower() for e in settings.admin_emails.split(",") if e.strip()}
+
+
 @router.post("/login")
 @limiter.limit("10/minute")
 async def login(
@@ -221,6 +225,14 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
             is_active=1,
         )
         db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Promote configured admin emails. Applies to both brand-new and existing
+    # accounts, so admin rights can be granted after the account already exists.
+    if email in _admin_emails() and not user.is_admin:
+        user.is_admin = True
+        user.daily_limit = 0  # admins are exempt from the daily search cap
         db.commit()
         db.refresh(user)
 

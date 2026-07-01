@@ -65,6 +65,28 @@ def _send_push_notifications(
         db.commit()
 
 
+@celery_app.task(name="push.send_test", bind=False)
+def send_test_push(user_id: int) -> dict:
+    """Send a one-off test push to all of a user's subscriptions.
+
+    Triggered from the admin dashboard so an admin can confirm the whole
+    web-push pipeline works end to end on their own device. Reuses the exact
+    same send path as real new-listing notifications.
+    """
+    db = SessionLocal()
+    try:
+        _send_push_notifications(
+            db,
+            user_id,
+            result_count=0,
+            keywords="",
+            highlight="✅ Test notification — push is working!",
+        )
+    finally:
+        db.close()
+    return {"status": "sent", "user_id": user_id}
+
+
 def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int, object | None]:
     """
     Return (task_id, task_orm_object).

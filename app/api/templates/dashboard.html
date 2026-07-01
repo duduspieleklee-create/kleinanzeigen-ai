@@ -354,6 +354,18 @@
         {% if is_admin %}
         <div id="tab-admin" class="tab-pane">
 
+            <!-- Test push notification -->
+            <div class="card">
+                <h3>Test Notifications</h3>
+                <p style="font-size:14px;color:#666;margin:0 0 14px">
+                    Send a test push to this account's devices to confirm
+                    notifications work end to end.
+                </p>
+                <form method="post" action="/admin/test-notification" style="margin:0">
+                    <button type="submit">Send test notification</button>
+                </form>
+            </div>
+
             <!-- Add admin search -->
             <div class="card">
                 <h3>Add Background Search</h3>
