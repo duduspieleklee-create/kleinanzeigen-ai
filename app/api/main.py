@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.config import settings
 from app.api.routers import admin, auth, scrapes, push, locations
 from app.api.dependencies import get_current_user
+from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, ScrapeTask, ScrapeResult
 from app.shared.logging_config import logger
@@ -31,6 +32,7 @@ if os.path.isdir(_static_dir):
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 templates = Jinja2Templates(directory="app/api/templates")
+register_globals(templates)
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
@@ -42,6 +44,11 @@ app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
 async def healthz():
     return JSONResponse({"status": "ok"})
+
+
+@app.get("/version", tags=["Ops"], include_in_schema=False)
+async def version():
+    return JSONResponse(BUILD_INFO)
 
 
 @app.get("/sw.js", include_in_schema=False)

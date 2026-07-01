@@ -35,5 +35,13 @@ class Settings(BaseSettings):
     app_username: str = "admin"
     app_password: str = "KaSearch2026"
 
+    # Build/version metadata — injected at image build time via Docker build
+    # args (see app/api/Dockerfile and the CI build job). Defaults apply to
+    # local development where the image wasn't built by CI.
+    app_version: str = "dev"      # e.g. "1.0.42"
+    git_sha: str = "local"        # full commit SHA
+    build_number: str = "0"       # CI run number / deployment number
+    build_time: str = "unknown"   # ISO-8601 UTC build timestamp
+
 
 settings = Settings()
