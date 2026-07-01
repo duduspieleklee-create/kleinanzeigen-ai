@@ -31,7 +31,7 @@ def send_test_notification(current_user: dict = Depends(require_admin)):
     response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
     response.set_cookie(
         "flash_success",
-        "Test notification queued — check your device in a few seconds.",
+        "Test notification queued - check your device in a few seconds.",
         max_age=10,
     )
     return response
