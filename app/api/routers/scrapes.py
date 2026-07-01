@@ -13,6 +13,7 @@ from app.shared.models import ScrapeTask, ScrapeResult, User
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
+from app.shared.pricing import deal_badge, median_price
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
 
@@ -231,9 +232,15 @@ async def view_results(
         .all()
     )
 
+    # Market context: median price across the search, and a deal badge per
+    # listing (below / at / above market) — something kleinanzeigen never shows.
+    median = median_price([r.price_value for r in results])
+    for r in results:
+        r.deal = deal_badge(r.price_value, median)
+
     return templates.TemplateResponse(
         "results.html",
-        {"request": request, "task": task, "results": results},
+        {"request": request, "task": task, "results": results, "median": median},
     )
 
 

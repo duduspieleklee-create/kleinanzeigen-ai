@@ -50,6 +50,7 @@ class ScrapeResult(Base):
     task_id = Column(Integer, ForeignKey("scrape_tasks.id"), nullable=False)
     title = Column(String(255))
     price = Column(String(50))
+    price_value = Column(Integer)                   # parsed euros (0=free, null=unknown)
     location = Column(String(100))
     url = Column(Text)
     image_url = Column(Text)                        # listing thumbnail
