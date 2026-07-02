@@ -8,14 +8,33 @@ from sqlalchemy import or_
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
-from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
+from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User, TokenUsage
 from app.shared.plans import ensure_weekly_credits, plan_config
-from app.shared.pricing import deal_badge, median_price, parse_price
+from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
 from app.shared.proxy import proxies_for_requests
 from app.shared.url_builder import build_kleinanzeigen_url
 from app.worker.celery_app import celery_app
+from app.worker.seller_scraper import extract_seller_info
 
 logger = logging.getLogger("kleinanzeigen-ai")
+
+
+def extract_seller_info_from_listing(url: str) -> Optional[dict]:
+    """Fetch listing detail page and extract seller information.
+    
+    This is a wrapper around seller_scraper that handles the HTTP request
+    and returns seller data or None if extraction fails.
+    """
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        return extract_seller_info(response.text)
+    except Exception as e:
+        logger.debug(f"Failed to extract seller info from {url}: {e}")
+        return None
 
 
 def _send_push_notifications(
@@ -325,6 +344,22 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                         break
                 seen_keys.add(key)
 
+                # Extract seller information from the listing detail page
+                seller_info = None
+                if item_url:
+                    try:
+                        seller_info = extract_seller_info_from_listing(item_url)
+                    except Exception as e:
+                        logger.debug(f"Could not extract seller info from {item_url}: {e}")
+
+                # Calculate trust score if seller info is available
+                trust_score = None
+                if seller_info:
+                    trust_score = calculate_trust_score(
+                        seller_info.get("seller_rating"),
+                        seller_info.get("seller_badges")
+                    )
+
                 result = ScrapeResult(
                     task_id=resolved_task_id,
                     title=title[:255],
@@ -334,6 +369,11 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     url=item_url,
                     image_url=image_url,
                     description=description,
+                    seller_id=seller_info.get("seller_id") if seller_info else None,
+                    seller_name=seller_info.get("seller_name") if seller_info else None,
+                    seller_rating=seller_info.get("seller_rating") if seller_info else None,
+                    seller_badges=seller_info.get("seller_badges") if seller_info else None,
+                    trust_score=trust_score,
                 )
                 db.add(result)
                 new_results.append(result)
@@ -344,6 +384,19 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 continue
 
         db.commit()
+
+        # Track token usage for this run
+        # Estimate: ~1 token per result (for seller data extraction + processing)
+        if task and new_count > 0:
+            token_usage = TokenUsage(
+                user_id=task.user_id,
+                task_id=resolved_task_id,
+                tokens=new_count,
+                date=datetime.now(timezone.utc).date(),
+            )
+            db.add(token_usage)
+            db.commit()
+            logger.info(f"Tracked {new_count} tokens for task {resolved_task_id}")
 
         if task:
             # Re-fetch to respect a cancellation that arrived while the task was running.
