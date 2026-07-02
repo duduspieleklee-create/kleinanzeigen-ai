@@ -264,9 +264,11 @@ async def view_results(
     page: int = Query(default=1, ge=1),
     tab: str = Query(default="all"),
 ):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timezone
+    from collections import Counter
 
     PAGE_SIZE = 10
+    COOKIE_NAME = f"rv_{task_id}"  # "results visited" — stores last-visit Unix timestamp
 
     # Mirror the dashboard's auth handling: redirect to login instead of 401
     # so a missed-session user lands on a friendly page.
@@ -289,27 +291,30 @@ async def view_results(
         .all()
     )
 
-    # ── Determine "new" cutoff: results from the latest scrape batch ─────────
-    # Any result within 10 minutes of the most-recent created_at is "new".
-    new_cutoff = None
-    if all_results:
-        latest = max((r.created_at for r in all_results if r.created_at), default=None)
-        if latest:
-            # Make both sides timezone-aware for safe comparison
-            if latest.tzinfo is None:
-                latest = latest.replace(tzinfo=timezone.utc)
-            new_cutoff = latest - timedelta(minutes=10)
+    # ── "New since last visit" cutoff ────────────────────────────────────────
+    # Cookie rv_{task_id} stores the Unix timestamp of the user's previous page
+    # load. Results whose created_at is strictly after that timestamp are "new".
+    # First visit: no cookie → no NEW badges (nothing to compare against yet).
+    # The cookie is always updated to now() at the end of the response so the
+    # NEXT visit will correctly compare against the current visit time.
+    now_utc = datetime.now(timezone.utc)
+    last_visit: datetime | None = None
+    raw_cookie = request.cookies.get(COOKIE_NAME)
+    if raw_cookie:
+        try:
+            last_visit = datetime.fromtimestamp(float(raw_cookie), tz=timezone.utc)
+        except (ValueError, OSError):
+            last_visit = None
 
-    def _is_new(r):
-        if not new_cutoff or not r.created_at:
+    def _is_new(r) -> bool:
+        if last_visit is None or not r.created_at:
             return False
         ts = r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)
-        return ts >= new_cutoff
+        return ts > last_visit
 
     new_count = sum(1 for r in all_results if _is_new(r))
 
     # ── Subcategory tabs: unique locations (up to 4 most common) ────────────
-    from collections import Counter
     loc_counts = Counter(
         r.location.split("\n")[0].strip()
         for r in all_results
@@ -341,7 +346,7 @@ async def view_results(
         r.deal = deal_badge(r.price_value, median) if show_deals else None
         r.is_new = _is_new(r)
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "results.html",
         {
             "request": request,
@@ -358,6 +363,16 @@ async def view_results(
             "total_in_tab": total_in_tab,
         },
     )
+    # Stamp this visit so the next load can compare against it.
+    # 30-day expiry; httponly prevents JS tampering; samesite=lax is safe for nav.
+    response.set_cookie(
+        COOKIE_NAME,
+        value=str(now_utc.timestamp()),
+        max_age=60 * 60 * 24 * 30,
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/{task_id}", response_model=ScrapeResponse)
