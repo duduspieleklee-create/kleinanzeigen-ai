@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     # Falls back to the request base URL when empty.
     public_base_url: str = ""
 
+    # ── Email sending via Resend (verification emails) ────────────────────────
+    # API key from https://resend.com/api-keys. Leave empty to disable email
+    # sending — in dev, password signups are then auto-verified for convenience;
+    # outside dev they stay unverified (and cannot search) until a key is set.
+    resend_api_key: str = ""
+    # From address. The Resend sandbox sender works without domain verification
+    # but can only deliver to the Resend account owner's own inbox — verify a
+    # domain in Resend and change this before opening registration to others.
+    email_from: str = "onboarding@resend.dev"
+
     # Build/version metadata — injected at image build time via Docker build args.
     app_version: str = "dev"
     git_sha: str = "local"
