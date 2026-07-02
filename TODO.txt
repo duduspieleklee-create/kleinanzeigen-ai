@@ -123,3 +123,16 @@
       page info footer shows "X–Y of Z" for current slice
 - [ ] Consider server-side tab counts for location tabs (currently client counts)
 - [ ] Add keyboard navigation for tab bar (arrow keys)
+
+27. SEARCH FORM UI — COMPACT LAYOUT / RADIUS AFTER PLZ (2026-07-02)
+- [x] Removed the 5-second frequency option from the search form (was dev-only,
+      never enforced as a plan floor) — Frequency now offers Instant/5min/30min/60min
+- [x] Reworked New Recurring Search form into a responsive 2-column grid
+      (Keywords+Category, Price min/max, Angebotstyp+Anbieter, Zustand+Versand
+      all sit side by side) to cut vertical scroll on the dashboard
+- [x] Radius field is now hidden until a location is chosen from the PLZ/city
+      autocomplete; relabeled "Live radius" and rendered directly below the
+      location field once a suggestion is selected. Clearing/editing the
+      location field hides the radius control again and resets its value
+- [ ] Consider persisting last-used search filters (keywords, category, radius)
+      per user so the form pre-fills on next visit
