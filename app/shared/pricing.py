@@ -58,3 +58,30 @@ def deal_badge(value: Optional[int], median: Optional[float]) -> Optional[dict]:
     if pct >= 15:
         return {"label": f"{round(pct)}% above market", "cls": "deal-high", "pct": pct}
     return {"label": "Fair price", "cls": "deal-fair", "pct": pct}
+
+
+def calculate_trust_score(rating: Optional[str], badges: Optional[str]) -> int:
+    """Calculate a trust score (0-100) based on seller rating and badges.
+
+    Ratings: TOP (100), OK (70), NAJA (40)
+    Badges: Freundlich (+10), Zuverlässig (+10)
+    """
+    score = 50  # Base score
+
+    if rating:
+        r = rating.upper()
+        if "TOP" in r:
+            score = 80
+        elif "OK" in r:
+            score = 60
+        elif "NAJA" in r:
+            score = 30
+
+    if badges:
+        b_list = badges.split(",")
+        if "Freundlich" in b_list:
+            score += 10
+        if "Zuverlässig" in b_list:
+            score += 10
+
+    return min(100, max(0, score))

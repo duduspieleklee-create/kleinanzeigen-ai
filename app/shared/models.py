@@ -1,4 +1,5 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text, JSON
+import sqlalchemy as sa
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text, JSON, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.shared.database import Base
@@ -46,6 +47,8 @@ class User(Base):
     # Relationships
     scrape_tasks = relationship("ScrapeTask", back_populates="user")
     push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
+    token_usages = relationship("TokenUsage", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}')>"
@@ -63,12 +66,14 @@ class ScrapeTask(Base):
     # baseline run is free — every listing is "new" then, so no credits are
     # charged and no push is sent (see app/worker/tasks.py).
     baseline_done = Column(Boolean, nullable=False, default=False, server_default="false")
+    email_notifications = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True))
 
     # Relationships
     user = relationship("User", back_populates="scrape_tasks")
-    results = relationship("ScrapeResult", back_populates="task")
+    results = relationship("ScrapeResult", back_populates="task", cascade="all, delete-orphan")
+    token_usages = relationship("TokenUsage", back_populates="task", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<ScrapeTask(id={self.id}, status='{self.status}')>"
@@ -89,8 +94,16 @@ class ScrapeResult(Base):
     raw_data = Column(JSON)                         # Optional: store full raw data
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Seller & Trust Info
+    seller_id = Column(String(50))
+    seller_name = Column(String(100))
+    seller_rating = Column(String(50))
+    seller_badges = Column(String(255))
+    trust_score = Column(Integer)
+
     # Relationships
     task = relationship("ScrapeTask", back_populates="results")
+    favorited_by = relationship("Favorite", back_populates="result", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<ScrapeResult(id={self.id}, title='{self.title}')>"
@@ -137,6 +150,27 @@ class SystemSetting(Base):
     def __repr__(self):
         return f"<SystemSetting(key='{self.key}', value='{self.value}')>"
 
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    result_id = Column(Integer, ForeignKey("scrape_results.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="favorites")
+    result = relationship("ScrapeResult", back_populates="favorited_by")
+
+class TokenUsage(Base):
+    __tablename__ = "token_usage"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(Integer, ForeignKey("scrape_tasks.id", ondelete="CASCADE"), nullable=False)
+    tokens = Column(Integer, default=0, nullable=False)
+    date = Column(sa.Date, server_default=func.current_date(), nullable=False)
+
+    user = relationship("User", back_populates="token_usages")
+    task = relationship("ScrapeTask", back_populates="token_usages")
 
 class AdminSearch(Base):
     __tablename__ = "admin_searches"
