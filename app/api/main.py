@@ -223,14 +223,16 @@ async def dashboard(
         medians = {}
         # Pre-calculate medians if needed for deal badges
         task_ids = {t.id for _, t in recent_rows}
-        by_task: dict = {}
-        for tid, val in (
-            db.query(ScrapeResult.task_id, ScrapeResult.price_value)
-            .filter(ScrapeResult.task_id.in_(task_ids))
-            .all()
-        ):
-            by_task.setdefault(tid, []).append(val)
-        medians = {tid: median_price(vals) for tid, vals in by_task.items()}
+        # Only query for medians if there are task IDs (avoid empty IN () SQL error)
+        if task_ids:
+            by_task: dict = {}
+            for tid, val in (
+                db.query(ScrapeResult.task_id, ScrapeResult.price_value)
+                .filter(ScrapeResult.task_id.in_(task_ids))
+                .all()
+            ):
+                by_task.setdefault(tid, []).append(val)
+            medians = {tid: median_price(vals) for tid, vals in by_task.items()}
 
         for r, t in recent_rows:
             # Attach extra context to each result for the template
