@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.shared.database import get_db, SessionLocal
-from app.shared.models import ScrapeTask, ScrapeResult, User
+from app.shared.models import ScrapeTask, ScrapeResult, User, Favorite
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
@@ -396,6 +396,60 @@ async def get_scrape_status(
         status=task.status,
         message=f"{result_count} result(s) saved",
     )
+
+
+@router.post("/{task_id}/delete")
+async def delete_scrape(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Delete a search and all its results (unless favorited)."""
+    task = db.query(ScrapeTask).filter(
+        ScrapeTask.id == task_id,
+        ScrapeTask.user_id == current_user["id"],
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Search not found")
+
+    db.delete(task)
+    db.commit()
+
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie("flash_success", f"Search #{task_id} and all results deleted.", max_age=5)
+    return response
+
+
+@router.post("/results/{result_id}/favorite")
+async def toggle_favorite(
+    result_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Toggle a result as favorite for the current user."""
+    result = db.query(ScrapeResult).join(ScrapeTask).filter(
+        ScrapeResult.id == result_id,
+        ScrapeTask.user_id == current_user["id"]
+    ).first()
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Result not found")
+
+    existing = db.query(Favorite).filter(
+        Favorite.user_id == current_user["id"],
+        Favorite.result_id == result_id
+    ).first()
+
+    if existing:
+        db.delete(existing)
+        status = "removed"
+    else:
+        new_fav = Favorite(user_id=current_user["id"], result_id=result_id)
+        db.add(new_fav)
+        status = "added"
+    
+    db.commit()
+    return {"status": "success", "favorite": status}
 
 
 @router.get("/", response_model=list[ScrapeResponse])

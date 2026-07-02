@@ -18,9 +18,10 @@ from app.api.dependencies import get_current_user
 from app.api.security import limiter
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
-from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User
+from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User, Favorite
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price
+from app.shared.token_tracking import get_token_usage_stats
 from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
 
@@ -215,6 +216,8 @@ async def dashboard(
     )
     # Deal badges are a Core/Pro feature — Basic users get plain results.
     show_deals = bool(is_admin or cfg.get("deal_badges"))
+    # Trust Score badges are a Core/Pro feature — Basic users see them grayed out
+    show_trust_scores = bool(is_admin or cfg.get("trust_scores", False))
     recent_results = []
     if recent_rows:
         medians = {}
@@ -242,6 +245,7 @@ async def dashboard(
             "tasks": tasks_with_counts,
             "recent_results": recent_results,
             "show_deals": show_deals,
+            "show_trust_scores": show_trust_scores,
             "flash_success": flash_success,
             "flash_error": flash_error,
             "plan_notice": plan_notice,
@@ -260,6 +264,10 @@ async def dashboard(
             # Email verification banner (admins are exempt from verification).
             "email_verified": bool(db_user.email_verified) if db_user else True,
             "user_email": db_user.email if db_user else "",
+            # Token stats for "Meine Suchen" tab
+            "token_stats": get_token_usage_stats(db, current_user["id"]),
+            # Favorites for "Favoriten" sub-tab
+            "favorites": db.query(ScrapeResult).join(Favorite).filter(Favorite.user_id == current_user["id"]).all(),
         },
     )
 

@@ -17,7 +17,10 @@ celery_app = Celery(
     "kleinanzeigen-ai",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["app.worker.tasks"],
+    include=[
+        "app.worker.tasks",
+        "app.worker.archival_task",
+    ],
 )
 
 celery_app.conf.update(

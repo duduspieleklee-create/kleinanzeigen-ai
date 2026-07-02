@@ -58,3 +58,69 @@ def deal_badge(value: Optional[int], median: Optional[float]) -> Optional[dict]:
     if pct >= 15:
         return {"label": f"{round(pct)}% above market", "cls": "deal-high", "pct": pct}
     return {"label": "Fair price", "cls": "deal-fair", "pct": pct}
+
+
+def calculate_trust_score(
+    rating: Optional[str],
+    badges: Optional[str],
+    active_since: Optional[int] = None,
+    listings_count: Optional[int] = None,
+) -> int:
+    """Calculate a trust score (0-100) based on seller reputation and activity.
+
+    Components:
+    1. Base Rating (50 points):
+       - TOP Zufriedenheit: +30 (80 total)
+       - OK: +10 (60 total)
+       - NAJA: -20 (30 total)
+       - No rating: 0 (50 total)
+
+    2. Badges (+10 each, max +20):
+       - Freundlich: +10
+       - Zuverlässig: +10
+
+    3. Account Age (max +15):
+       - +1 Punkt pro Jahr seit Registrierung
+       - Maximal +15 Punkte (15+ Jahre)
+
+    4. Listings Activity (max +15):
+       - +1 Punkt pro 10 aktive Anzeigen
+       - Maximal +15 Punkte (150+ Anzeigen)
+    """
+    import datetime
+
+    score = 50  # Base score
+
+    # 1. Rating component
+    if rating:
+        r = rating.upper()
+        if "TOP" in r:
+            score = 80
+        elif "OK" in r:
+            score = 60
+        elif "NAJA" in r:
+            score = 30
+
+    # 2. Badges component
+    if badges:
+        b_list = badges.split(",")
+        if "Freundlich" in b_list:
+            score += 10
+        if "Zuverlässig" in b_list:
+            score += 10
+
+    # 3. Account age component (höheres Alter = höheres Vertrauen)
+    if active_since and isinstance(active_since, int):
+        current_year = datetime.datetime.now().year
+        account_age_years = current_year - active_since
+        # +1 Punkt pro Jahr, maximal +15
+        age_bonus = min(15, max(0, account_age_years))
+        score += age_bonus
+
+    # 4. Listings activity component (mehr Anzeigen = mehr Aktivität)
+    if listings_count and isinstance(listings_count, int) and listings_count > 0:
+        # +1 Punkt pro 10 Anzeigen, maximal +15
+        activity_bonus = min(15, listings_count // 10)
+        score += activity_bonus
+
+    return min(100, max(0, score))
