@@ -15,8 +15,58 @@ from app.shared.proxy import (
     set_rotating_enabled,
     test_proxy,
 )
+from app.worker.tasks import run_test_push
 
 router = APIRouter()
+
+
+@router.post("/test-notification")
+def send_test_notification(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Send a test push to the current admin's own devices, synchronously.
+
+    Sending inline (not via Celery) lets us report the real outcome — sent, no
+    subscription, or the actual delivery error — instead of a fire-and-forget
+    that always looks successful even when every push silently fails.
+    """
+    response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+
+    def _flash(key: str, message: str) -> RedirectResponse:
+        # Cookie headers are latin-1 only; webpush errors can contain anything.
+        safe = message.encode("latin-1", "replace").decode("latin-1")
+        response.set_cookie(key, safe, max_age=15)
+        return response
+
+    result = run_test_push(db, current_user["id"])
+
+    if not result["configured"]:
+        return _flash(
+            "flash_error",
+            "Push is not configured on the server: " + "; ".join(result["errors"]),
+        )
+    if result["total"] == 0:
+        return _flash(
+            "flash_error",
+            "No active push subscription on this account. Enable notifications "
+            "on the dashboard first, then try the test again.",
+        )
+    if result["sent"] > 0:
+        extra = f" ({result['removed']} expired removed)" if result["removed"] else ""
+        return _flash(
+            "flash_success",
+            f"Test notification sent to {result['sent']} device(s){extra}. "
+            "Check your device now.",
+        )
+    if result["removed"] > 0:
+        return _flash(
+            "flash_error",
+            "Your saved subscription had expired and was removed. Re-enable "
+            "notifications on the dashboard, then try again.",
+        )
+    detail = "; ".join(result["errors"][:2]) or "unknown error"
+    return _flash("flash_error", f"Push failed: {detail}")
 
 
 @router.post("/searches")

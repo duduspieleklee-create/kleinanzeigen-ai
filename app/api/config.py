@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # Leave empty to allow any Google account (open registration).
     allowed_emails: str = ""
 
+    # Comma-separated list of Google email addresses granted admin rights on
+    # login. Admins manage background searches / proxies and can send test
+    # push notifications. Leave empty to auto-promote no one.
+    admin_emails: str = ""
+
     # Google OAuth 2.0 credentials (Google Cloud Console → Credentials).
     # Leave empty to disable the "Sign in with Google" button.
     google_client_id: str = ""

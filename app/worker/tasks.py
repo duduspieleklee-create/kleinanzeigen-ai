@@ -20,17 +20,37 @@ logger = logging.getLogger("kleinanzeigen-ai")
 
 def _send_push_notifications(
     db, user_id: int, result_count: int, keywords: str, highlight: str = None
-) -> None:
+) -> dict:
+    """Send a web push to every subscription of a user.
+
+    Returns a summary so callers (e.g. the admin test button) can report what
+    actually happened instead of failing silently:
+    {configured, total, sent, failed, removed, errors}.
+    """
+    summary = {
+        "configured": True,
+        "total": 0,
+        "sent": 0,
+        "failed": 0,
+        "removed": 0,
+        "errors": [],
+    }
+
     if not settings.vapid_private_key or not settings.vapid_public_key:
-        return
+        summary["configured"] = False
+        summary["errors"].append("VAPID keys are not configured on the server.")
+        return summary
     try:
         from pywebpush import webpush, WebPushException
     except ImportError:
-        return
+        summary["configured"] = False
+        summary["errors"].append("pywebpush is not installed.")
+        return summary
 
     subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
+    summary["total"] = len(subs)
     if not subs:
-        return
+        return summary
 
     # Lead with a deal highlight when there is one, otherwise the plain count.
     body = highlight or f"{result_count} new listing(s) found for \"{keywords}\""
@@ -38,7 +58,26 @@ def _send_push_notifications(
         "title": "kleinanzeigen-ai",
         "body": body,
     })
-    private_key = settings.vapid_private_key.replace("\\n", "\n")
+    # VAPID private keys come in two shapes and py_vapid picks its parser by
+    # looking for "BEGIN"/newlines in the string:
+    #  - PEM: env vars usually store the newlines escaped as literal "\n".
+    #  - Raw base64url (the web-push standard, paired with the public key the
+    #    browser uses): must have NO newlines, or py_vapid misroutes it into PEM
+    #    parsing and dies with "Could not deserialize key data ... ASN.1 ...".
+    raw_key = (settings.vapid_private_key or "").strip()
+    if "BEGIN" in raw_key:
+        private_key = raw_key.replace("\\n", "\n")
+    else:
+        private_key = "".join(raw_key.split()).replace("\\n", "")
+
+    # py_vapid requires the "sub" claim to be a mailto:/https: URI. Accept a
+    # bare email in VAPID_EMAIL and normalise it, so this common misconfig
+    # doesn't silently break every push.
+    sub_claim = (settings.vapid_email or "").strip()
+    if sub_claim and not sub_claim.startswith(("mailto:", "http://", "https://")):
+        sub_claim = f"mailto:{sub_claim}"
+    if not sub_claim:
+        sub_claim = "mailto:admin@example.com"
 
     stale = []
     for sub in subs:
@@ -50,20 +89,46 @@ def _send_push_notifications(
                 },
                 data=payload,
                 vapid_private_key=private_key,
-                vapid_claims={"sub": settings.vapid_email},
+                # pywebpush mutates the claims dict (adds aud/exp), so pass a
+                # fresh copy per subscription.
+                vapid_claims={"sub": sub_claim},
             )
+            summary["sent"] += 1
         except WebPushException as e:
             # 404/410 means the subscription has expired — clean it up
             if e.response is not None and e.response.status_code in (404, 410):
                 stale.append(sub.id)
+                summary["removed"] += 1
             else:
+                summary["failed"] += 1
+                summary["errors"].append(str(e))
                 logger.warning(f"Push failed for sub {sub.id}: {e}")
         except Exception as e:
+            summary["failed"] += 1
+            summary["errors"].append(str(e))
             logger.warning(f"Push failed for sub {sub.id}: {e}")
 
     if stale:
         db.query(PushSubscription).filter(PushSubscription.id.in_(stale)).delete(synchronize_session=False)
         db.commit()
+
+    return summary
+
+
+def run_test_push(db, user_id: int) -> dict:
+    """Send a one-off test push synchronously and return a result summary.
+
+    Called directly from the admin endpoint (not via Celery) so the admin sees
+    the real outcome immediately: whether it was sent, or the actual error if
+    delivery failed. Reuses the exact same send path as real notifications.
+    """
+    return _send_push_notifications(
+        db,
+        user_id,
+        result_count=0,
+        keywords="",
+        highlight="Test notification - push is working!",
+    )
 
 
 def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int, object | None]:
