@@ -114,8 +114,9 @@
       — category+keyword path (/s-{category}/{keyword}/k0) unchanged and still works
 
 26. RESULTS PAGE — NEW BADGE / SUBCATEGORY TABS / PAGINATION (2026-07-02)
-- [x] NEW badge: results within 10 min of latest created_at flagged is_new=True
-      displayed as green "new" pill in price row and in the h1 count
+- [x] NEW badge: keyed to last-visit cookie rv_{task_id} (Unix timestamp, 30-day, httponly)
+      results with created_at > last_visit are flagged is_new; first visit shows no badges
+      cookie updated to now() on every response so next visit compares correctly
 - [x] Subcategory tabs: All (N) | New (N) + up to 4 most-common unique location tabs
       tab state preserved in URL (?tab=all|new|<location>&page=N)
 - [x] Pagination: 10 results per page, prev/next + numbered pages with ellipsis
