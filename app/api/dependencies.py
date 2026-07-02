@@ -47,12 +47,21 @@ def get_current_user(
         user_id = payload.get("sub")
         if user_id is None:
             raise credentials_exception
+        # Convert to int safely
+        try:
+            user_id_int = int(user_id)
+        except (ValueError, TypeError):
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
 
     # Verify the user still exists and is active. A structurally-valid token for
     # a deleted or deactivated account must not grant access.
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    try:
+        user = db.query(User).filter(User.id == user_id_int).first()
+    except Exception:
+        raise credentials_exception
+    
     if user is None or not user.is_active:
         raise credentials_exception
 
