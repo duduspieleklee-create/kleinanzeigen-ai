@@ -70,10 +70,14 @@
         <!-- Create new search -->
         <div class="card">
             <h3>New Recurring Search</h3>
-            <form action="/scrapes/" method="post" id="scrape-form">
+            <form action="/scrapes/" method="post" id="scrape-form" class="search-form">
+              <div class="form-grid">
+                <div class="form-field">
                 <label for="keywords">Keywords</label>
                 <input type="text" id="keywords" name="keywords" placeholder="e.g. handwerker">
+                </div>
 
+                <div class="form-field">
                 <label for="category">Category</label>
                 <select id="category" name="category">
                     <option value="">Alle Kategorien</option>
@@ -118,7 +122,9 @@
                         <option value="buero-gewerbe-industrie">Büro &amp; Gewerbe</option>
                     </optgroup>
                 </select>
+                </div>
 
+                <div class="form-field form-full">
                 <label for="location-input">Location (city or PLZ)</label>
                 <div class="suggest-wrap">
                     <input type="text" id="location-input" name="location"
@@ -126,88 +132,85 @@
                     <input type="hidden" id="location_id" name="location_id">
                     <ul id="location-suggestions" class="suggest-list"></ul>
                 </div>
-
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
-                        <label for="price_min">Min Price (&euro;)</label>
-                        <input type="number" id="price_min" name="price_min" placeholder="e.g. 0">
-                    </div>
-                    <div style="flex:1">
-                        <label for="price_max">Max Price (&euro;)</label>
-                        <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
-                    </div>
                 </div>
 
-                <label for="radius">Radius</label>
-                <select id="radius" name="radius">
-                    <option value="">Alle</option>
-                    <option value="5">5 km</option>
-                    <option value="10">10 km</option>
-                    <option value="20">20 km</option>
-                    <option value="30">30 km</option>
-                    <option value="50">50 km</option>
-                    <option value="100">100 km</option>
-                    <option value="150">150 km</option>
-                    <option value="200">200 km</option>
-                </select>
-
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
-                        <label for="ad_type">Angebotstyp</label>
-                        <select id="ad_type" name="ad_type">
-                            <option value="">Alle</option>
-                            <option value="angebote">Angebote</option>
-                            <option value="gesuche">Gesuche</option>
-                        </select>
-                    </div>
-                    <div style="flex:1">
-                        <label for="poster_type">Anbieter</label>
-                        <select id="poster_type" name="poster_type">
-                            <option value="">Alle</option>
-                            <option value="privat">Privat</option>
-                            <option value="gewerblich">Gewerblich</option>
-                        </select>
-                    </div>
+                <div class="form-field form-full" id="radius-field" style="display:none">
+                    <label for="radius">Live radius <span class="hint">(around selected location)</span></label>
+                    <select id="radius" name="radius">
+                        <option value="">Alle</option>
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="20">20 km</option>
+                        <option value="30">30 km</option>
+                        <option value="50">50 km</option>
+                        <option value="100">100 km</option>
+                        <option value="150">150 km</option>
+                        <option value="200">200 km</option>
+                    </select>
                 </div>
 
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
-                        <label for="condition">Zustand</label>
-                        <select id="condition" name="condition">
-                            <option value="">Alle</option>
-                            <option value="new_with_tag">Neu mit Etikett</option>
-                            <option value="new">Neu</option>
-                            <option value="like_new">Sehr Gut</option>
-                            <option value="ok">Gut</option>
-                            <option value="alright">In Ordnung</option>
-                            <option value="defect">Defekt</option>
-                        </select>
-                    </div>
-                    <div style="flex:1">
-                        <label for="shipping">Versand</label>
-                        <select id="shipping" name="shipping">
-                            <option value="">Egal</option>
-                            <option value="ja">Versand möglich</option>
-                            <option value="nein">Nur Abholung</option>
-                        </select>
-                    </div>
+                <div class="form-field">
+                    <label for="price_min">Min Price (&euro;)</label>
+                    <input type="number" id="price_min" name="price_min" placeholder="e.g. 0">
+                </div>
+                <div class="form-field">
+                    <label for="price_max">Max Price (&euro;)</label>
+                    <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
                 </div>
 
+                <div class="form-field">
+                    <label for="ad_type">Angebotstyp</label>
+                    <select id="ad_type" name="ad_type">
+                        <option value="">Alle</option>
+                        <option value="angebote">Angebote</option>
+                        <option value="gesuche">Gesuche</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="poster_type">Anbieter</label>
+                    <select id="poster_type" name="poster_type">
+                        <option value="">Alle</option>
+                        <option value="privat">Privat</option>
+                        <option value="gewerblich">Gewerblich</option>
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label for="condition">Zustand</label>
+                    <select id="condition" name="condition">
+                        <option value="">Alle</option>
+                        <option value="new_with_tag">Neu mit Etikett</option>
+                        <option value="new">Neu</option>
+                        <option value="like_new">Sehr Gut</option>
+                        <option value="ok">Gut</option>
+                        <option value="alright">In Ordnung</option>
+                        <option value="defect">Defekt</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="shipping">Versand</label>
+                    <select id="shipping" name="shipping">
+                        <option value="">Egal</option>
+                        <option value="ja">Versand möglich</option>
+                        <option value="nein">Nur Abholung</option>
+                    </select>
+                </div>
+
+                <div class="form-field form-full">
                 <label>Frequency</label>
                 {% set min_iv = min_interval_seconds or 300 %}
                 {% set default_iv = 300 if min_iv <= 300 else min_iv %}
-                <div class="frequency-group">
-                    {% for val, lbl in [(5, 'Every 5 seconds'), (60, 'Instant'), (300, 'Every 5 minutes'), (1800, 'Every 30 minutes'), (3600, 'Every 60 minutes')] %}
+                <div class="frequency-group frequency-group-compact">
+                    {% for val, lbl in [(60, 'Instant'), (300, 'Every 5 minutes'), (1800, 'Every 30 minutes'), (3600, 'Every 60 minutes')] %}
                     <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
-                        <input type="radio" name="interval_seconds" value="{{ val }}"{% if val == 5 %} id="freq-5s"{% endif %}{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
-                        {{ lbl }}{% if val == 5 %} <em style="color:#888">(dev only)</em>{% endif %}
+                        <input type="radio" name="interval_seconds" value="{{ val }}"{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
+                        {{ lbl }}
                         {% if val < min_iv %}<a href="/billing" class="freq-upgrade">upgrade</a>{% endif %}
                     </label>
                     {% endfor %}
                 </div>
-                <div class="warning" id="fast-warning">
-                    &#9888; 5-second interval is very aggressive and may result in IP bans from kleinanzeigen.de. Use only for local testing.
                 </div>
+              </div>
 
                 <button type="submit">Start Recurring Scrape</button>
             </form>
@@ -537,13 +540,6 @@
             }
         })();
 
-        document.querySelectorAll('input[name="interval_seconds"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                document.getElementById('fast-warning').style.display =
-                    this.value === '5' ? 'block' : 'none';
-            });
-        });
-
         // ── Push notification helpers ────────────────────────────────────────
         function urlBase64ToUint8Array(b64) {
             var pad = '='.repeat((4 - b64.length % 4) % 4);
@@ -809,10 +805,21 @@
                 list.style.display = 'block';
             }
 
+            function toggleRadiusField(show) {
+                var field = document.getElementById('radius-field');
+                if (!field) return;
+                field.style.display = show ? 'block' : 'none';
+                if (!show) {
+                    var radiusSelect = document.getElementById('radius');
+                    if (radiusSelect) radiusSelect.value = '';
+                }
+            }
+
             function selectItem(i) {
                 var item = suggestions[i];
                 inp.value = item.label;
                 idField.value = item.id;
+                toggleRadiusField(true);
                 list.style.display = 'none';
                 suggestions = [];
             }
@@ -828,6 +835,7 @@
 
             inp.addEventListener('input', function() {
                 idField.value = '';  // clear resolved id when user edits freely
+                toggleRadiusField(false);
                 clearTimeout(timer);
                 var q = inp.value.trim();
                 if (q.length < 2) { list.style.display = 'none'; return; }
