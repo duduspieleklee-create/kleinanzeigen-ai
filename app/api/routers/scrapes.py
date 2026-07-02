@@ -14,6 +14,7 @@ from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
 from app.shared.pricing import deal_badge, median_price
+from app.shared.plans import plan_config, ensure_weekly_credits
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
 
@@ -47,6 +48,23 @@ def _clean_int(value: Optional[str], label: str, errors: list) -> Optional[int]:
     except ValueError:
         errors.append(f"{label} must be a whole number")
         return None
+
+
+def count_active_recurring(db: Session, user_id: int) -> int:
+    """Number of the user's recurring searches that still occupy a plan slot.
+
+    A search occupies a slot while it can keep re-running: it is recurring
+    (has interval_seconds) and was not cancelled or failed.
+    """
+    return (
+        db.query(ScrapeTask)
+        .filter(
+            ScrapeTask.user_id == user_id,
+            ScrapeTask.status.in_(("pending", "running", "completed")),
+            ScrapeTask.parameters.op("->>")("interval_seconds").isnot(None),
+        )
+        .count()
+    )
 
 
 @router.post("/", response_model=None)
@@ -89,34 +107,47 @@ async def create_scrape(
         response.set_cookie("flash_error", " · ".join(errors), max_age=10)
         return response
 
-    # Enforce the per-user daily search limit (daily_limit == 0 means unlimited,
-    # e.g. the admin account). Only user-initiated searches count — interval
-    # re-runs reuse the same task and never reach this endpoint.
+    # ── Plan enforcement (credits / search slots / interval floor) ───────────
+    # Admin accounts (is_admin) are exempt. Everyone else runs on the weekly
+    # credit system: 1 credit per newly started search, a cap on concurrently
+    # active recurring searches, and a per-plan minimum check interval.
     user = db.query(User).filter(User.id == current_user["id"]).first()
-    daily_limit = user.daily_limit if user else 0
-    if daily_limit and daily_limit > 0:
-        start_of_day = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        used_today = (
-            db.query(ScrapeTask)
-            .filter(
-                ScrapeTask.user_id == current_user["id"],
-                ScrapeTask.created_at >= start_of_day,
-            )
-            .count()
-        )
-        if used_today >= daily_limit:
-            response = RedirectResponse(url="/dashboard", status_code=303)
-            response.set_cookie(
-                "flash_error",
-                f"Daily limit reached ({daily_limit} searches/day). "
-                "Please try again tomorrow.",
-                max_age=10,
-            )
-            return response
+    is_exempt = bool(user and user.is_admin)
 
-    # Enforce minimum interval outside dev
+    if user and not is_exempt:
+        ensure_weekly_credits(db, user)
+        cfg = plan_config(user.plan)
+
+        # 1. Credits — one per newly started search.
+        if user.credits <= 0:
+            reset_str = (
+                user.credits_reset_at.strftime("%d.%m. %H:%M UTC")
+                if user.credits_reset_at
+                else "next week"
+            )
+            return _flash_error(
+                f"No search credits left on the {cfg['label']} plan. "
+                f"Credits reset on {reset_str}. Upgrade at /billing for more."
+            )
+
+        # 2. Recurring-search slots.
+        if interval_v is not None:
+            active = count_active_recurring(db, user.id)
+            if active >= cfg["max_active_searches"]:
+                return _flash_error(
+                    f"Your {cfg['label']} plan allows {cfg['max_active_searches']} "
+                    "active recurring searches. Cancel one or upgrade at /billing."
+                )
+
+            # 3. Interval floor per plan.
+            if interval_v < cfg["min_interval_seconds"]:
+                minutes = cfg["min_interval_seconds"] // 60
+                return _flash_error(
+                    f"The {cfg['label']} plan allows check intervals of "
+                    f"{minutes} minutes or more. Upgrade at /billing for faster checks."
+                )
+
+    # Enforce global minimum interval outside dev
     if interval_v is not None and settings.environment != "dev":
         if interval_v < MIN_INTERVAL_PROD:
             interval_v = MIN_INTERVAL_PROD
@@ -147,6 +178,9 @@ async def create_scrape(
         status="pending",
     )
     db.add(task)
+    # Deduct the credit in the same transaction that creates the task.
+    if user and not is_exempt:
+        user.credits = max(0, user.credits - 1)
     db.commit()
     db.refresh(task)
 
@@ -154,6 +188,14 @@ async def create_scrape(
 
     response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie("flash_success", f"Scrape job #{task.id} started!", max_age=5)
+    return response
+
+
+def _flash_error(message: str) -> RedirectResponse:
+    # Flash cookie values must stay ASCII — Starlette encodes Set-Cookie
+    # headers as latin-1 and non-ASCII raises at response time.
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie("flash_error", message, max_age=10)
     return response
 
 

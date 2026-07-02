@@ -173,6 +173,11 @@ jobs:
   #      VAPID_EMAIL           — Web push contact (default mailto:admin@example.com)
   #      GOOGLE_CLIENT_ID      — Google OAuth client ID (leave unset to disable Google login)
   #      GOOGLE_CLIENT_SECRET  — Google OAuth client secret
+  #      STRIPE_SECRET_KEY     — Stripe secret API key (leave empty to disable paid plans)
+  #      STRIPE_WEBHOOK_SECRET — Stripe webhook signing secret for /billing/webhook
+  #      STRIPE_PRICE_CORE     — Stripe recurring Price ID for the Core plan
+  #      STRIPE_PRICE_PRO      — Stripe recurring Price ID for the Pro plan
+  #      PUBLIC_BASE_URL       — public https origin used for Stripe redirect URLs
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -203,7 +208,12 @@ jobs:
               "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" \
               "VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}" \
               "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
-              "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}"
+              "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" \
+              "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
+              "STRIPE_PRICE_CORE=${{ secrets.STRIPE_PRICE_CORE }}" \
+              "STRIPE_PRICE_PRO=${{ secrets.STRIPE_PRICE_PRO }}" \
+              "PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}"
           echo "✓ kleinanzeigen-api updated"
 
       - name: Update Worker image

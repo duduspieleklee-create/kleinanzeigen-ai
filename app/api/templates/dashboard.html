@@ -23,10 +23,17 @@
             <button id="notif-btn" onclick="handleNotifClick()">Enable notifications</button>
         </div>
 
-        {% if daily_limit and daily_limit > 0 %}
-        <div class="quota-bar">
-            Free plan: <strong>{{ used_today }} / {{ daily_limit }}</strong> searches used today
-            {% if used_today >= daily_limit %} — limit reached, resets at midnight (UTC){% endif %}
+        {% if is_admin %}
+        <div class="quota-bar">Admin account &mdash; unlimited searches</div>
+        {% else %}
+        <div class="quota-bar plan-bar">
+            <span>
+                <strong>{{ plan_label }}</strong> plan &middot;
+                <strong>{{ credits }}</strong> credit{{ '' if credits == 1 else 's' }} left
+                {% if credits_reset_at %} &middot; resets {{ credits_reset_at.strftime('%d.%m. %H:%M') }} UTC{% endif %}
+                &middot; {{ active_searches }}/{{ max_active_searches }} recurring searches
+            </span>
+            <a href="/billing" class="upgrade-link">{% if plan_name == 'pro' %}Manage plan{% else %}Upgrade&nbsp;&rarr;{% endif %}</a>
         </div>
         {% endif %}
 
@@ -173,23 +180,16 @@
                 </div>
 
                 <label>Frequency</label>
+                {% set min_iv = min_interval_seconds or 300 %}
+                {% set default_iv = 300 if min_iv <= 300 else min_iv %}
                 <div class="frequency-group">
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="5" id="freq-5s">
-                        Every 5 seconds <em style="color:#888">(dev only)</em>
+                    {% for val, lbl in [(5, 'Every 5 seconds'), (300, 'Every 5 minutes'), (1800, 'Every 30 minutes'), (3600, 'Every 60 minutes')] %}
+                    <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
+                        <input type="radio" name="interval_seconds" value="{{ val }}"{% if val == 5 %} id="freq-5s"{% endif %}{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
+                        {{ lbl }}{% if val == 5 %} <em style="color:#888">(dev only)</em>{% endif %}
+                        {% if val < min_iv %}<a href="/billing" class="freq-upgrade">upgrade</a>{% endif %}
                     </label>
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="300" checked>
-                        Every 5 minutes
-                    </label>
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="1800">
-                        Every 30 minutes
-                    </label>
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="3600">
-                        Every 60 minutes
-                    </label>
+                    {% endfor %}
                 </div>
                 <div class="warning" id="fast-warning">
                     &#9888; 5-second interval is very aggressive and may result in IP bans from kleinanzeigen.de. Use only for local testing.

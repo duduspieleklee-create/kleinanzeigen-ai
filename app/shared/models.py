@@ -15,7 +15,18 @@ class User(Base):
     # Admin users may manage scheduled admin searches and rotating proxies.
     is_admin = Column(Boolean, nullable=False, server_default="false")
     # Max searches a user may start per calendar day. 0 = unlimited (admin).
+    # Legacy column — superseded by the plan/credit system but kept so that
+    # daily_limit == 0 still marks unlimited accounts (admin/system).
     daily_limit = Column(Integer, nullable=False, server_default="3")
+    # Subscription plan: basic (free) / core / pro — see app/shared/plans.py.
+    plan = Column(String(20), nullable=False, server_default="basic")
+    # Weekly search credits. One credit is consumed per newly started search;
+    # recurring re-runs are free. Refilled lazily each week (plans.ensure_weekly_credits).
+    credits = Column(Integer, nullable=False, server_default="0")
+    credits_reset_at = Column(DateTime(timezone=True))
+    # Stripe billing references (set once the user has been through checkout).
+    stripe_customer_id = Column(String(100), index=True)
+    stripe_subscription_id = Column(String(100))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
