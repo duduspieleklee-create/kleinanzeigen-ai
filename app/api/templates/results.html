@@ -30,6 +30,9 @@
             {% if task.parameters.get('radius') %}{% set _ = parts.append((task.parameters.get('radius')|string) ~ ' km') %}{% endif %}
             {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
             {% if parts %}<div class="filters">Filters: {{ parts | join(', ') }}</div>{% endif %}
+            {% if not show_deals %}
+            <div class="filters">Deal badges (below/above market) are a Core/Pro feature &mdash; <a href="/billing">upgrade</a> to unlock them.</div>
+            {% endif %}
         </div>
 
         {% if results %}

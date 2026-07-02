@@ -44,17 +44,24 @@
                         &mdash;
                     {% endif %}
                 </div>
+                {% if key == 'core' and trial_eligible %}
+                <div class="plan-trial-note">{{ trial_days }}-day free trial &mdash; cancel anytime</div>
+                {% endif %}
                 <ul class="plan-features">
                     <li><strong>{{ cfg.credits_per_week }}</strong> result credits / week</li>
                     <li>Up to <strong>{{ cfg.max_active_searches }}</strong> recurring searches</li>
                     <li>
-                        {% if cfg.min_interval_seconds <= 300 %}
-                            All check intervals (from 5 min)
+                        {% if cfg.min_interval_seconds <= 60 %}
+                            <strong>Instant Notifications</strong>
                         {% else %}
                             Intervals from {{ cfg.min_interval_seconds // 60 }} minutes
                         {% endif %}
                     </li>
+                    {% if cfg.deal_badges %}
                     <li>Push notifications &amp; deal badges</li>
+                    {% else %}
+                    <li>Push notifications</li>
+                    {% endif %}
                 </ul>
                 {% if current_plan == key %}
                     <div class="plan-current-label">Your current plan</div>
@@ -68,7 +75,7 @@
                     <form action="/billing/checkout" method="post">
                         <input type="hidden" name="plan" value="{{ key }}">
                         <button type="submit" class="plan-btn"{% if not billing_enabled %} disabled{% endif %}>
-                            {% if current_plan == 'pro' and key == 'core' %}Switch to Core{% else %}Upgrade to {{ cfg.label }}{% endif %}
+                            {% if current_plan == 'pro' and key == 'core' %}Switch to Core{% elif key == 'core' and trial_eligible %}Start {{ trial_days }}-day free trial{% else %}Upgrade to {{ cfg.label }}{% endif %}
                         </button>
                     </form>
                 {% endif %}
@@ -79,7 +86,8 @@
         <div class="card" style="margin-top:24px">
             <h3>How credits work</h3>
             <ul class="plan-features">
-                <li>Each <strong>new listing found</strong> costs <strong>1 credit</strong>. Starting searches and re-checks that find nothing new are free.</li>
+                <li>Each <strong>new listing found</strong> costs <strong>1 credit</strong>. The <strong>first check of every new search is free</strong> &mdash; you only pay for listings that appear after that.</li>
+                <li>Starting searches and re-checks that find nothing new are free.</li>
                 <li>Credits refill automatically every week.</li>
                 <li>Cancelling a recurring search frees up one of your search slots.</li>
                 <li>Upgrades take effect immediately &mdash; downgrades at the end of the billing period.</li>

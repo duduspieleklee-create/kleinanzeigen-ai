@@ -3,7 +3,12 @@
 Plans (see app/shared/plans.py):
   basic — free, 10 credits/week, 3 searches, 60-minute interval and up
   core  — paid, 50 credits/week, 10 searches, 30-minute interval and up
-  pro   — paid, 150 credits/week, 25 searches, all intervals
+  pro   — paid, 150 credits/week, 25 searches, instant notifications (60 s checks)
+
+First-time subscribers get a 3-day free trial on the Core plan: the checkout
+collects a card but Stripe charges nothing until the trial ends. The trial is
+once per account (users.trial_used, set by the webhook when a subscription
+actually starts).
 
 Prices themselves live in Stripe (STRIPE_PRICE_CORE / STRIPE_PRICE_PRO env vars
 hold the recurring Price IDs), so amounts can be changed in the Stripe
@@ -46,6 +51,14 @@ def _billing_enabled() -> bool:
         and settings.stripe_price_core
         and settings.stripe_price_pro
     )
+
+
+CORE_TRIAL_DAYS = 3
+
+
+def _trial_eligible(user) -> bool:
+    """The Core trial is for first-time subscribers only."""
+    return not user.trial_used and not user.stripe_subscription_id
 
 
 def _price_to_plan(price_id: str) -> str | None:
@@ -127,6 +140,8 @@ async def pricing_page(request: Request, db: Session = Depends(get_db)):
             "credits": user.credits,
             "billing_enabled": _billing_enabled(),
             "has_subscription": bool(user.stripe_subscription_id),
+            "trial_eligible": _billing_enabled() and _trial_eligible(user),
+            "trial_days": CORE_TRIAL_DAYS,
             "display_prices": _display_prices(),
             "flash_success": flash_success,
             "flash_error": flash_error,
@@ -189,6 +204,14 @@ async def create_checkout(
             user.stripe_customer_id = customer["id"]
             db.commit()
 
+        # 3-day Core trial for first-time subscribers: the card is collected
+        # up front but nothing is charged until the trial ends. Eligibility
+        # is burned only when a subscription actually starts (webhook), so an
+        # abandoned checkout keeps the trial available.
+        subscription_data = {"metadata": {"user_id": str(user.id), "plan": plan}}
+        if plan == "core" and _trial_eligible(user):
+            subscription_data["trial_period_days"] = CORE_TRIAL_DAYS
+
         base = _base_url(request)
         session = stripe.checkout.Session.create(
             customer=user.stripe_customer_id,
@@ -197,9 +220,7 @@ async def create_checkout(
             success_url=f"{base}/billing/success",
             cancel_url=f"{base}/billing",
             metadata={"user_id": str(user.id), "plan": plan},
-            subscription_data={
-                "metadata": {"user_id": str(user.id), "plan": plan},
-            },
+            subscription_data=subscription_data,
             allow_promotion_codes=True,
         )
     except Exception as e:
@@ -285,6 +306,9 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             user.stripe_subscription_id = (
                 obj.get("subscription") or user.stripe_subscription_id
             )
+            # Any started subscription (trialing or not) ends first-time
+            # eligibility for the Core trial.
+            user.trial_used = True
             grant_plan(db, user, plan)
             enforce_plan_limits(db, user)
             logger.info(f"Billing: user {user.id} upgraded to {plan}")
@@ -302,6 +326,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             plan = _price_to_plan(price_id)
             if status in ("active", "trialing") and plan and plan != user.plan:
                 user.stripe_subscription_id = obj.get("id")
+                user.trial_used = True  # backstop if the checkout webhook was missed
                 grant_plan(db, user, plan)
                 # Plan switches include downgrades (pro -> core): sweep any
                 # recurring searches that exceed the new plan's limits.
