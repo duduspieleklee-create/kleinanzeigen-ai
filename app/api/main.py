@@ -215,25 +215,25 @@ async def dashboard(
         .all()
     )
     # Deal badges are a Core/Pro feature — Basic users get plain results.
-    show_deals = bool(is_admin or cfg.get("deal_badges"))
+    show_deals = bool(is_admin or (cfg and cfg.get("deal_badges")))
     # Trust Score badges are a Core/Pro feature — Basic users see them grayed out
-    show_trust_scores = bool(is_admin or cfg.get("trust_scores", False))
+    show_trust_scores = bool(is_admin or (cfg and cfg.get("trust_scores", False)))
     recent_results = []
     if recent_rows:
         medians = {}
-        if show_deals:
-            # Badges compare against the per-search median, computed over ALL
-            # of each involved search's results (not just the rows shown).
-            task_ids = {t.id for _, t in recent_rows}
-            by_task: dict = {}
-            for tid, val in (
-                db.query(ScrapeResult.task_id, ScrapeResult.price_value)
-                .filter(ScrapeResult.task_id.in_(task_ids))
-                .all()
-            ):
-                by_task.setdefault(tid, []).append(val)
-            medians = {tid: median_price(vals) for tid, vals in by_task.items()}
+        # Pre-calculate medians if needed for deal badges
+        task_ids = {t.id for _, t in recent_rows}
+        by_task: dict = {}
+        for tid, val in (
+            db.query(ScrapeResult.task_id, ScrapeResult.price_value)
+            .filter(ScrapeResult.task_id.in_(task_ids))
+            .all()
+        ):
+            by_task.setdefault(tid, []).append(val)
+        medians = {tid: median_price(vals) for tid, vals in by_task.items()}
+
         for r, t in recent_rows:
+            # Attach extra context to each result for the template
             r.deal = deal_badge(r.price_value, medians.get(t.id)) if show_deals else None
             r.search_keywords = (t.parameters or {}).get("keywords") or f"Search #{t.id}"
             recent_results.append(r)
