@@ -261,7 +261,15 @@ async def view_results(
     task_id: int,
     request: Request,
     db: Session = Depends(get_db),
+    page: int = Query(default=1, ge=1),
+    tab: str = Query(default="all"),
 ):
+    from datetime import datetime, timezone
+    from collections import Counter
+
+    PAGE_SIZE = 10
+    COOKIE_NAME = f"rv_{task_id}"  # "results visited" — stores last-visit Unix timestamp
+
     # Mirror the dashboard's auth handling: redirect to login instead of 401
     # so a missed-session user lands on a friendly page.
     try:
@@ -276,32 +284,95 @@ async def view_results(
     if not task:
         raise HTTPException(status_code=404, detail="Search not found")
 
-    results = (
+    all_results = (
         db.query(ScrapeResult)
         .filter(ScrapeResult.task_id == task_id)
         .order_by(ScrapeResult.created_at.desc())
         .all()
     )
 
-    # Market context: median price across the search, and a deal badge per
-    # listing (below / at / above market) — something kleinanzeigen never shows.
-    # Deal badges are a Core/Pro feature; Basic users get the plain grid.
+    # ── "New since last visit" cutoff ────────────────────────────────────────
+    # Cookie rv_{task_id} stores the Unix timestamp of the user's previous page
+    # load. Results whose created_at is strictly after that timestamp are "new".
+    # First visit: no cookie → no NEW badges (nothing to compare against yet).
+    # The cookie is always updated to now() at the end of the response so the
+    # NEXT visit will correctly compare against the current visit time.
+    now_utc = datetime.now(timezone.utc)
+    last_visit: datetime | None = None
+    raw_cookie = request.cookies.get(COOKIE_NAME)
+    if raw_cookie:
+        try:
+            last_visit = datetime.fromtimestamp(float(raw_cookie), tz=timezone.utc)
+        except (ValueError, OSError):
+            last_visit = None
+
+    def _is_new(r) -> bool:
+        if last_visit is None or not r.created_at:
+            return False
+        ts = r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)
+        return ts > last_visit
+
+    new_count = sum(1 for r in all_results if _is_new(r))
+
+    # ── Subcategory tabs: unique locations (up to 4 most common) ────────────
+    loc_counts = Counter(
+        r.location.split("\n")[0].strip()
+        for r in all_results
+        if r.location and r.location.strip() and r.location.strip() != "N/A"
+    )
+    location_tabs = [loc for loc, _ in loc_counts.most_common(4)] if len(loc_counts) > 1 else []
+
+    # ── Apply tab filter ──────────────────────────────────────────────────────
+    if tab == "new":
+        filtered = [r for r in all_results if _is_new(r)]
+    elif tab in location_tabs:
+        filtered = [r for r in all_results if r.location and tab in r.location]
+    else:
+        tab = "all"
+        filtered = list(all_results)
+
+    # ── Pagination ────────────────────────────────────────────────────────────
+    total_in_tab = len(filtered)
+    total_pages = max(1, (total_in_tab + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(page, total_pages)
+    offset = (page - 1) * PAGE_SIZE
+    page_results = filtered[offset:offset + PAGE_SIZE]
+
+    # ── Market context + deal badges + NEW flag ───────────────────────────────
     user = db.query(User).filter(User.id == current_user["id"]).first()
     show_deals = bool(user and (user.is_admin or plan_config(user.plan).get("deal_badges")))
-    median = median_price([r.price_value for r in results]) if show_deals else None
-    for r in results:
+    median = median_price([r.price_value for r in all_results]) if show_deals else None
+    for r in page_results:
         r.deal = deal_badge(r.price_value, median) if show_deals else None
+        r.is_new = _is_new(r)
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "results.html",
         {
             "request": request,
             "task": task,
-            "results": results,
+            "results": page_results,
+            "total_count": len(all_results),
+            "new_count": new_count,
             "median": median,
             "show_deals": show_deals,
+            "tab": tab,
+            "location_tabs": location_tabs,
+            "page": page,
+            "total_pages": total_pages,
+            "total_in_tab": total_in_tab,
         },
     )
+    # Stamp this visit so the next load can compare against it.
+    # 30-day expiry; httponly prevents JS tampering; samesite=lax is safe for nav.
+    response.set_cookie(
+        COOKIE_NAME,
+        value=str(now_utc.timestamp()),
+        max_age=60 * 60 * 24 * 30,
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/{task_id}", response_model=ScrapeResponse)

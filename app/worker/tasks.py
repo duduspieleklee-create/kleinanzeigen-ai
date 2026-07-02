@@ -173,6 +173,14 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     try:
         resolved_task_id, task = _ensure_task(db, task_id, parameters)
 
+        # Guard: if the user cancelled before this queued run started, bail out
+        # without touching the status so the "cancelled" state is preserved.
+        if task and task.status == "cancelled":
+            logger.info(
+                f"Task {resolved_task_id} was cancelled before this queued run started — aborting"
+            )
+            return
+
         # Mark task as running
         if task:
             task.status = "running"
@@ -250,7 +258,12 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 title_tag = item.find("h2") or item.find("a", class_="ellipsis")
                 title = title_tag.get_text(strip=True) if title_tag else "No title"
 
-                price_tag = item.find("p", class_="aditem-main--middle--price")
+                # kleinanzeigen renamed the price element; keep old class as fallback
+                # for any cached/legacy HTML that may still use the old name.
+                price_tag = (
+                    item.find("p", class_="aditem-main--middle--price-shipping--price")
+                    or item.find("p", class_="aditem-main--middle--price")
+                )
                 price = price_tag.get_text(strip=True) if price_tag else "N/A"
 
                 location_tag = item.find("div", class_="aditem-main--top--left")

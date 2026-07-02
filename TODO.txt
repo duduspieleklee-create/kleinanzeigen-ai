@@ -102,3 +102,24 @@
 - [ ] Update docs/architecture.md with final infra diagram and data flow
 - [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
 - [ ] Add unit tests (pytest) for API routes and Celery tasks
+
+25. BUG FIXES — CANCEL RACE / PRICE SELECTOR / KEYWORD URL (2026-07-02)
+- [x] Fix cancel race: added cancelled guard in scrape_kleinanzeigen() before
+      setting status="running" — queued runs that start after a cancel now bail
+      immediately without overwriting the "cancelled" status or re-scheduling
+- [x] Fix price selector: updated to aditem-main--middle--price-shipping--price
+      (kleinanzeigen renamed the element); old class kept as fallback for cached HTML
+- [x] Fix keyword-only URL 400: url_builder now produces /s-{keyword}/k0 for
+      keyword-only searches instead of the rejected /s-anzeigen/{keyword}/k0 shape
+      — category+keyword path (/s-{category}/{keyword}/k0) unchanged and still works
+
+26. RESULTS PAGE — NEW BADGE / SUBCATEGORY TABS / PAGINATION (2026-07-02)
+- [x] NEW badge: keyed to last-visit cookie rv_{task_id} (Unix timestamp, 30-day, httponly)
+      results with created_at > last_visit are flagged is_new; first visit shows no badges
+      cookie updated to now() on every response so next visit compares correctly
+- [x] Subcategory tabs: All (N) | New (N) + up to 4 most-common unique location tabs
+      tab state preserved in URL (?tab=all|new|<location>&page=N)
+- [x] Pagination: 10 results per page, prev/next + numbered pages with ellipsis
+      page info footer shows "X–Y of Z" for current slice
+- [ ] Consider server-side tab counts for location tabs (currently client counts)
+- [ ] Add keyboard navigation for tab bar (arrow keys)
