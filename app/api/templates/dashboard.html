@@ -71,6 +71,19 @@
         <div class="card">
             <h3>New Recurring Search</h3>
             <form action="/scrapes/" method="post" id="scrape-form" class="search-form">
+              <div class="wizard-steps">
+                <div class="wizard-step-indicator active" data-step="1">
+                    <span class="wizard-step-num">1</span>
+                    <span class="wizard-step-label">Search</span>
+                </div>
+                <div class="wizard-step-line"></div>
+                <div class="wizard-step-indicator" data-step="2">
+                    <span class="wizard-step-num">2</span>
+                    <span class="wizard-step-label">Frequency</span>
+                </div>
+              </div>
+
+              <div id="wizard-step-1" class="wizard-panel active">
               <div class="form-grid">
                 <div class="form-field">
                 <label for="keywords">Keywords</label>
@@ -196,7 +209,18 @@
                     </select>
                 </div>
 
-                <div class="form-field form-full">
+              </div>
+
+              <div class="wizard-inline-warning" id="step1-warning" style="display:none">
+                  Please enter keywords or a location to search for &mdash; just like you would on kleinanzeigen.de.
+              </div>
+
+              <button type="button" class="wizard-next-btn" id="wizard-next-btn">Continue to frequency &rarr;</button>
+              </div><!-- /wizard-step-1 -->
+
+              <div id="wizard-step-2" class="wizard-panel">
+                <div class="wizard-summary" id="wizard-summary"></div>
+
                 <label>Frequency</label>
                 {% set min_iv = min_interval_seconds or 300 %}
                 {% set default_iv = 300 if min_iv <= 300 else min_iv %}
@@ -209,10 +233,20 @@
                     </label>
                     {% endfor %}
                 </div>
-                </div>
-              </div>
 
-                <button type="submit">Start Recurring Scrape</button>
+                <div class="promo-box">
+                    <span class="promo-icon">&#10024;</span>
+                    <div>
+                        <strong>Smart Alerts &mdash; coming soon</strong>
+                        <p>AI-powered deal scoring, price-drop predictions and instant match summaries will land right here next.</p>
+                    </div>
+                </div>
+
+                <div class="wizard-actions">
+                    <button type="button" class="wizard-back-btn" id="wizard-back-btn">&larr; Back</button>
+                    <button type="submit">Start Recurring Scrape</button>
+                </div>
+              </div><!-- /wizard-step-2 -->
             </form>
         </div>
 
@@ -778,6 +812,65 @@
                 }
             }
         }
+
+        // ── Search creation wizard (step 1: search, step 2: frequency) ─────────
+        (function() {
+            var step1 = document.getElementById('wizard-step-1');
+            var step2 = document.getElementById('wizard-step-2');
+            var nextBtn = document.getElementById('wizard-next-btn');
+            var backBtn = document.getElementById('wizard-back-btn');
+            var warning = document.getElementById('step1-warning');
+            var indicator1 = document.querySelector('.wizard-step-indicator[data-step="1"]');
+            var indicator2 = document.querySelector('.wizard-step-indicator[data-step="2"]');
+            var summary = document.getElementById('wizard-summary');
+            if (!step1 || !step2 || !nextBtn || !backBtn) return;
+
+            function buildSummary() {
+                var kw = document.getElementById('keywords').value.trim();
+                var loc = document.getElementById('location-input').value.trim();
+                var catSelect = document.getElementById('category');
+                var cat = catSelect.value ? catSelect.options[catSelect.selectedIndex].text : '';
+                var parts = [];
+                if (kw) parts.push('"' + kw + '"');
+                if (cat) parts.push(cat);
+                if (loc) parts.push(loc);
+                summary.textContent = parts.length ? parts.join(' \u00b7 ') : 'All listings';
+            }
+
+            function goToStep2() {
+                var kw = document.getElementById('keywords').value.trim();
+                var loc = document.getElementById('location-input').value.trim();
+                if (!kw && !loc) {
+                    warning.style.display = 'block';
+                    return;
+                }
+                warning.style.display = 'none';
+                buildSummary();
+                step1.classList.remove('active');
+                step2.classList.add('active');
+                indicator1.classList.remove('active');
+                indicator1.classList.add('done');
+                indicator2.classList.add('active');
+            }
+
+            function goToStep1() {
+                step2.classList.remove('active');
+                step1.classList.add('active');
+                indicator2.classList.remove('active');
+                indicator1.classList.remove('done');
+                indicator1.classList.add('active');
+            }
+
+            nextBtn.addEventListener('click', goToStep2);
+            backBtn.addEventListener('click', goToStep1);
+
+            document.getElementById('scrape-form').addEventListener('submit', function(e) {
+                if (!step2.classList.contains('active')) {
+                    e.preventDefault();
+                    goToStep2();
+                }
+            });
+        })();
 
         // ── Location autocomplete ─────────────────────────────────────────────
         (function() {

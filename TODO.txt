@@ -136,3 +136,23 @@
       location field hides the radius control again and resets its value
 - [ ] Consider persisting last-used search filters (keywords, category, radius)
       per user so the form pre-fills on next visit
+
+28. SEARCH CREATION WIZARD — TWO-STEP FLOW (2026-07-02)
+- [x] Split "New Recurring Search" into two separate steps: Step 1 mirrors a
+      plain kleinanzeigen.de search (keywords, category, location, radius,
+      price range, ad type, poster type, condition, shipping); Step 2 is
+      purely for choosing the check frequency
+- [x] Search creation only completes (form submits) after Step 2 — the
+      previous single-page form behavior/backend contract is unchanged,
+      this is purely a client-side UX restructure (same POST /scrapes/ payload)
+- [x] Added a step indicator (1 Search -> 2 Frequency) and a short summary
+      recap of the Step 1 choices shown at the top of Step 2
+- [x] Step 1 requires at least a keyword or a location before advancing
+      (soft client-side check, mirrors how a real kleinanzeigen.de search works)
+- [x] Added a "Smart Alerts — coming soon" promo box on Step 2 as the
+      designated slot for future AI/smart-feature upsells (deal scoring,
+      price-drop predictions, etc.) — no functionality yet, teaser only
+- [ ] Wire up real AI/smart features in the Step 2 promo slot once designed
+      (deal scoring, price predictions, smart summaries)
+- [ ] Consider saving step-1 draft to localStorage so a refresh doesn't lose
+      the user's in-progress search
