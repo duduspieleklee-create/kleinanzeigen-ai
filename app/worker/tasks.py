@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 from bs4 import BeautifulSoup
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
@@ -149,12 +149,12 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         # stays scheduled — it resumes finding listings after the weekly
         # refill or an upgrade.
         owner = None
-        credit_cap = None  # None = unlimited
+        metered = False
         if task and task.user_id:
             owner = db.query(User).filter(User.id == task.user_id).first()
         if owner and not owner.is_admin and owner.id != settings.system_user_id:
             ensure_weekly_credits(db, owner)
-            credit_cap = max(0, owner.credits)
+            metered = True
 
         # Dedupe against listings already saved for this (recurring) task so we
         # only store — and only notify about — genuinely new listings. Keyed by
@@ -218,12 +218,27 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 key = item_url or f"{title}|{price}|{location}"
                 if key in seen_keys:
                     continue  # already seen on a previous run — not new
-                if credit_cap is not None and new_count >= credit_cap:
-                    logger.info(
-                        f"Credit cap reached for user {owner.id} "
-                        f"(task_id={resolved_task_id}) — skipping remaining new listings"
+                if metered:
+                    # Spend 1 credit atomically BEFORE saving. The conditional
+                    # UPDATE (credits > 0) runs inside the same transaction as
+                    # the result inserts: the first decrement takes a row lock
+                    # on the user, so concurrent tasks for the same user are
+                    # serialized and can never spend more credits than exist.
+                    # Rollback on failure undoes both results and decrements.
+                    spent = (
+                        db.query(User)
+                        .filter(User.id == owner.id, User.credits > 0)
+                        .update(
+                            {User.credits: User.credits - 1},
+                            synchronize_session=False,
+                        )
                     )
-                    break
+                    if not spent:
+                        logger.info(
+                            f"Credits exhausted for user {owner.id} "
+                            f"(task_id={resolved_task_id}) — skipping remaining new listings"
+                        )
+                        break
                 seen_keys.add(key)
 
                 result = ScrapeResult(
@@ -245,15 +260,6 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 continue
 
         db.commit()
-
-        # Deduct 1 credit per new result saved — atomic, floored at 0, so
-        # concurrent tasks for the same user cannot drive credits negative.
-        if credit_cap is not None and new_count > 0:
-            db.query(User).filter(User.id == owner.id).update(
-                {User.credits: func.greatest(User.credits - new_count, 0)},
-                synchronize_session=False,
-            )
-            db.commit()
 
         if task:
             # Re-fetch to respect a cancellation that arrived while the task was running.
