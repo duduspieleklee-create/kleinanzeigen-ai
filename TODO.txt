@@ -112,3 +112,13 @@
 - [x] Fix keyword-only URL 400: url_builder now produces /s-{keyword}/k0 for
       keyword-only searches instead of the rejected /s-anzeigen/{keyword}/k0 shape
       — category+keyword path (/s-{category}/{keyword}/k0) unchanged and still works
+
+26. RESULTS PAGE — NEW BADGE / SUBCATEGORY TABS / PAGINATION (2026-07-02)
+- [x] NEW badge: results within 10 min of latest created_at flagged is_new=True
+      displayed as green "new" pill in price row and in the h1 count
+- [x] Subcategory tabs: All (N) | New (N) + up to 4 most-common unique location tabs
+      tab state preserved in URL (?tab=all|new|<location>&page=N)
+- [x] Pagination: 10 results per page, prev/next + numbered pages with ellipsis
+      page info footer shows "X–Y of Z" for current slice
+- [ ] Consider server-side tab counts for location tabs (currently client counts)
+- [ ] Add keyboard navigation for tab bar (arrow keys)
