@@ -216,6 +216,8 @@ async def dashboard(
     )
     # Deal badges are a Core/Pro feature — Basic users get plain results.
     show_deals = bool(is_admin or cfg.get("deal_badges"))
+    # Trust Score badges are a Core/Pro feature — Basic users see them grayed out
+    show_trust_scores = bool(is_admin or cfg.get("trust_scores", False))
     recent_results = []
     if recent_rows:
         medians = {}
@@ -243,6 +245,7 @@ async def dashboard(
             "tasks": tasks_with_counts,
             "recent_results": recent_results,
             "show_deals": show_deals,
+            "show_trust_scores": show_trust_scores,
             "flash_success": flash_success,
             "flash_error": flash_error,
             "plan_notice": plan_notice,

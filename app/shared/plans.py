@@ -28,6 +28,7 @@ PLANS = {
         "max_active_searches": 3,
         "min_interval_seconds": 3600,
         "deal_badges": False,
+        "trust_scores": False,
     },
     "core": {
         "label": "Core",
@@ -35,6 +36,7 @@ PLANS = {
         "max_active_searches": 10,
         "min_interval_seconds": 1800,
         "deal_badges": True,
+        "trust_scores": True,
     },
     "pro": {
         "label": "Pro",
@@ -43,6 +45,7 @@ PLANS = {
         # Marketed as "Instant Notifications" — checks run every 60 seconds.
         "min_interval_seconds": 60,
         "deal_badges": True,
+        "trust_scores": True,
     },
 }
 
