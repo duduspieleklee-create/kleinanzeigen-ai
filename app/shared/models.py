@@ -28,6 +28,12 @@ class User(Base):
     # Stripe billing references (set once the user has been through checkout).
     stripe_customer_id = Column(String(100), index=True)
     stripe_subscription_id = Column(String(100))
+    # Email verification. Google signups are verified automatically (Google
+    # asserts the email); password signups must click the emailed link before
+    # they can start searches. Existing accounts were backfilled as verified.
+    email_verified = Column(Boolean, nullable=False, server_default="false")
+    verify_token = Column(String(64), index=True)
+    verify_token_expires_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
