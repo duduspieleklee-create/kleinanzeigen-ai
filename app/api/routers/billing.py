@@ -33,8 +33,11 @@ register_globals(templates)
 
 
 def _billing_enabled() -> bool:
+    # The webhook secret is required too: without it paid checkouts would
+    # complete in Stripe but never be synced back to a plan upgrade here.
     return bool(
         settings.stripe_secret_key
+        and settings.stripe_webhook_secret
         and settings.stripe_price_core
         and settings.stripe_price_pro
     )
@@ -154,6 +157,24 @@ async def create_checkout(
     )
 
     stripe.api_key = settings.stripe_secret_key
+
+    # Existing subscribers must change plans through the billing portal —
+    # a fresh Checkout would create a second, overlapping subscription and
+    # double-bill them.
+    if user.stripe_subscription_id:
+        try:
+            session = stripe.billing_portal.Session.create(
+                customer=user.stripe_customer_id,
+                return_url=f"{_base_url(request)}/billing",
+            )
+            return RedirectResponse(url=session["url"], status_code=303)
+        except Exception as e:
+            logger.error(f"Stripe portal (plan switch) failed for user {user.id}: {e}")
+            return _flash_redirect(
+                "/billing",
+                error="You already have a subscription - use Manage billing to switch plans.",
+            )
+
     try:
         if not user.stripe_customer_id:
             customer = stripe.Customer.create(
@@ -244,7 +265,16 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     if etype == "checkout.session.completed":
         user_id = (obj.get("metadata") or {}).get("user_id")
         plan = (obj.get("metadata") or {}).get("plan")
-        user = db.query(User).filter(User.id == int(user_id)).first() if user_id else None
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            logger.warning(f"Billing webhook: bad user_id metadata {user_id!r}")
+            user_id_int = None
+        user = (
+            db.query(User).filter(User.id == user_id_int).first()
+            if user_id_int is not None
+            else None
+        )
         if user and plan in ("core", "pro"):
             user.stripe_customer_id = obj.get("customer") or user.stripe_customer_id
             user.stripe_subscription_id = (

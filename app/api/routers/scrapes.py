@@ -178,9 +178,21 @@ async def create_scrape(
         status="pending",
     )
     db.add(task)
-    # Deduct the credit in the same transaction that creates the task.
+    # Deduct the credit atomically in the same transaction that creates the
+    # task. The conditional UPDATE (credits > 0) prevents two concurrent
+    # requests from both spending the last credit — the earlier credits check
+    # above only produces the friendly error message.
     if user and not is_exempt:
-        user.credits = max(0, user.credits - 1)
+        spent = (
+            db.query(User)
+            .filter(User.id == user.id, User.credits > 0)
+            .update({User.credits: User.credits - 1}, synchronize_session=False)
+        )
+        if not spent:
+            db.rollback()
+            return _flash_error(
+                "No search credits left. Credits reset weekly - upgrade at /billing for more."
+            )
     db.commit()
     db.refresh(task)
 
