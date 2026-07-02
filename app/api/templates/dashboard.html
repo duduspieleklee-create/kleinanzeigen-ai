@@ -37,6 +37,15 @@
         </div>
         {% endif %}
 
+        {% if not is_admin and not email_verified %}
+        <div class="flash-error" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <span>Please verify your email address ({{ user_email }}) to start searches &mdash; check your inbox for the link.</span>
+            <form method="post" action="/auth/resend-verification" style="margin:0">
+                <button type="submit" style="white-space:nowrap;padding:6px 12px;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer;font-size:0.85rem">Resend verification email</button>
+            </form>
+        </div>
+        {% endif %}
+
         {% if flash_success %}
         <div class="flash-success">{{ flash_success }}</div>
         {% endif %}
