@@ -219,6 +219,9 @@ async def dashboard(
             "active_searches": active_searches,
             "max_active_searches": cfg["max_active_searches"],
             "min_interval_seconds": 5 if is_admin else cfg["min_interval_seconds"],
+            # Email verification banner (admins are exempt from verification).
+            "email_verified": bool(db_user.email_verified) if db_user else True,
+            "user_email": db_user.email if db_user else "",
         },
     )
 
