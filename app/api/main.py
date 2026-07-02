@@ -181,6 +181,9 @@ async def dashboard(
 
     # ── Plan / credit status for the plan bar ────────────────────────────────
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
+    # One-shot downgrade notice (set by plans.enforce_plan_limits when a plan
+    # change cancelled/slowed searches): show it once, then clear it.
+    plan_notice = db_user.plan_notice if db_user else None
     plan_name = (db_user.plan if db_user else None) or "basic"
     cfg = plan_config(plan_name)
     credits = 0
@@ -207,6 +210,7 @@ async def dashboard(
             "tasks": tasks_with_counts,
             "flash_success": flash_success,
             "flash_error": flash_error,
+            "plan_notice": plan_notice,
             "is_admin": is_admin,
             "admin_searches": admin_searches,
             "proxies": proxies,
@@ -219,6 +223,9 @@ async def dashboard(
             "active_searches": active_searches,
             "max_active_searches": cfg["max_active_searches"],
             "min_interval_seconds": 5 if is_admin else cfg["min_interval_seconds"],
+            # Email verification banner (admins are exempt from verification).
+            "email_verified": bool(db_user.email_verified) if db_user else True,
+            "user_email": db_user.email if db_user else "",
         },
     )
 
@@ -226,5 +233,9 @@ async def dashboard(
         response.delete_cookie("flash_success")
     if flash_error:
         response.delete_cookie("flash_error")
+
+    if plan_notice and db_user is not None:
+        db_user.plan_notice = None
+        db.commit()
 
     return response

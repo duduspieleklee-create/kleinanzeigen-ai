@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from app.api.config import settings
 from app.shared.database import SessionLocal
 from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
-from app.shared.plans import ensure_weekly_credits
+from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price
 from app.shared.proxy import proxies_for_requests
 from app.shared.url_builder import build_kleinanzeigen_url
@@ -364,13 +364,36 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
         # ── Self-re-scheduling ──────────────────────────────────────────────
         # Only re-queue if the task wasn't cancelled between start and now.
-        interval = parameters.get("interval_seconds")
-        if interval and task and task.status == "completed":
-            logger.info(f"Re-scheduling scrape in {interval}s (task_id={resolved_task_id})")
-            scrape_kleinanzeigen.apply_async(
-                args=[parameters, resolved_task_id],
-                countdown=int(interval),
-            )
+        # Read the schedule from the task's CURRENT parameters in the DB, not
+        # the in-flight copy: a plan-downgrade sweep (plans.enforce_plan_limits)
+        # may have raised interval_seconds since this run was queued. As a
+        # second line of defense, clamp the interval to the owner's current
+        # plan floor for metered users so a missed webhook can't leave a
+        # cancelled subscriber running at paid-tier speed.
+        if task and task.status == "completed":
+            next_params = dict(task.parameters or parameters)
+            try:
+                interval = int(next_params.get("interval_seconds") or 0)
+            except (TypeError, ValueError):
+                interval = 0
+            if interval:
+                if metered and owner:
+                    db.refresh(owner)  # plan may have changed mid-run
+                    floor = plan_config(owner.plan)["min_interval_seconds"]
+                    if interval < floor:
+                        logger.info(
+                            f"Raising interval {interval}s -> plan floor {floor}s "
+                            f"for user {owner.id} (task_id={resolved_task_id})"
+                        )
+                        interval = floor
+                        next_params["interval_seconds"] = floor
+                        task.parameters = next_params
+                        db.commit()
+                logger.info(f"Re-scheduling scrape in {interval}s (task_id={resolved_task_id})")
+                scrape_kleinanzeigen.apply_async(
+                    args=[next_params, resolved_task_id],
+                    countdown=interval,
+                )
         # ───────────────────────────────────────────────────────────────────
 
         return {

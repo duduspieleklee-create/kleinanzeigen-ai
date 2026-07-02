@@ -114,6 +114,14 @@ async def create_scrape(
     is_exempt = bool(user and user.is_admin)
 
     if user and not is_exempt:
+        # 0. Email verification — throwaway accounts must confirm their inbox
+        # before they can consume scraping capacity / farm weekly credits.
+        if not user.email_verified:
+            return _flash_error(
+                "Please verify your email address before starting searches - "
+                "check your inbox or use 'Resend verification email' above."
+            )
+
         ensure_weekly_credits(db, user)
         cfg = plan_config(user.plan)
 

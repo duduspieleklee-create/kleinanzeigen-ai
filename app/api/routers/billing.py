@@ -23,7 +23,12 @@ from app.api.dependencies import get_current_user
 from app.api.version import register_globals
 from app.shared.database import get_db
 from app.shared.models import User
-from app.shared.plans import PLANS, grant_plan, ensure_weekly_credits
+from app.shared.plans import (
+    PLANS,
+    enforce_plan_limits,
+    ensure_weekly_credits,
+    grant_plan,
+)
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
@@ -281,6 +286,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 obj.get("subscription") or user.stripe_subscription_id
             )
             grant_plan(db, user, plan)
+            enforce_plan_limits(db, user)
             logger.info(f"Billing: user {user.id} upgraded to {plan}")
 
     elif etype == "customer.subscription.updated":
@@ -297,11 +303,15 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             if status in ("active", "trialing") and plan and plan != user.plan:
                 user.stripe_subscription_id = obj.get("id")
                 grant_plan(db, user, plan)
+                # Plan switches include downgrades (pro -> core): sweep any
+                # recurring searches that exceed the new plan's limits.
+                enforce_plan_limits(db, user)
                 logger.info(f"Billing: user {user.id} switched to {plan}")
             elif status in ("canceled", "unpaid", "incomplete_expired"):
                 user.plan = "basic"
                 user.stripe_subscription_id = None
                 db.commit()
+                enforce_plan_limits(db, user)
                 logger.info(f"Billing: user {user.id} downgraded (status={status})")
 
     elif etype == "customer.subscription.deleted":
@@ -314,6 +324,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             user.plan = "basic"
             user.stripe_subscription_id = None
             db.commit()
+            enforce_plan_limits(db, user)
             logger.info(f"Billing: user {user.id} subscription ended -> basic")
 
     return JSONResponse({"received": True})

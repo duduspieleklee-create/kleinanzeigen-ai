@@ -11,7 +11,10 @@ that find nothing new cost nothing. Credits refill weekly (lazy: the
 refill is applied on the next request after the reset time passes, so no
 scheduled job is needed).
 """
+import logging
 from datetime import datetime, timedelta, timezone
+
+logger = logging.getLogger("kleinanzeigen-ai")
 
 PLANS = {
     "basic": {
@@ -64,3 +67,90 @@ def grant_plan(db, user, plan: str) -> None:
     user.credits = cfg["credits_per_week"]
     user.credits_reset_at = datetime.now(timezone.utc) + timedelta(days=7)
     db.commit()
+
+
+def enforce_plan_limits(db, user) -> dict:
+    """Downgrade sweep: bring the user's recurring searches back within plan.
+
+    Plan limits are otherwise only checked when a search is CREATED, so a
+    user who downgrades would keep paid-tier searches re-running forever.
+    Called from the billing webhook after every plan change (harmless no-op
+    on upgrades). Two effects:
+
+      - recurring searches beyond the plan's slot cap are cancelled, newest
+        first (the oldest searches keep their slots)
+      - surviving recurring searches with an interval below the plan's floor
+        get their interval raised to the floor; the worker re-reads
+        parameters from the DB before each re-schedule, so this takes effect
+        on the search's next run
+
+    Admin accounts are exempt (mirrors creation-time enforcement). When
+    anything changed, a human-readable summary is stored in user.plan_notice
+    so the dashboard can tell the user what happened and why.
+    Commits. Returns {"cancelled": n, "slowed": n}.
+    """
+    from app.shared.models import ScrapeTask
+
+    if user is None or getattr(user, "is_admin", False):
+        return {"cancelled": 0, "slowed": 0}
+
+    cfg = plan_config(user.plan)
+    cap = cfg["max_active_searches"]
+    floor = cfg["min_interval_seconds"]
+
+    # Newest first — matches the cancellation order below.
+    tasks = (
+        db.query(ScrapeTask)
+        .filter(
+            ScrapeTask.user_id == user.id,
+            ScrapeTask.status.in_(("pending", "running", "completed")),
+            ScrapeTask.parameters.op("->>")("interval_seconds").isnot(None),
+        )
+        .order_by(ScrapeTask.created_at.desc(), ScrapeTask.id.desc())
+        .all()
+    )
+
+    excess_count = max(len(tasks) - cap, 0)
+    excess, kept = tasks[:excess_count], tasks[excess_count:]
+
+    cancelled = 0
+    for t in excess:
+        t.status = "cancelled"
+        cancelled += 1
+
+    slowed = 0
+    for t in kept:
+        params = dict(t.parameters or {})
+        try:
+            interval = int(params.get("interval_seconds") or 0)
+        except (TypeError, ValueError):
+            interval = 0
+        if interval and interval < floor:
+            params["interval_seconds"] = floor
+            # Reassign (not mutate) so SQLAlchemy detects the JSON change.
+            t.parameters = params
+            slowed += 1
+
+    if cancelled or slowed:
+        minutes = floor // 60
+        bits = []
+        if cancelled:
+            bits.append(
+                f"{cancelled} recurring search(es) were stopped because the "
+                f"{cfg['label']} plan allows {cap} active recurring searches"
+            )
+        if slowed:
+            bits.append(
+                f"{slowed} search(es) were slowed down to the {cfg['label']} "
+                f"plan minimum of {minutes} minutes between checks"
+            )
+        user.plan_notice = (
+            "Your plan changed: " + "; ".join(bits) + ". Upgrade at /billing to restore them."
+        )
+        logger.info(
+            f"Plan sweep for user {user.id} ({user.plan}): "
+            f"cancelled={cancelled} slowed={slowed}"
+        )
+        db.commit()
+
+    return {"cancelled": cancelled, "slowed": slowed}
