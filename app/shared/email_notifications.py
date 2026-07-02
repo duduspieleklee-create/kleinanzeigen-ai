@@ -6,7 +6,6 @@ Configuration via environment variables.
 import logging
 from typing import Optional, List
 from dataclasses import dataclass
-from datetime import datetime
 
 logger = logging.getLogger("kleinanzeigen-ai")
 

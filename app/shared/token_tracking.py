@@ -8,7 +8,7 @@ from typing import Optional, List, Dict
 from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 
-from app.shared.models import TokenUsage, User, ScrapeTask
+from app.shared.models import TokenUsage, ScrapeTask
 
 
 def get_daily_token_usage(db: Session, user_id: int, days: int = 1) -> int:

@@ -8,10 +8,10 @@ This task is meant to be scheduled via Celery Beat (e.g., daily at midnight).
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, not_
+from sqlalchemy import and_
 
 from app.shared.database import SessionLocal
-from app.shared.models import ScrapeResult, Favorite
+from app.shared.models import ScrapeResult
 from app.worker.celery_app import celery_app
 
 logger = logging.getLogger("kleinanzeigen-ai")

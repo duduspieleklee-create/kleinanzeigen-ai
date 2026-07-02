@@ -18,7 +18,7 @@ from app.api.dependencies import get_current_user
 from app.api.security import limiter
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
-from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User, Favorite, TokenUsage
+from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User, Favorite
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price
 from app.shared.token_tracking import get_token_usage_stats
