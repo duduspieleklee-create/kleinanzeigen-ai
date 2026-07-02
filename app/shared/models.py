@@ -28,6 +28,9 @@ class User(Base):
     # Stripe billing references (set once the user has been through checkout).
     stripe_customer_id = Column(String(100), index=True)
     stripe_subscription_id = Column(String(100))
+    # True once the user has ever started a subscription (set by the billing
+    # webhook). The 3-day Core trial is for first-time subscribers only.
+    trial_used = Column(Boolean, nullable=False, server_default="false")
     # One-shot dashboard notice set by the downgrade sweep
     # (plans.enforce_plan_limits) when searches were cancelled or slowed to
     # fit the new plan. Shown once on the dashboard, then cleared.
@@ -56,6 +59,10 @@ class ScrapeTask(Base):
     url = Column(Text, nullable=False)
     status = Column(String(20), default="pending")  # pending, running, completed, failed
     parameters = Column(JSON)                       # Stores search parameters as JSON
+    # False until the first successful run saved its baseline results. The
+    # baseline run is free — every listing is "new" then, so no credits are
+    # charged and no push is sent (see app/worker/tasks.py).
+    baseline_done = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True))
 

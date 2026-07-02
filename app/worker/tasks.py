@@ -221,6 +221,12 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             ensure_weekly_credits(db, owner)
             metered = True
 
+        # The first successful run of a search is a free baseline: everything
+        # it finds is "new" by definition, so it seeds the dedup set without
+        # charging credits and without sending a push. Charged runs start with
+        # the second check (baseline_done flips on success, below).
+        is_baseline = bool(task is not None and not task.baseline_done)
+
         # Dedupe against listings already saved for this (recurring) task so we
         # only store — and only notify about — genuinely new listings. Keyed by
         # listing URL, falling back to title|price|location when a URL is absent.
@@ -283,7 +289,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 key = item_url or f"{title}|{price}|{location}"
                 if key in seen_keys:
                     continue  # already seen on a previous run — not new
-                if metered:
+                if metered and not is_baseline:
                     # Spend 1 credit atomically BEFORE saving. The conditional
                     # UPDATE (credits > 0) runs inside the same transaction as
                     # the result inserts: the first decrement takes a row lock
@@ -329,29 +335,38 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         if task:
             # Re-fetch to respect a cancellation that arrived while the task was running.
             task = db.query(ScrapeTask).filter(ScrapeTask.id == resolved_task_id).first()
-            if task and task.status != "cancelled":
-                task.status = "completed"
+            if task:
+                if task.status != "cancelled":
+                    task.status = "completed"
+                # A successful run consumed the free baseline (a failed run
+                # keeps it — nothing was charged, so the retry is still free).
+                task.baseline_done = True
                 db.commit()
 
         logger.info(f"Saved {new_count} new result(s) from {url}")
 
         # ── Push notifications — only for genuinely new listings ────────────
-        if task and new_count > 0:
+        # The baseline run is silent: a "25 new listings" push right after
+        # setting up a search is noise, and none of it is genuinely new.
+        if task and new_count > 0 and not is_baseline:
             # Highlight the best below-market deal among the new listings.
+            # Deal badges are a Core/Pro feature — Basic owners get the plain
+            # "N new listing(s)" body.
             highlight = None
-            all_values = [
-                v for (v,) in db.query(ScrapeResult.price_value)
-                .filter(ScrapeResult.task_id == resolved_task_id).all()
-            ]
-            med = median_price(all_values)
-            best = None
-            for r in new_results:
-                badge = deal_badge(r.price_value, med)
-                if badge and badge["cls"] == "deal-great":
-                    if best is None or r.price_value < best[0]:
-                        best = (r.price_value, r.title, badge["label"])
-            if best:
-                highlight = f"🔥 {best[2]}: {best[1]}"
+            if owner and (owner.is_admin or plan_config(owner.plan).get("deal_badges")):
+                all_values = [
+                    v for (v,) in db.query(ScrapeResult.price_value)
+                    .filter(ScrapeResult.task_id == resolved_task_id).all()
+                ]
+                med = median_price(all_values)
+                best = None
+                for r in new_results:
+                    badge = deal_badge(r.price_value, med)
+                    if badge and badge["cls"] == "deal-great":
+                        if best is None or r.price_value < best[0]:
+                            best = (r.price_value, r.title, badge["label"])
+                if best:
+                    highlight = f"🔥 {best[2]}: {best[1]}"
 
             _send_push_notifications(
                 db,

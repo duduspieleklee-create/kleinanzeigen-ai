@@ -54,7 +54,7 @@ All three service Dockerfiles build from the repo root so they can `import app.s
 
 ### Self-re-scheduling
 
-If `interval_seconds` is included in `parameters`, the task re-queues itself via `apply_async(countdown=interval_seconds)` at the end of a successful run. In non-dev environments the API enforces a minimum of 300 s (`MIN_INTERVAL_PROD`).
+If `interval_seconds` is included in `parameters`, the task re-queues itself via `apply_async(countdown=interval_seconds)` at the end of a successful run. In non-dev environments the API enforces a minimum of 60 s (`MIN_INTERVAL_PROD`, the Pro plan's floor).
 
 ### Data model
 

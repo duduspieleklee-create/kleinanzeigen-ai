@@ -3,13 +3,18 @@
 Plan model:
   - basic (free): 10 credits/week, up to 3 recurring searches, 60-minute interval and up
   - core:         50 credits/week, up to 10 recurring searches, 30-minute interval and up
-  - pro:         150 credits/week, up to 25 recurring searches, all intervals
+  - pro:         150 credits/week, up to 25 recurring searches, instant
+                 notifications (60-second checks)
 
 One credit is consumed for each NEW listing a search finds (charged by the
-worker when the result is saved). Starting a search is free, and re-checks
-that find nothing new cost nothing. Credits refill weekly (lazy: the
-refill is applied on the next request after the reset time passes, so no
-scheduled job is needed).
+worker when the result is saved). Starting a search is free, and its first
+(baseline) check is free too — everything it finds is "new" by definition.
+Re-checks that find nothing new cost nothing. Credits refill weekly (lazy:
+the refill is applied on the next request after the reset time passes, so
+no scheduled job is needed).
+
+Deal badges (below/above-market classification) are a Core/Pro feature —
+Basic users get plain results.
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -22,18 +27,22 @@ PLANS = {
         "credits_per_week": 10,
         "max_active_searches": 3,
         "min_interval_seconds": 3600,
+        "deal_badges": False,
     },
     "core": {
         "label": "Core",
         "credits_per_week": 50,
         "max_active_searches": 10,
         "min_interval_seconds": 1800,
+        "deal_badges": True,
     },
     "pro": {
         "label": "Pro",
         "credits_per_week": 150,
         "max_active_searches": 25,
-        "min_interval_seconds": 300,
+        # Marketed as "Instant Notifications" — checks run every 60 seconds.
+        "min_interval_seconds": 60,
+        "deal_badges": True,
     },
 }
 

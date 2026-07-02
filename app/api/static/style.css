@@ -963,6 +963,13 @@ body.offline-page {
 
 .plan-per { font-size: 14px; font-weight: 400; color: #667085; }
 
+.plan-trial-note {
+    font-size: 13px;
+    font-weight: 600;
+    color: #177a4b;
+    margin: 2px 0 4px;
+}
+
 .plan-features {
     list-style: none;
     margin: 0;

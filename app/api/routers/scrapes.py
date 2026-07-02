@@ -21,7 +21,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
 register_globals(templates)
 
-MIN_INTERVAL_PROD = 300  # 5 minutes — enforced in non-dev environments
+MIN_INTERVAL_PROD = 60  # 1 minute — enforced in non-dev environments (Pro's floor)
 
 
 def _clean_str(value: Optional[str]) -> Optional[str]:
@@ -285,13 +285,22 @@ async def view_results(
 
     # Market context: median price across the search, and a deal badge per
     # listing (below / at / above market) — something kleinanzeigen never shows.
-    median = median_price([r.price_value for r in results])
+    # Deal badges are a Core/Pro feature; Basic users get the plain grid.
+    user = db.query(User).filter(User.id == current_user["id"]).first()
+    show_deals = bool(user and (user.is_admin or plan_config(user.plan).get("deal_badges")))
+    median = median_price([r.price_value for r in results]) if show_deals else None
     for r in results:
-        r.deal = deal_badge(r.price_value, median)
+        r.deal = deal_badge(r.price_value, median) if show_deals else None
 
     return templates.TemplateResponse(
         "results.html",
-        {"request": request, "task": task, "results": results, "median": median},
+        {
+            "request": request,
+            "task": task,
+            "results": results,
+            "median": median,
+            "show_deals": show_deals,
+        },
     )
 
 

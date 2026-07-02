@@ -58,9 +58,10 @@
         {% endif %}
 
         <div class="tab-nav">
-            <button class="tab-btn active" onclick="showTab('my-searches', this)">My Searches</button>
+            <button class="tab-btn active" data-tab="my-searches" onclick="showTab('my-searches', this)">My Searches</button>
+            <button class="tab-btn" data-tab="my-results" onclick="showTab('my-results', this)">My Results</button>
             {% if is_admin %}
-            <button class="tab-btn" onclick="showTab('admin', this)">Admin</button>
+            <button class="tab-btn" data-tab="admin" onclick="showTab('admin', this)">Admin</button>
             {% endif %}
         </div>
 
@@ -196,7 +197,7 @@
                 {% set min_iv = min_interval_seconds or 300 %}
                 {% set default_iv = 300 if min_iv <= 300 else min_iv %}
                 <div class="frequency-group">
-                    {% for val, lbl in [(5, 'Every 5 seconds'), (300, 'Every 5 minutes'), (1800, 'Every 30 minutes'), (3600, 'Every 60 minutes')] %}
+                    {% for val, lbl in [(5, 'Every 5 seconds'), (60, 'Instant'), (300, 'Every 5 minutes'), (1800, 'Every 30 minutes'), (3600, 'Every 60 minutes')] %}
                     <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
                         <input type="radio" name="interval_seconds" value="{{ val }}"{% if val == 5 %} id="freq-5s"{% endif %}{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
                         {{ lbl }}{% if val == 5 %} <em style="color:#888">(dev only)</em>{% endif %}
@@ -250,6 +251,7 @@
                         <td>
                             {% set iv = task.parameters.get('interval_seconds') %}
                             {% if iv == 5 %}5 s
+                            {% elif iv == 60 %}Instant
                             {% elif iv == 300 %}5 min
                             {% elif iv == 1800 %}30 min
                             {% elif iv == 3600 %}60 min
@@ -276,6 +278,48 @@
         </div>
 
         </div><!-- /tab-my-searches -->
+
+        <div id="tab-my-results" class="tab-pane">
+            <div class="card">
+                <h3>My Results</h3>
+                <p style="font-size:14px;color:#666;margin:0 0 14px">
+                    The latest listings your searches have delivered.
+                    {% if not show_deals %}Deal badges are a Core/Pro feature &mdash; <a href="/billing">upgrade</a> to unlock them.{% endif %}
+                </p>
+                {% if recent_results %}
+                <div class="grid">
+                    {% for r in recent_results %}
+                    <a class="result-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
+                        {% if r.image_url %}
+                        <img class="thumb" src="{{ r.image_url }}" alt="" loading="lazy"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="thumb-placeholder" style="display:none">No image</div>
+                        {% else %}
+                        <div class="thumb-placeholder">No image</div>
+                        {% endif %}
+                        <div class="card-body">
+                            <span class="price-row">
+                                <span class="card-price">{{ r.price }}</span>
+                                {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
+                            </span>
+                            <span class="card-title">{{ r.title }}</span>
+                            {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
+                            <span class="card-meta">
+                                <span>{{ r.location }}</span>
+                                <span>{{ r.created_at.strftime('%d.%m %H:%M') if r.created_at else '' }}</span>
+                            </span>
+                            <span class="card-meta" style="margin-top:2px">
+                                <span>Search: {{ r.search_keywords }}</span>
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">No results yet &mdash; new listings found by your searches will appear here.</div>
+                {% endif %}
+            </div>
+        </div><!-- /tab-my-results -->
 
         {% if is_admin %}
         <div id="tab-admin" class="tab-pane">
@@ -486,9 +530,10 @@
         // Restore tab from URL hash (e.g. after form POST redirects to /dashboard#tab-admin)
         (function() {
             var hash = window.location.hash;
-            if (hash === '#tab-admin') {
-                var btn = document.querySelector('.tab-btn:nth-child(2)');
-                showTab('admin', btn);
+            if (hash.indexOf('#tab-') === 0) {
+                var name = hash.slice(5);
+                var btn = document.querySelector('.tab-btn[data-tab="' + name + '"]');
+                if (btn) showTab(name, btn);
             }
         })();
 
@@ -612,6 +657,7 @@
 
         function formatInterval(iv) {
             if (iv === 5) return '5 s';
+            if (iv === 60) return 'Instant';
             if (iv === 300) return '5 min';
             if (iv === 1800) return '30 min';
             if (iv === 3600) return '60 min';
@@ -670,14 +716,24 @@
                 statusTd.appendChild(badge);
 
                 var countTd = document.createElement('td');
-                countTd.textContent = task.result_count;
+                var countLink = document.createElement('a');
+                countLink.href = '/scrapes/' + task.id + '/results';
+                countLink.title = 'View all delivered results';
+                countLink.textContent = task.result_count;
+                countTd.appendChild(countLink);
 
                 var actionTd = document.createElement('td');
+                var viewLink = document.createElement('a');
+                viewLink.href = '/scrapes/' + task.id + '/results';
+                viewLink.className = 'view-link';
+                viewLink.textContent = 'View';
+                actionTd.appendChild(viewLink);
                 if (canCancel) {
                     var form = document.createElement('form');
                     form.method = 'post';
                     form.action = '/scrapes/' + task.id + '/cancel';
                     form.style.margin = '0';
+                    form.style.display = 'inline';
                     var btn = document.createElement('button');
                     btn.type = 'submit';
                     btn.className = 'cancel-btn';
