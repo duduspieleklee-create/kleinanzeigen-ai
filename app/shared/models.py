@@ -20,8 +20,9 @@ class User(Base):
     daily_limit = Column(Integer, nullable=False, server_default="3")
     # Subscription plan: basic (free) / core / pro — see app/shared/plans.py.
     plan = Column(String(20), nullable=False, server_default="basic")
-    # Weekly search credits. One credit is consumed per newly started search;
-    # recurring re-runs are free. Refilled lazily each week (plans.ensure_weekly_credits).
+    # Weekly result credits. One credit is consumed per NEW listing found
+    # (deducted by the worker when the result is saved). Refilled lazily each
+    # week (plans.ensure_weekly_credits).
     credits = Column(Integer, nullable=False, server_default="0")
     credits_reset_at = Column(DateTime(timezone=True))
     # Stripe billing references (set once the user has been through checkout).

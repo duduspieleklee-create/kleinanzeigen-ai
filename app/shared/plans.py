@@ -5,8 +5,9 @@ Plan model:
   - core:         50 credits/week, up to 10 recurring searches, 30-minute interval and up
   - pro:         150 credits/week, up to 25 recurring searches, all intervals
 
-One credit is consumed each time a user starts a new search. Recurring re-runs
-of an existing search do NOT consume credits. Credits refill weekly (lazy: the
+One credit is consumed for each NEW listing a search finds (charged by the
+worker when the result is saved). Starting a search is free, and re-checks
+that find nothing new cost nothing. Credits refill weekly (lazy: the
 refill is applied on the next request after the reset time passes, so no
 scheduled job is needed).
 """

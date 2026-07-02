@@ -45,7 +45,7 @@
                     {% endif %}
                 </div>
                 <ul class="plan-features">
-                    <li><strong>{{ cfg.credits_per_week }}</strong> search credits / week</li>
+                    <li><strong>{{ cfg.credits_per_week }}</strong> result credits / week</li>
                     <li>Up to <strong>{{ cfg.max_active_searches }}</strong> recurring searches</li>
                     <li>
                         {% if cfg.min_interval_seconds <= 300 %}
@@ -79,7 +79,7 @@
         <div class="card" style="margin-top:24px">
             <h3>How credits work</h3>
             <ul class="plan-features">
-                <li>Starting a new search costs <strong>1 credit</strong>. Automatic re-checks of a running recurring search are free.</li>
+                <li>Each <strong>new listing found</strong> costs <strong>1 credit</strong>. Starting searches and re-checks that find nothing new are free.</li>
                 <li>Credits refill automatically every week.</li>
                 <li>Cancelling a recurring search frees up one of your search slots.</li>
                 <li>Upgrades take effect immediately &mdash; downgrades at the end of the billing period.</li>

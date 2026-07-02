@@ -109,7 +109,7 @@ async def create_scrape(
 
     # ── Plan enforcement (credits / search slots / interval floor) ───────────
     # Admin accounts (is_admin) are exempt. Everyone else runs on the weekly
-    # credit system: 1 credit per newly started search, a cap on concurrently
+    # credit system: 1 credit per NEW listing found, a cap on concurrently
     # active recurring searches, and a per-plan minimum check interval.
     user = db.query(User).filter(User.id == current_user["id"]).first()
     is_exempt = bool(user and user.is_admin)
@@ -118,7 +118,9 @@ async def create_scrape(
         ensure_weekly_credits(db, user)
         cfg = plan_config(user.plan)
 
-        # 1. Credits — one per newly started search.
+        # 1. Credits — 1 credit is consumed per NEW listing found (charged by
+        # the worker when results are saved). Starting a search itself is
+        # free, but pointless at 0 credits, so block it with a clear message.
         if user.credits <= 0:
             reset_str = (
                 user.credits_reset_at.strftime("%d.%m. %H:%M UTC")
@@ -126,8 +128,9 @@ async def create_scrape(
                 else "next week"
             )
             return _flash_error(
-                f"No search credits left on the {cfg['label']} plan. "
-                f"Credits reset on {reset_str}. Upgrade at /billing for more."
+                f"No credits left on the {cfg['label']} plan - each new listing "
+                f"found uses 1 credit. Credits reset on {reset_str}. "
+                "Upgrade at /billing for more."
             )
 
         # 2. Recurring-search slots.
@@ -178,21 +181,8 @@ async def create_scrape(
         status="pending",
     )
     db.add(task)
-    # Deduct the credit atomically in the same transaction that creates the
-    # task. The conditional UPDATE (credits > 0) prevents two concurrent
-    # requests from both spending the last credit — the earlier credits check
-    # above only produces the friendly error message.
-    if user and not is_exempt:
-        spent = (
-            db.query(User)
-            .filter(User.id == user.id, User.credits > 0)
-            .update({User.credits: User.credits - 1}, synchronize_session=False)
-        )
-        if not spent:
-            db.rollback()
-            return _flash_error(
-                "No search credits left. Credits reset weekly - upgrade at /billing for more."
-            )
+    # No credit is charged here — credits are consumed by the worker, 1 per
+    # NEW listing saved (see app/worker/tasks.py).
     db.commit()
     db.refresh(task)
 
