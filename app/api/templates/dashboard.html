@@ -46,6 +46,10 @@
         </div>
         {% endif %}
 
+        {% if plan_notice %}
+        <div class="flash-error">{{ plan_notice }}</div>
+        {% endif %}
+
         {% if flash_success %}
         <div class="flash-success">{{ flash_success }}</div>
         {% endif %}
