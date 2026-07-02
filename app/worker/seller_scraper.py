@@ -34,6 +34,8 @@ def extract_seller_info(html: str) -> Optional[Dict]:
         "seller_name": None,
         "seller_rating": None,
         "seller_badges": None,
+        "seller_active_since": None,  # Jahr als Integer (z.B. 2015)
+        "seller_listings_count": None,  # Anzahl aktueller Anzeigen
     }
 
     # Find the seller profile section (usually contains user name and badges)
@@ -76,6 +78,20 @@ def extract_seller_info(html: str) -> Optional[Dict]:
 
         if badges:
             seller_info["seller_badges"] = ",".join(badges)
+
+        # Extract account age and listings count from profile text
+        import re
+        profile_text = profile_section.get_text()
+        
+        # Extract account age ("Aktiv seit 2015")
+        year_match = re.search(r"Aktiv seit\s+(\d{4})", profile_text)
+        if year_match:
+            seller_info["seller_active_since"] = int(year_match.group(1))
+
+        # Extract listings count ("X Anzeigen online")
+        listings_match = re.search(r"(\d+)\s+Anzeigen\s+online", profile_text)
+        if listings_match:
+            seller_info["seller_listings_count"] = int(listings_match.group(1))
 
     # Fallback: try to find seller info in the main contact section
     if not seller_info["seller_name"]:

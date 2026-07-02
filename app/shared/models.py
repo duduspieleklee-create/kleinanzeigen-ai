@@ -99,6 +99,8 @@ class ScrapeResult(Base):
     seller_name = Column(String(100))
     seller_rating = Column(String(50))
     seller_badges = Column(String(255))
+    seller_active_since = Column(Integer)            # Jahr der Registrierung (z.B. 2015)
+    seller_listings_count = Column(Integer)          # Anzahl aktiver Anzeigen
     trust_score = Column(Integer)
 
     # Relationships

@@ -357,7 +357,9 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 if seller_info:
                     trust_score = calculate_trust_score(
                         seller_info.get("seller_rating"),
-                        seller_info.get("seller_badges")
+                        seller_info.get("seller_badges"),
+                        seller_info.get("seller_active_since"),
+                        seller_info.get("seller_listings_count")
                     )
 
                 result = ScrapeResult(
@@ -373,6 +375,8 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     seller_name=seller_info.get("seller_name") if seller_info else None,
                     seller_rating=seller_info.get("seller_rating") if seller_info else None,
                     seller_badges=seller_info.get("seller_badges") if seller_info else None,
+                    seller_active_since=seller_info.get("seller_active_since") if seller_info else None,
+                    seller_listings_count=seller_info.get("seller_listings_count") if seller_info else None,
                     trust_score=trust_score,
                 )
                 db.add(result)
