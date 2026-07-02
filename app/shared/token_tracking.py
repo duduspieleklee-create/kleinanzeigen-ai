@@ -41,9 +41,9 @@ def get_token_usage_by_task(
     
     Returns a list of dicts with: task_id, task_name, total_tokens, last_used
     
-    FIXED: Removed GROUP BY on json/jsonb column which causes PostgreSQL
-    "could not identify an equality operator for type json" error.
-    Now groups only on task_id (which is stable and deterministic).
+    FIXED: Added ScrapeTask.parameters to GROUP BY clause to satisfy PostgreSQL's
+    strict GROUP BY rules. Since task_id is the primary key, each task has exactly
+    one parameters value, so including it in GROUP BY is safe and deterministic.
     """
     cutoff_date = datetime.now(timezone.utc).date() - timedelta(days=days - 1)
     
@@ -60,7 +60,8 @@ def get_token_usage_by_task(
             TokenUsage.date >= cutoff_date,
         )
     ).group_by(
-        TokenUsage.task_id
+        TokenUsage.task_id,
+        ScrapeTask.parameters
     ).all()
     
     usage_list = []
