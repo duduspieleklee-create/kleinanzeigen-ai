@@ -178,6 +178,8 @@ jobs:
   #      STRIPE_PRICE_CORE     — Stripe recurring Price ID for the Core plan
   #      STRIPE_PRICE_PRO      — Stripe recurring Price ID for the Pro plan
   #      PUBLIC_BASE_URL       — public https origin used for Stripe redirect URLs
+  #      RESEND_API_KEY        — Resend API key for verification emails (empty = email disabled)
+  #      EMAIL_FROM            — verified sender address for outgoing email
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -214,7 +216,9 @@ jobs:
               "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
               "STRIPE_PRICE_CORE=${{ secrets.STRIPE_PRICE_CORE }}" \
               "STRIPE_PRICE_PRO=${{ secrets.STRIPE_PRICE_PRO }}" \
-              "PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}"
+              "PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}" \
+              "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" \
+              "EMAIL_FROM=${{ secrets.EMAIL_FROM }}"
           echo "✓ kleinanzeigen-api updated"
 
       - name: Update Worker image
