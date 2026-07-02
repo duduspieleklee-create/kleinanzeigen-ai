@@ -365,6 +365,23 @@ body.dashboard-page {
   color: var(--color-text-subtle);
 }
 
+.price-range-field .price-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.price-range-inputs input {
+  flex: 1;
+  min-width: 0;
+}
+
+.price-range-sep {
+  color: var(--color-text-subtle);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 @media (max-width: 560px) {
   .form-grid {
     grid-template-columns: 1fr;

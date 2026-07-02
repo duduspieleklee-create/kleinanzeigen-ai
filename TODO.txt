@@ -156,3 +156,22 @@
       (deal scoring, price predictions, smart summaries)
 - [ ] Consider saving step-1 draft to localStorage so a refresh doesn't lose
       the user's in-progress search
+
+29. DASHBOARD GERMAN TRANSLATION + FORM TWEAKS (2026-07-02)
+- [x] Translated the entire dashboard page (app/api/templates/dashboard.html)
+      to German: <html lang="de">, all labels/buttons/table headers/empty
+      states/admin panel text and JS-driven strings (notification banner,
+      live task table renderer, wizard summary/validation text)
+- [x] Merged the search wizard's Min Price / Max Price fields into a single
+      "Preis (€)" row with two inputs side by side instead of two separate
+      grid cells, in app/api/templates/dashboard.html + style.css
+      (.price-range-field / .price-range-inputs)
+- [x] Renamed wizard Step 2 from "Frequency" to "Smart Enhancements" in the
+      step indicator and the Step 1 "Continue" button label (the panel still
+      contains the frequency radios plus the "Smart Alerts" promo box —
+      "Smart Enhancements" is now the umbrella name for that step)
+- [ ] The admin panel ("Add Background Search" etc.) is now in German too —
+      confirm with any non-German-speaking admins before this ships, or add
+      a language toggle if the app needs to support both audiences
+- [ ] Consider translating email templates / push notification copy to
+      German as well for full consistency now that the dashboard is German
