@@ -41,31 +41,34 @@ def get_token_usage_by_task(
     
     Returns a list of dicts with: task_id, task_name, total_tokens, last_used
     
-    FIXED: Added ScrapeTask.parameters to GROUP BY clause to satisfy PostgreSQL's
-    strict GROUP BY rules. Since task_id is the primary key, each task has exactly
-    one parameters value, so including it in GROUP BY is safe and deterministic.
+    FIXED: Removed JSON column from GROUP BY. PostgreSQL cannot use JSON columns
+    in GROUP BY clauses. Now uses subquery approach to aggregate tokens by task_id only.
     """
     cutoff_date = datetime.now(timezone.utc).date() - timedelta(days=days - 1)
     
-    results = db.query(
+    # Aggregate token usage by task (group by task_id only, avoid JSON in GROUP BY)
+    token_agg = db.query(
         TokenUsage.task_id,
-        ScrapeTask.parameters,
         func.sum(TokenUsage.tokens).label("total_tokens"),
         func.max(TokenUsage.date).label("last_used"),
-    ).join(
-        ScrapeTask, TokenUsage.task_id == ScrapeTask.id
     ).filter(
         and_(
             TokenUsage.user_id == user_id,
             TokenUsage.date >= cutoff_date,
         )
     ).group_by(
-        TokenUsage.task_id,
-        ScrapeTask.parameters
+        TokenUsage.task_id
     ).all()
     
+    # Now fetch task parameters for each aggregated result
     usage_list = []
-    for task_id, params, total_tokens, last_used in results:
+    for task_id, total_tokens, last_used in token_agg:
+        task = db.query(ScrapeTask.parameters).filter(
+            ScrapeTask.id == task_id
+        ).first()
+        
+        params = task[0] if task else None
+        
         # Extract search keywords from parameters
         keywords = ""
         if params and isinstance(params, dict):
