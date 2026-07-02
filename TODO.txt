@@ -102,3 +102,13 @@
 - [ ] Update docs/architecture.md with final infra diagram and data flow
 - [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
 - [ ] Add unit tests (pytest) for API routes and Celery tasks
+
+25. BUG FIXES — CANCEL RACE / PRICE SELECTOR / KEYWORD URL (2026-07-02)
+- [x] Fix cancel race: added cancelled guard in scrape_kleinanzeigen() before
+      setting status="running" — queued runs that start after a cancel now bail
+      immediately without overwriting the "cancelled" status or re-scheduling
+- [x] Fix price selector: updated to aditem-main--middle--price-shipping--price
+      (kleinanzeigen renamed the element); old class kept as fallback for cached HTML
+- [x] Fix keyword-only URL 400: url_builder now produces /s-{keyword}/k0 for
+      keyword-only searches instead of the rejected /s-anzeigen/{keyword}/k0 shape
+      — category+keyword path (/s-{category}/{keyword}/k0) unchanged and still works
