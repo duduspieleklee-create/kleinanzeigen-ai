@@ -261,7 +261,13 @@ async def view_results(
     task_id: int,
     request: Request,
     db: Session = Depends(get_db),
+    page: int = Query(default=1, ge=1),
+    tab: str = Query(default="all"),
 ):
+    from datetime import datetime, timedelta, timezone
+
+    PAGE_SIZE = 10
+
     # Mirror the dashboard's auth handling: redirect to login instead of 401
     # so a missed-session user lands on a friendly page.
     try:
@@ -276,30 +282,80 @@ async def view_results(
     if not task:
         raise HTTPException(status_code=404, detail="Search not found")
 
-    results = (
+    all_results = (
         db.query(ScrapeResult)
         .filter(ScrapeResult.task_id == task_id)
         .order_by(ScrapeResult.created_at.desc())
         .all()
     )
 
-    # Market context: median price across the search, and a deal badge per
-    # listing (below / at / above market) — something kleinanzeigen never shows.
-    # Deal badges are a Core/Pro feature; Basic users get the plain grid.
+    # ── Determine "new" cutoff: results from the latest scrape batch ─────────
+    # Any result within 10 minutes of the most-recent created_at is "new".
+    new_cutoff = None
+    if all_results:
+        latest = max((r.created_at for r in all_results if r.created_at), default=None)
+        if latest:
+            # Make both sides timezone-aware for safe comparison
+            if latest.tzinfo is None:
+                latest = latest.replace(tzinfo=timezone.utc)
+            new_cutoff = latest - timedelta(minutes=10)
+
+    def _is_new(r):
+        if not new_cutoff or not r.created_at:
+            return False
+        ts = r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)
+        return ts >= new_cutoff
+
+    new_count = sum(1 for r in all_results if _is_new(r))
+
+    # ── Subcategory tabs: unique locations (up to 4 most common) ────────────
+    from collections import Counter
+    loc_counts = Counter(
+        r.location.split("\n")[0].strip()
+        for r in all_results
+        if r.location and r.location.strip() and r.location.strip() != "N/A"
+    )
+    location_tabs = [loc for loc, _ in loc_counts.most_common(4)] if len(loc_counts) > 1 else []
+
+    # ── Apply tab filter ──────────────────────────────────────────────────────
+    if tab == "new":
+        filtered = [r for r in all_results if _is_new(r)]
+    elif tab in location_tabs:
+        filtered = [r for r in all_results if r.location and tab in r.location]
+    else:
+        tab = "all"
+        filtered = list(all_results)
+
+    # ── Pagination ────────────────────────────────────────────────────────────
+    total_in_tab = len(filtered)
+    total_pages = max(1, (total_in_tab + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(page, total_pages)
+    offset = (page - 1) * PAGE_SIZE
+    page_results = filtered[offset:offset + PAGE_SIZE]
+
+    # ── Market context + deal badges + NEW flag ───────────────────────────────
     user = db.query(User).filter(User.id == current_user["id"]).first()
     show_deals = bool(user and (user.is_admin or plan_config(user.plan).get("deal_badges")))
-    median = median_price([r.price_value for r in results]) if show_deals else None
-    for r in results:
+    median = median_price([r.price_value for r in all_results]) if show_deals else None
+    for r in page_results:
         r.deal = deal_badge(r.price_value, median) if show_deals else None
+        r.is_new = _is_new(r)
 
     return templates.TemplateResponse(
         "results.html",
         {
             "request": request,
             "task": task,
-            "results": results,
+            "results": page_results,
+            "total_count": len(all_results),
+            "new_count": new_count,
             "median": median,
             "show_deals": show_deals,
+            "tab": tab,
+            "location_tabs": location_tabs,
+            "page": page,
+            "total_pages": total_pages,
+            "total_in_tab": total_in_tab,
         },
     )
 
