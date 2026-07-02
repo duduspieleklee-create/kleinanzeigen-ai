@@ -14,12 +14,13 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.config import settings
-from app.api.routers import admin, auth, scrapes, push, locations
+from app.api.routers import admin, auth, billing, scrapes, push, locations
 from app.api.dependencies import get_current_user
 from app.api.security import limiter
 from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User
+from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
 
@@ -52,7 +53,11 @@ app.add_middleware(
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
     # ── CSRF defense: same-origin check for state-changing methods ───────────
-    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+    # The Stripe webhook is exempt: server-to-server calls send no Origin or
+    # Referer header (which already passes this check) and are authenticated
+    # by their own signature verification instead.
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and \
+            request.url.path != "/billing/webhook":
         source = request.headers.get("origin") or request.headers.get("referer")
         if source:
             source_host = urlparse(source).netloc
@@ -96,6 +101,7 @@ app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 app.include_router(push.router, prefix="/push", tags=["Push"])
 app.include_router(locations.router, prefix="/locations", tags=["Locations"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(billing.router, prefix="/billing", tags=["Billing"])
 
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
@@ -174,19 +180,23 @@ async def dashboard(
         except Exception:
             pass
 
-    # Daily search quota (0 == unlimited, e.g. admin)
+    # ── Plan / credit status for the plan bar ────────────────────────────────
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
-    daily_limit = db_user.daily_limit if db_user else 0
-    used_today = 0
-    if daily_limit and daily_limit > 0:
-        start_of_day = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        used_today = (
+    plan_name = (db_user.plan if db_user else None) or "basic"
+    cfg = plan_config(plan_name)
+    credits = 0
+    credits_reset_at = None
+    active_searches = 0
+    if db_user and not is_admin:
+        ensure_weekly_credits(db, db_user)
+        credits = db_user.credits
+        credits_reset_at = db_user.credits_reset_at
+        active_searches = (
             db.query(ScrapeTask)
             .filter(
-                ScrapeTask.user_id == current_user["id"],
-                ScrapeTask.created_at >= start_of_day,
+                ScrapeTask.user_id == db_user.id,
+                ScrapeTask.status.in_(("pending", "running", "completed")),
+                ScrapeTask.parameters.op("->>")("interval_seconds").isnot(None),
             )
             .count()
         )
@@ -200,10 +210,16 @@ async def dashboard(
             "flash_error": flash_error,
             "is_admin": is_admin,
             "admin_searches": admin_searches,
-            "daily_limit": daily_limit,
-            "used_today": used_today,
             "proxies": proxies,
             "rotating_proxy_enabled": rotating_proxy_enabled,
+            # Plan bar
+            "plan_name": plan_name,
+            "plan_label": cfg["label"],
+            "credits": credits,
+            "credits_reset_at": credits_reset_at,
+            "active_searches": active_searches,
+            "max_active_searches": cfg["max_active_searches"],
+            "min_interval_seconds": 5 if is_admin else cfg["min_interval_seconds"],
         },
     )
 

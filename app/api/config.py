@@ -42,6 +42,18 @@ class Settings(BaseSettings):
     app_username: str = "admin"
     app_password: str = "KaSearch2026"
 
+    # ── Stripe billing (leave empty to disable paid plans) ────────────────────
+    # Secret API key from https://dashboard.stripe.com/apikeys
+    stripe_secret_key: str = ""
+    # Webhook signing secret for the /billing/webhook endpoint
+    stripe_webhook_secret: str = ""
+    # Recurring Price IDs (price_...) for the Core and Pro plans
+    stripe_price_core: str = ""
+    stripe_price_pro: str = ""
+    # Public origin used for Stripe redirect URLs, e.g. https://app.example.com.
+    # Falls back to the request base URL when empty.
+    public_base_url: str = ""
+
     # Build/version metadata — injected at image build time via Docker build args.
     app_version: str = "dev"
     git_sha: str = "local"

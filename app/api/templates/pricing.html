@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plans &amp; Pricing - kleinanzeigen-ai</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dashboard-page">
+    <div class="container">
+        <div class="header-row">
+            <h2 style="margin:0">Plans &amp; Pricing</h2>
+            <a class="logout-link" href="/dashboard">&larr; Back to dashboard</a>
+        </div>
+
+        {% if flash_success %}
+        <div class="flash-success">{{ flash_success }}</div>
+        {% endif %}
+        {% if flash_error %}
+        <div class="flash-error">{{ flash_error }}</div>
+        {% endif %}
+
+        {% if not billing_enabled %}
+        <div class="flash-error">
+            Paid plans are not available yet &mdash; payment setup is still in progress.
+            You are on the free Basic plan.
+        </div>
+        {% endif %}
+
+        <div class="pricing-grid">
+            {% for key, cfg in plans.items() %}
+            {% set price = display_prices.get(key) %}
+            <div class="plan-card{% if current_plan == key %} plan-current{% endif %}{% if key == 'core' %} plan-featured{% endif %}">
+                {% if key == 'core' %}<div class="plan-ribbon">Most popular</div>{% endif %}
+                <h3>{{ cfg.label }}</h3>
+                <div class="plan-price">
+                    {% if key == 'basic' %}
+                        Free
+                    {% elif price %}
+                        {{ '%.2f' | format(price.amount / 100) }} {{ price.currency }}<span class="plan-per">/{{ price.interval }}</span>
+                    {% else %}
+                        &mdash;
+                    {% endif %}
+                </div>
+                <ul class="plan-features">
+                    <li><strong>{{ cfg.credits_per_week }}</strong> result credits / week</li>
+                    <li>Up to <strong>{{ cfg.max_active_searches }}</strong> recurring searches</li>
+                    <li>
+                        {% if cfg.min_interval_seconds <= 300 %}
+                            All check intervals (from 5 min)
+                        {% else %}
+                            Intervals from {{ cfg.min_interval_seconds // 60 }} minutes
+                        {% endif %}
+                    </li>
+                    <li>Push notifications &amp; deal badges</li>
+                </ul>
+                {% if current_plan == key %}
+                    <div class="plan-current-label">Your current plan</div>
+                {% elif key == 'basic' %}
+                    {% if has_subscription %}
+                    <form action="/billing/portal" method="post">
+                        <button type="submit" class="plan-btn plan-btn-secondary">Cancel subscription</button>
+                    </form>
+                    {% endif %}
+                {% else %}
+                    <form action="/billing/checkout" method="post">
+                        <input type="hidden" name="plan" value="{{ key }}">
+                        <button type="submit" class="plan-btn"{% if not billing_enabled %} disabled{% endif %}>
+                            {% if current_plan == 'pro' and key == 'core' %}Switch to Core{% else %}Upgrade to {{ cfg.label }}{% endif %}
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card" style="margin-top:24px">
+            <h3>How credits work</h3>
+            <ul class="plan-features">
+                <li>Each <strong>new listing found</strong> costs <strong>1 credit</strong>. Starting searches and re-checks that find nothing new are free.</li>
+                <li>Credits refill automatically every week.</li>
+                <li>Cancelling a recurring search frees up one of your search slots.</li>
+                <li>Upgrades take effect immediately &mdash; downgrades at the end of the billing period.</li>
+            </ul>
+            {% if has_subscription %}
+            <form action="/billing/portal" method="post" style="margin-top:12px">
+                <button type="submit" class="plan-btn plan-btn-secondary">Manage billing (invoices, payment method, cancel)</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
