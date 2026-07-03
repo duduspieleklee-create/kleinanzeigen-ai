@@ -487,8 +487,8 @@
                                     <span>Suche: {{ r.search_keywords }}</span>
                                 </span>
                                 <span class="card-actions">
-                                    <button class="share-btn" onclick="shareResult({{ r.id }}, '{{ r.title | replace(\"'\", \"\\\\'\" ) }}', '{{ r.url }}');" title="Teilen">📤</button>
-                                    <button class="copy-link-btn" onclick="copyLink('{{ r.url }}');" title="Link kopieren">🔗</button>
+                                    <button class="share-btn" data-result-id="{{ r.id }}" data-title="{{ r.title }}" data-url="{{ r.url }}" title="Teilen">📤</button>
+                                    <button class="copy-link-btn" data-url="{{ r.url }}" title="Link kopieren">🔗</button>
                                 </span>
                             </div>
                         </a>
@@ -1370,6 +1370,18 @@
                 markSearchAsVisited(search);
             });
         }, 500);
+
+        // Event delegation for share and copy-link buttons using data attributes
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('share-btn')) {
+                var title = e.target.dataset.title;
+                var url = e.target.dataset.url;
+                shareResult(0, title, url);
+            } else if (e.target.classList.contains('copy-link-btn')) {
+                var url = e.target.dataset.url;
+                copyLink(url);
+            }
+        });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </body>
