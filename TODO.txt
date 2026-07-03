@@ -102,3 +102,76 @@
 - [ ] Update docs/architecture.md with final infra diagram and data flow
 - [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
 - [ ] Add unit tests (pytest) for API routes and Celery tasks
+
+25. BUG FIXES — CANCEL RACE / PRICE SELECTOR / KEYWORD URL (2026-07-02)
+- [x] Fix cancel race: added cancelled guard in scrape_kleinanzeigen() before
+      setting status="running" — queued runs that start after a cancel now bail
+      immediately without overwriting the "cancelled" status or re-scheduling
+- [x] Fix price selector: updated to aditem-main--middle--price-shipping--price
+      (kleinanzeigen renamed the element); old class kept as fallback for cached HTML
+- [x] Fix keyword-only URL 400: url_builder now produces /s-{keyword}/k0 for
+      keyword-only searches instead of the rejected /s-anzeigen/{keyword}/k0 shape
+      — category+keyword path (/s-{category}/{keyword}/k0) unchanged and still works
+
+26. RESULTS PAGE — NEW BADGE / SUBCATEGORY TABS / PAGINATION (2026-07-02)
+- [x] NEW badge: keyed to last-visit cookie rv_{task_id} (Unix timestamp, 30-day, httponly)
+      results with created_at > last_visit are flagged is_new; first visit shows no badges
+      cookie updated to now() on every response so next visit compares correctly
+- [x] Subcategory tabs: All (N) | New (N) + up to 4 most-common unique location tabs
+      tab state preserved in URL (?tab=all|new|<location>&page=N)
+- [x] Pagination: 10 results per page, prev/next + numbered pages with ellipsis
+      page info footer shows "X–Y of Z" for current slice
+- [ ] Consider server-side tab counts for location tabs (currently client counts)
+- [ ] Add keyboard navigation for tab bar (arrow keys)
+
+27. SEARCH FORM UI — COMPACT LAYOUT / RADIUS AFTER PLZ (2026-07-02)
+- [x] Removed the 5-second frequency option from the search form (was dev-only,
+      never enforced as a plan floor) — Frequency now offers Instant/5min/30min/60min
+- [x] Reworked New Recurring Search form into a responsive 2-column grid
+      (Keywords+Category, Price min/max, Angebotstyp+Anbieter, Zustand+Versand
+      all sit side by side) to cut vertical scroll on the dashboard
+- [x] Radius field is now hidden until a location is chosen from the PLZ/city
+      autocomplete; relabeled "Live radius" and rendered directly below the
+      location field once a suggestion is selected. Clearing/editing the
+      location field hides the radius control again and resets its value
+- [ ] Consider persisting last-used search filters (keywords, category, radius)
+      per user so the form pre-fills on next visit
+
+28. SEARCH CREATION WIZARD — TWO-STEP FLOW (2026-07-02)
+- [x] Split "New Recurring Search" into two separate steps: Step 1 mirrors a
+      plain kleinanzeigen.de search (keywords, category, location, radius,
+      price range, ad type, poster type, condition, shipping); Step 2 is
+      purely for choosing the check frequency
+- [x] Search creation only completes (form submits) after Step 2 — the
+      previous single-page form behavior/backend contract is unchanged,
+      this is purely a client-side UX restructure (same POST /scrapes/ payload)
+- [x] Added a step indicator (1 Search -> 2 Frequency) and a short summary
+      recap of the Step 1 choices shown at the top of Step 2
+- [x] Step 1 requires at least a keyword or a location before advancing
+      (soft client-side check, mirrors how a real kleinanzeigen.de search works)
+- [x] Added a "Smart Alerts — coming soon" promo box on Step 2 as the
+      designated slot for future AI/smart-feature upsells (deal scoring,
+      price-drop predictions, etc.) — no functionality yet, teaser only
+- [ ] Wire up real AI/smart features in the Step 2 promo slot once designed
+      (deal scoring, price predictions, smart summaries)
+- [ ] Consider saving step-1 draft to localStorage so a refresh doesn't lose
+      the user's in-progress search
+
+29. DASHBOARD GERMAN TRANSLATION + FORM TWEAKS (2026-07-02)
+- [x] Translated the entire dashboard page (app/api/templates/dashboard.html)
+      to German: <html lang="de">, all labels/buttons/table headers/empty
+      states/admin panel text and JS-driven strings (notification banner,
+      live task table renderer, wizard summary/validation text)
+- [x] Merged the search wizard's Min Price / Max Price fields into a single
+      "Preis (€)" row with two inputs side by side instead of two separate
+      grid cells, in app/api/templates/dashboard.html + style.css
+      (.price-range-field / .price-range-inputs)
+- [x] Renamed wizard Step 2 from "Frequency" to "Smart Enhancements" in the
+      step indicator and the Step 1 "Continue" button label (the panel still
+      contains the frequency radios plus the "Smart Alerts" promo box —
+      "Smart Enhancements" is now the umbrella name for that step)
+- [ ] The admin panel ("Add Background Search" etc.) is now in German too —
+      confirm with any non-German-speaking admins before this ships, or add
+      a language toggle if the app needs to support both audiences
+- [ ] Consider translating email templates / push notification copy to
+      German as well for full consistency now that the dashboard is German

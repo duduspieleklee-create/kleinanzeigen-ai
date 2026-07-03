@@ -7,4 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Drop root privileges — run the scheduler as an unprivileged user.
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["celery", "-A", "app.beat.celery_beat", "beat", "--loglevel=info"]

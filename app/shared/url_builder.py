@@ -54,9 +54,19 @@ def build_kleinanzeigen_url(
     if shipping in _VALID_SHIPPING:
         path_parts.append(f"s-versand:{shipping}")
 
-    # ── Category ────────────────────────────────────────────────────────────
+    # ── Category + keywords path ────────────────────────────────────────────
+    # kleinanzeigen URL shapes:
+    #   category only       → /s-{category}/k0
+    #   category + keywords → /s-{category}/{keywords}/k0        ✓ accepted
+    #   keyword only        → /s-{keyword}/k0                    ✓ accepted
+    #   neither             → /s-anzeigen/k0
+    # /s-anzeigen/{keyword}/k0 is REJECTED (400) by kleinanzeigen — do not use.
     if category:
         path_parts.append(f"s-{_sanitize_path_segment(category)}")
+    elif keywords:
+        # Keyword-only: fold keyword into the leading s- segment so we avoid
+        # the rejected /s-anzeigen/{keyword}/k0 shape.
+        path_parts.append(f"s-{_sanitize_path_segment(keywords)}")
     else:
         path_parts.append("s-anzeigen")
 
@@ -66,6 +76,9 @@ def build_kleinanzeigen_url(
 
     # ── Keywords ─────────────────────────────────────────────────────────────
     if keywords:
+    # ── Keywords in path (only when a category is also set) ──────────────────
+    # When keyword-only, the keyword already lives in the s- segment above.
+    if keywords and category:
         path_parts.append(_sanitize_path_segment(keywords))
 
     # ── k0 token: locationId + radius go here when locationId is known ───────

@@ -1,6 +1,6 @@
 # kleinanzeigen-ai
 
-Intelligent scraping and analytics platform for kleinanzeigen.de.
+Intelligent scraping and analytics platform for kleinanzeigen.de.j
 
 ## Overview
 
@@ -8,7 +8,7 @@ A multi-service Python application that scrapes, stores, and surfaces classified
 
 ## Tech Stack
 
-| Layer | Technology |
+| Layer | Technologykl|
 |---|---|
 | API | FastAPI + Uvicorn |
 | Task queue | Celery + Redis |

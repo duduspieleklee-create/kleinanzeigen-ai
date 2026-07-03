@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,87 +9,59 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="KA-AI">
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 40px; }
-        .container { max-width: 700px; margin: 0 auto; }
-        .card { background: white; padding: 32px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom: 24px; }
-        h2 { margin-top: 0; margin-bottom: 20px; }
-        h3 { margin-top: 0; color: #333; }
-        input[type="text"], input[type="number"] {
-            width: 100%; padding: 10px; margin: 4px 0 14px; border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        label { font-weight: bold; display: block; margin-top: 8px; }
-        .frequency-group { margin: 12px 0 18px; }
-        /* Each radio row stacks vertically; override bold/block from global label rule */
-        .frequency-option {
-            display: block !important;
-            margin: 10px 0;
-            cursor: pointer;
-            font-weight: normal;
-            font-size: 15px;
-        }
-        .frequency-option input[type="radio"] {
-            margin-right: 8px;
-            cursor: pointer;
-        }
-        .warning {
-            background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;
-            padding: 10px 14px; margin-top: 4px; margin-bottom: 8px;
-            font-size: 14px; display: none; color: #856404;
-        }
-        button[type="submit"] {
-            width: 100%; background: #007bff; color: white; padding: 12px;
-            border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 8px;
-        }
-        button[type="submit"]:hover { background: #0056b3; }
-        .flash-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724;
-                         padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
-        .flash-error   { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;
-                         padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
-        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .logout-link { font-size: 14px; color: #666; text-decoration: none; }
-        .logout-link:hover { color: #333; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; font-weight: bold; color: #555; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-        .badge-pending   { background: #e9ecef; color: #495057; }
-        .badge-running   { background: #cce5ff; color: #004085; }
-        .badge-completed { background: #d4edda; color: #155724; }
-        .badge-failed    { background: #f8d7da; color: #721c24; }
-        .badge-cancelled { background: #e2e3e5; color: #383d41; }
-        .empty-state { text-align: center; padding: 24px; color: #888; }
-        .cancel-btn { font-size: 12px; color: #dc3545; background: none; border: none;
-                      cursor: pointer; padding: 0; text-decoration: underline; }
-        .suggest-wrap { position: relative; }
-        .suggest-list { position: absolute; top: 100%; left: 0; right: 0; background: white;
-                        border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px;
-                        max-height: 200px; overflow-y: auto; z-index: 100; margin: 0;
-                        padding: 0; list-style: none; display: none; }
-        .suggest-list li { padding: 8px 12px; cursor: pointer; font-size: 14px; }
-        .suggest-list li:hover, .suggest-list li.active { background: #f0f4ff; }
-        .notif-bar { display: flex; align-items: center; justify-content: space-between;
-                     background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 6px;
-                     padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
-        .notif-bar button { background: #007bff; color: white; border: none; border-radius: 4px;
-                            padding: 6px 14px; cursor: pointer; font-size: 13px; }
-        .notif-bar button:hover { background: #0056b3; }
-        .notif-bar button:disabled { background: #6c757d; cursor: default; }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
+    <!--
+        NOTE: All page-specific rules that used to live in an inline <style>
+        block here (trust-score badges, favorite button, token stats,
+        sub-tabs, sort controls, notification checkboxes, delete button,
+        pagination) have been moved into style.css so they're shared with
+        results.html and get the same mobile treatment in one place.
+        This file only contains structural markup now.
+    -->
 </head>
-<body>
+<body class="dashboard-page">
     <div class="container">
         <div class="header-row">
             <h2 style="margin:0">kleinanzeigen-ai</h2>
-            <a class="logout-link" href="/auth/logout">Sign out</a>
+            <div style="display:flex;align-items:center">
+                {% if is_admin %}
+                <a class="admin-link" href="#tab-admin" onclick="showTab('admin', document.querySelector('.tab-btn[data-tab=admin]')); return false;">Admin</a>
+                {% endif %}
+                <a class="logout-link" href="/auth/logout">Abmelden</a>
+            </div>
         </div>
 
         <div id="notif-bar" class="notif-bar" style="display:none">
-            <span>Get notified when new listings are found</span>
-            <button id="notif-btn" onclick="handleNotifClick()">Enable notifications</button>
+            <span id="notif-label">Benachrichtigt werden, wenn neue Anzeigen gefunden werden</span>
+            <button id="notif-btn" onclick="handleNotifClick()">Benachrichtigungen aktivieren</button>
         </div>
+
+        {% if is_admin %}
+        <div class="quota-bar">Admin-Konto &mdash; unbegrenzte Suchen</div>
+        {% else %}
+        <div class="quota-bar plan-bar">
+            <span>
+                <strong>{{ plan_label }}</strong>-Tarif &middot;
+                <strong>{{ credits }}</strong> Guthaben übrig
+                {% if credits_reset_at %} &middot; Zurücksetzung am {{ credits_reset_at.strftime('%d.%m. %H:%M') }} UTC{% endif %}
+                &middot; {{ active_searches }}/{{ max_active_searches }} wiederkehrende Suchen
+            </span>
+            <a href="/billing" class="upgrade-link">{% if plan_name == 'pro' %}Tarif verwalten{% else %}Upgrade&nbsp;&rarr;{% endif %}</a>
+        </div>
+        {% endif %}
+
+        {% if not is_admin and not email_verified %}
+        <div class="flash-error" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <span>Bitte bestätige deine E-Mail-Adresse ({{ user_email }}), um Suchen zu starten &mdash; überprüfe dein Postfach für den Link.</span>
+            <form method="post" action="/auth/resend-verification" style="margin:0">
+                <button type="submit" style="white-space:nowrap;padding:8px 12px;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer;font-size:0.85rem;min-height:40px">Bestätigungs-E-Mail erneut senden</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if plan_notice %}
+        <div class="flash-error">{{ plan_notice }}</div>
+        {% endif %}
 
         {% if flash_success %}
         <div class="flash-success">{{ flash_success }}</div>
@@ -98,15 +70,16 @@
         <div class="flash-error">{{ flash_error }}</div>
         {% endif %}
 
-        <!-- Create new search -->
-        <div class="card">
-            <h3>New Recurring Search</h3>
-            <form action="/scrapes" method="post" id="scrape-form">
-                <label for="keywords">Keywords</label>
-                <input type="text" id="keywords" name="keywords" placeholder="e.g. handwerker">
-
-                <label for="category">Category</label>
-                <input type="text" id="category" name="category" placeholder="e.g. handwerk">
+        <!-- ── Main Tab Navigation (visible on tablet/desktop; hidden on
+             mobile in favor of the fixed bottom nav, see style.css) ── -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="my-searches" onclick="showTab('my-searches', this)">Meine Suchen</button>
+            <button class="tab-btn" data-tab="new-search" onclick="showTab('new-search', this)">Neue Suche</button>
+            <button class="tab-btn" data-tab="my-results" onclick="showTab('my-results', this)">Meine Ergebnisse</button>
+            {% if is_admin %}
+            <button class="tab-btn" data-tab="admin" onclick="showTab('admin', this)">Admin</button>
+            {% endif %}
+        </div>
 
                 <label for="location-input">Location (city or PLZ)</label>
                 <div class="suggest-wrap">
@@ -115,345 +88,1094 @@
                     <input type="hidden" id="location_id" name="location_id">
                     <ul id="location-suggestions" class="suggest-list"></ul>
                 </div>
+        <!-- ── TAB: My Searches ── -->
+        <div id="tab-my-searches" class="tab-pane active">
+            <div class="card">
+                <h3>Meine Suchen</h3>
 
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
-                        <label for="price_min">Min Price (&euro;)</label>
-                        <input type="number" id="price_min" name="price_min" placeholder="e.g. 0">
+                <!-- Token Usage Stats -->
+                {% if token_stats %}
+                <div class="token-stats">
+                    <div class="token-stat">
+                        <span>Letzte 24h:</span>
+                        <span class="token-stat-value">{{ token_stats.last_24h }}</span>
+                        <span>Tokens</span>
                     </div>
-                    <div style="flex:1">
-                        <label for="price_max">Max Price (&euro;)</label>
-                        <input type="number" id="price_max" name="price_max" placeholder="e.g. 200">
+                    <div class="token-stat">
+                        <span>Letzte 7 Tage:</span>
+                        <span class="token-stat-value">{{ token_stats.last_7d }}</span>
+                        <span>Tokens</span>
+                    </div>
+                    <div class="token-stat">
+                        <span>Gesamt:</span>
+                        <span class="token-stat-value">{{ token_stats.total }}</span>
+                        <span>Tokens</span>
                     </div>
                 </div>
+                {% endif %}
 
-                <div style="display:flex;gap:12px;margin-top:4px">
-                    <div style="flex:1">
-                        <label for="radius">Radius</label>
-                        <select id="radius" name="radius" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
-                            <option value="">Alle</option>
-                            <option value="5">5 km</option>
-                            <option value="10">10 km</option>
-                            <option value="20">20 km</option>
-                            <option value="30">30 km</option>
-                            <option value="50">50 km</option>
-                            <option value="100">100 km</option>
-                            <option value="150">150 km</option>
-                            <option value="200">200 km</option>
-                        </select>
-                    </div>
-                    <div style="flex:1">
-                        <label for="sort">Sortierung</label>
-                        <select id="sort" name="sort" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
-                            <option value="SORTING_DATE">Neueste zuerst</option>
-                            <option value="SORTING_PRICE_ASC">Preis aufsteigend</option>
-                            <option value="SORTING_PRICE_DESC">Preis absteigend</option>
-                            <option value="SORTING_RELEVANCE">Relevanz</option>
-                        </select>
-                    </div>
+                <div id="tasks-container">
+                {% if tasks %}
+                <!--
+                    NOTE: `.responsive-table` triggers the table→card
+                    transform in style.css below 640px. Each <td> now
+                    carries data-label so the CSS ::before pseudo-element
+                    can render a mobile field label without any JS.
+                -->
+                <table class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Stichwörter</th>
+                            <th>Ort</th>
+                            <th>Filter</th>
+                            <th>Intervall</th>
+                            <th>Status</th>
+                            <th>Ergebnisse</th>
+                            <th>Token (24h)</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-tbody">
+                        {% for task in tasks %}
+                        <tr>
+                            <td class="row-title" data-label="#">
+                                #{{ task.id }} &middot; {{ task.parameters.get('keywords', '&mdash;') }}
+                            </td>
+                            <td data-label="Ort">{{ task.parameters.get('location', '&mdash;') }}</td>
+                            <td data-label="Filter" style="font-size:12px;color:#666">
+                                {% set parts = [] %}
+                                {% if task.parameters.get('ad_type') %}{% set _ = parts.append(task.parameters.get('ad_type')) %}{% endif %}
+                                {% if task.parameters.get('poster_type') %}{% set _ = parts.append(task.parameters.get('poster_type')) %}{% endif %}
+                                {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
+                                {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
+                                    {% set _ = parts.append(task.parameters.get('price_min', '0') ~ '–' ~ task.parameters.get('price_max', '∞') ~ ' €') %}
+                                {% endif %}
+                                {% if task.parameters.get('radius') %}{% set _ = parts.append(task.parameters.get('radius') ~ ' km') %}{% endif %}
+                                {{ parts | join(', ') if parts else '&mdash;' }}
+                            </td>
+                            <td data-label="Intervall">
+                                {% set iv = task.parameters.get('interval_seconds') %}
+                                {% if iv == 5 %}5 s
+                                {% elif iv == 60 %}Sofort
+                                {% elif iv == 300 %}5 Min.
+                                {% elif iv == 1800 %}30 Min.
+                                {% elif iv == 3600 %}60 Min.
+                                {% else %}einmalig{% endif %}
+                            </td>
+                            <td data-label="Status"><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
+                            <td data-label="Ergebnisse"><a href="/scrapes/{{ task.id }}/results" title="Alle gelieferten Ergebnisse anzeigen">{{ task.result_count }}</a></td>
+                            <td data-label="Token (24h)" style="font-size:12px">
+                                {% set task_tokens = token_stats.by_task | selectattr('task_id', 'equalto', task.id) | first %}
+                                {{ task_tokens.total_tokens if task_tokens else 0 }}
+                            </td>
+                            <td data-label="" class="row-actions">
+                                <a href="/scrapes/{{ task.id }}/results" class="view-link">Anzeigen</a>
+                                <!-- data-confirm-* forms are intercepted by JS and ask via the
+                                     in-design action sheet instead of the native confirm() -->
+                                <form method="post" action="/scrapes/{{ task.id }}/delete"
+                                      data-confirm-title="Suche löschen?"
+                                      data-confirm-message="Diese Suche und alle gefundenen Ergebnisse werden dauerhaft gelöscht."
+                                      data-confirm-label="Endgültig löschen">
+                                    <button type="submit" class="delete-btn">Löschen</button>
+                                </form>
+                                {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
+                                <form method="post" action="/scrapes/{{ task.id }}/cancel"
+                                      data-confirm-title="Suche stoppen?"
+                                      data-confirm-message="Die wiederkehrende Suche wird gestoppt. Bereits gefundene Ergebnisse bleiben erhalten."
+                                      data-confirm-label="Suche stoppen">
+                                    <button type="submit" class="cancel-btn">Abbrechen</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <!--
+                    NEW: empty state is now a real call-to-action instead of
+                    plain text. First-time users land here with nothing to
+                    tap toward except the top tab bar; this button jumps
+                    straight into the "New search" step of the flow.
+                -->
+                <div class="empty-state-cta" id="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <p>Noch keine Suchen &mdash; erstelle deine erste, um automatisch benachrichtigt zu werden, sobald etwas Passendes online geht.</p>
+                    <button type="button" class="empty-state-cta-btn" onclick="goToNewSearchTab()">
+                        + Neue Suche erstellen
+                    </button>
                 </div>
-
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
-                        <label for="ad_type">Angebotstyp</label>
-                        <select id="ad_type" name="ad_type" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
-                            <option value="">Alle</option>
-                            <option value="angebote">Angebote</option>
-                            <option value="gesuche">Gesuche</option>
-                        </select>
-                    </div>
-                    <div style="flex:1">
-                        <label for="poster_type">Anbieter</label>
-                        <select id="poster_type" name="poster_type" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
-                            <option value="">Alle</option>
-                            <option value="privat">Privat</option>
-                            <option value="gewerblich">Gewerblich</option>
-                        </select>
-                    </div>
+                {% endif %}
                 </div>
+            </div>
+        </div><!-- /tab-my-searches -->
 
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
+        <!-- ── TAB: New Search (Wizard) ── -->
+        <div id="tab-new-search" class="tab-pane">
+            <div class="card">
+                <h3>Neue wiederkehrende Suche</h3>
+                <form action="/scrapes/" method="post" id="scrape-form" class="search-form">
+                  <div class="wizard-steps">
+                    <div class="wizard-step-indicator active" data-step="1">
+                        <span class="wizard-step-num">1</span>
+                        <span class="wizard-step-label">Suche</span>
+                    </div>
+                    <div class="wizard-step-line"></div>
+                    <div class="wizard-step-indicator" data-step="2">
+                        <span class="wizard-step-num">2</span>
+                        <span class="wizard-step-label">Smart Enhancements</span>
+                    </div>
+                  </div>
+
+                  <div id="wizard-step-1" class="wizard-panel active">
+
+                  <!--
+                      NEW: essentials-only first tier. Only keywords + location
+                      are visible by default — this is what kleinanzeigen.de's
+                      own search bar looks like, so it's immediately familiar.
+                      Everything else moved into the collapsible filter panel
+                      below.
+                  -->
+                  <div class="wizard-essentials">
+                    <div class="form-field">
+                    <label for="keywords">Stichwörter</label>
+                    <input type="text" id="keywords" name="keywords" placeholder="z. B. handwerker">
+                    </div>
+
+                    <div class="form-field">
+                    <label for="location-input">Ort</label>
+                    <input type="text" id="location-input" placeholder="z. B. Berlin" autocomplete="off">
+                    <input type="hidden" id="location_id" name="location_id">
+                    <ul id="location-suggestions" class="suggest-list"></ul>
+                    </div>
+                  </div>
+
+                  <!--
+                      NEW: collapsible "Filter" disclosure. Collapsed by
+                      default; the badge shows how many advanced filters are
+                      currently set so users who came back to edit a search
+                      immediately see there's something inside without
+                      having to open it.
+                  -->
+                  <button type="button" class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filter-panel">
+                      <span>Filter <span class="filter-toggle-count" id="filter-count" style="display:none">0</span></span>
+                      <svg class="filter-toggle-chevron" width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                  </button>
+
+                  <div id="filter-panel" class="filter-panel">
+                    <div class="form-grid">
+                        <div class="form-field">
+                        <label for="category">Kategorie</label>
+                        <select id="category" name="category">
+                            <option value="">Alle Kategorien</option>
+                            <optgroup label="Fahrzeuge">
+                                <option value="autos">Autos</option>
+                                <option value="motorraeder-scooter">Motorräder &amp; Scooter</option>
+                                <option value="transporter-lkw">Transporter &amp; LKW</option>
+                                <option value="fahrraeder">Fahrräder</option>
+                                <option value="bootszubehoer">Boote &amp; Zubehör</option>
+                            </optgroup>
+                            <optgroup label="Immobilien">
+                                <option value="wohnungen">Wohnungen</option>
+                                <option value="haeuser">Häuser</option>
+                                <option value="garagen">Garagen</option>
+                                <option value="grundstuecke">Grundstücke</option>
+                            </optgroup>
+                            <optgroup label="Elektronik">
+                                <option value="computer">Computer</option>
+                                <option value="handy-zubehoer">Handy &amp; Zubehör</option>
+                                <option value="foto-video">Foto &amp; Video</option>
+                            </optgroup>
+                        </select>
+                        </div>
+
+                        <div class="form-field">
+                        <label for="price_min">Min. Preis (€)</label>
+                        <input type="number" id="price_min" name="price_min" placeholder="0">
+                        </div>
+
+                        <div class="form-field">
+                        <label for="price_max">Max. Preis (€)</label>
+                        <input type="number" id="price_max" name="price_max" placeholder="10000">
+                        </div>
+
+                        <div class="form-field">
+                        <label for="radius">Umkreis (km)</label>
+                        <input type="number" id="radius" name="radius" placeholder="50">
+                        </div>
+
+                        <div class="form-field">
+                        <label for="ad_type">Anzeigentyp</label>
+                        <select id="ad_type" name="ad_type">
+                            <option value="">Egal</option>
+                            <option value="offer">Angebot</option>
+                            <option value="wanted">Gesucht</option>
+                        </select>
+                        </div>
+
+                        <div class="form-field">
+                        <label for="poster_type">Von</label>
+                        <select id="poster_type" name="poster_type">
+                            <option value="">Egal</option>
+                            <option value="private">Privat</option>
+                            <option value="commercial">Gewerblich</option>
+                        </select>
+                        </div>
+
+                        <div class="form-field">
                         <label for="condition">Zustand</label>
-                        <select id="condition" name="condition" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
-                            <option value="">Alle</option>
-                            <option value="new_with_tag">Neu mit Etikett</option>
+                        <select id="condition" name="condition">
+                            <option value="">Egal</option>
                             <option value="new">Neu</option>
-                            <option value="like_new">Sehr Gut</option>
-                            <option value="ok">Gut</option>
-                            <option value="alright">In Ordnung</option>
-                            <option value="defect">Defekt</option>
+                            <option value="like_new">Wie neu</option>
+                            <option value="good">Gut</option>
+                            <option value="acceptable">Akzeptabel</option>
                         </select>
-                    </div>
-                    <div style="flex:1">
+                        </div>
+
+                        <div class="form-field">
                         <label for="shipping">Versand</label>
-                        <select id="shipping" name="shipping" style="width:100%;padding:10px;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+                        <select id="shipping" name="shipping">
                             <option value="">Egal</option>
                             <option value="ja">Versand möglich</option>
                             <option value="nein">Nur Abholung</option>
                         </select>
+                        </div>
+                    </div>
+                  </div><!-- /filter-panel -->
+
+                  <div class="wizard-inline-warning" id="step1-warning" style="display:none">
+                      Bitte gib Stichwörter oder einen Ort ein &mdash; genau wie bei kleinanzeigen.de.
+                  </div>
+
+                  <button type="button" class="wizard-next-btn" id="wizard-next-btn">Weiter zu Smart Enhancements &rarr;</button>
+                  </div><!-- /wizard-step-1 -->
+
+                  <div id="wizard-step-2" class="wizard-panel">
+                    <div class="wizard-summary" id="wizard-summary"></div>
+
+                    <label>Häufigkeit</label>
+                    {% set min_iv = min_interval_seconds or 300 %}
+                    {% set default_iv = 300 if min_iv <= 300 else min_iv %}
+                    <div class="frequency-group frequency-group-compact">
+                        {% for val, lbl in [(60, 'Sofort'), (300, 'Alle 5 Minuten'), (1800, 'Alle 30 Minuten'), (3600, 'Alle 60 Minuten')] %}
+                        <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
+                            <input type="radio" name="interval_seconds" value="{{ val }}"{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
+                            {{ lbl }}
+                            {% if val < min_iv %}<a href="/billing" class="freq-upgrade">Upgrade</a>{% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    <!--
+                        NEW: notification opt-in as a full card, not a pair
+                        of quiet checkboxes. Push is pre-checked (the
+                        strongest retention lever in the whole flow); email
+                        stays opt-in since it's a heavier commitment. Each
+                        option explains its own "why" in one line.
+                    -->
+                    <div class="notify-card">
+                        <div class="notify-card-title">🔔 Damit du's als Erste/r siehst</div>
+                        <p class="notify-card-sub">Neue Anzeigen verschwinden oft in Minuten &mdash; lass dich benachrichtigen, statt manuell nachzuschauen.</p>
+
+                        <label class="notify-option">
+                            <input type="checkbox" name="push_notifications" id="push_notifications" checked>
+                            <span class="notify-option-label">
+                                Push-Benachrichtigung
+                                <span class="notify-option-detail">Sofort auf diesem Gerät</span>
+                            </span>
+                        </label>
+                        <label class="notify-option">
+                            <input type="checkbox" name="email_notifications" id="email_notifications">
+                            <span class="notify-option-label">
+                                E-Mail-Benachrichtigung
+                                <span class="notify-option-detail">An {{ user_email }}</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Collapsed by default so step 2 stays short on a phone -->
+                    <details class="promo-box">
+                        <summary>
+                            <span class="promo-icon">&#10024;</span>
+                            <strong>Smart Alerts &mdash; demnächst verfügbar</strong>
+                        </summary>
+                        <p>KI-gestützte Angebotsbewertung, Preissenkungs-Prognosen und sofortige Treffer-Zusammenfassungen kommen hier als Nächstes hinzu.</p>
+                    </details>
+
+                    <div class="wizard-actions">
+                        <button type="button" class="wizard-back-btn" id="wizard-back-btn">&larr; Zurück</button>
+                        <button type="submit">Wiederkehrende Suche starten</button>
+                    </div>
+                  </div><!-- /wizard-step-2 -->
+                </form>
+            </div>
+        </div><!-- /tab-new-search -->
+
+        <!-- ── TAB: My Results ── -->
+        <div id="tab-my-results" class="tab-pane">
+            <div class="card">
+                <h3>Meine Ergebnisse</h3>
+                <p style="font-size:14px;color:#666;margin:0 0 14px">
+                    Die neuesten Anzeigen, die deine Suchen gefunden haben.
+                    {% if not show_deals %}Angebots-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">Upgrade</a>, um sie freizuschalten.{% endif %}
+                </p>
+
+                <!-- Sticky on mobile so filter + sort stay reachable while
+                     scrolling a long result list (see .results-toolbar) -->
+                <div class="results-toolbar">
+                    <!-- Sub-tabs for search filtering (horizontally scrollable on mobile, see style.css) -->
+                    {% if tasks %}
+                    <div class="sub-tab-bar">
+                        <button class="sub-tab-filter active" data-filter="all" onclick="filterResultsBySearch('all')">Alle Suchen</button>
+                        {% for task in tasks %}
+                        <button class="sub-tab-filter" data-filter="task-{{ task.id }}" onclick="filterResultsBySearch('task-{{ task.id }}')">
+                            {{ task.parameters.get('keywords', 'Search #' ~ task.id) | truncate(20) }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Sorting Controls -->
+                    <div class="sort-controls">
+                        <label for="sort-by">Sortieren nach:</label>
+                        <select id="sort-by" onchange="sortResults(this.value)">
+                            <option value="newest">Neueste zuerst</option>
+                            <option value="oldest">Älteste zuerst</option>
+                            <option value="price-low">Preis: Niedrig → Hoch</option>
+                            <option value="price-high">Preis: Hoch → Niedrig</option>
+                            <option value="trust-high">Trust Score: Hoch → Niedrig</option>
+                        </select>
                     </div>
                 </div>
 
-                <label>Frequency</label>
-                <div class="frequency-group">
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="5" id="freq-5s">
-                        Every 5 seconds <em style="color:#888">(dev only)</em>
-                    </label>
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="300" checked>
-                        Every 5 minutes
-                    </label>
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="1800">
-                        Every 30 minutes
-                    </label>
-                    <label class="frequency-option">
-                        <input type="radio" name="interval_seconds" value="3600">
-                        Every 60 minutes
-                    </label>
-                </div>
-                <div class="warning" id="fast-warning">
-                    &#9888; 5-second interval is very aggressive and may result in IP bans from kleinanzeigen.de. Use only for local testing.
-                </div>
-
-                <button type="submit">Start Recurring Scrape</button>
-            </form>
-        </div>
-
-        <!-- My searches -->
-        <div class="card">
-            <h3>My Searches</h3>
-            <div id="tasks-container">
-            {% if tasks %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Keywords</th>
-                        <th>Location</th>
-                        <th>Filters</th>
-                        <th>Interval</th>
-                        <th>Status</th>
-                        <th>Results</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="tasks-tbody">
-                    {% for task in tasks %}
-                    <tr>
-                        <td>{{ task.id }}</td>
-                        <td>{{ task.parameters.get('keywords', '&mdash;') }}</td>
-                        <td>{{ task.parameters.get('location', '&mdash;') }}</td>
-                        <td style="font-size:12px;color:#666">
-                            {% set parts = [] %}
-                            {% if task.parameters.get('ad_type') %}{% set _ = parts.append(task.parameters.get('ad_type')) %}{% endif %}
-                            {% if task.parameters.get('poster_type') %}{% set _ = parts.append(task.parameters.get('poster_type')) %}{% endif %}
-                            {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
-                            {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
-                                {% set _ = parts.append(task.parameters.get('price_min', '0') ~ '–' ~ task.parameters.get('price_max', '∞') ~ ' €') %}
+                {% if recent_results %}
+                <div class="grid" id="results-grid">
+                    {% for r in recent_results %}
+                    <div class="result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}">
+                        <div class="result-card-header">
+                            <button class="favorite-btn" onclick="toggleFavorite({{ r.id }}, this)" title="Zu Favoriten hinzufügen">
+                                ♡
+                            </button>
+                        </div>
+                        <a class="result-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
+                            {% if r.image_url %}
+                            <img class="thumb" src="{{ r.image_url }}" alt="" loading="lazy"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="thumb-placeholder" style="display:none">Kein Bild</div>
+                            {% else %}
+                            <div class="thumb-placeholder">Kein Bild</div>
                             {% endif %}
-                            {% if task.parameters.get('radius') %}{% set _ = parts.append(task.parameters.get('radius') ~ ' km') %}{% endif %}
-                            {{ parts | join(', ') if parts else '&mdash;' }}
-                        </td>
-                        <td>
-                            {% set iv = task.parameters.get('interval_seconds') %}
-                            {% if iv == 5 %}5 s
-                            {% elif iv == 300 %}5 min
-                            {% elif iv == 1800 %}30 min
-                            {% elif iv == 3600 %}60 min
-                            {% else %}one-shot{% endif %}
-                        </td>
-                        <td><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
-                        <td>{{ task.result_count }}</td>
-                        <td>
-                            {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
-                            <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0">
-                                <button type="submit" class="cancel-btn">Cancel</button>
-                            </form>
-                            {% endif %}
-                        </td>
-                    </tr>
+                            <div class="card-body">
+                                <span class="price-row">
+                                    <span class="card-price">{{ r.price }}</span>
+                                    {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
+                                </span>
+                                <span class="card-title">{{ r.title }}</span>
+                                {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
+                                {% if r.trust_score %}
+                                <span class="card-meta">
+                                    {% if show_trust_scores %}
+                                        {% if r.trust_score >= 80 %}
+                                        <span class="trust-score-badge excellent">Trust: {{ r.trust_score }}/100</span>
+                                        {% elif r.trust_score >= 60 %}
+                                        <span class="trust-score-badge good">Trust: {{ r.trust_score }}/100</span>
+                                        {% elif r.trust_score >= 40 %}
+                                        <span class="trust-score-badge fair">Trust: {{ r.trust_score }}/100</span>
+                                        {% else %}
+                                        <span class="trust-score-badge poor">Trust: {{ r.trust_score }}/100</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="trust-score-badge disabled" title="Upgrade auf Core oder Pro Plan um Trust Scores freizuschalten">Check Trust</span>
+                                        <a href="/billing" style="margin-left: 8px; font-size: 12px; color: #007bff; text-decoration: none;">Upgrade</a>
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                                <span class="card-meta">
+                                    <span>{{ r.location }}</span>
+                                    <span>{{ r.created_at.strftime('%d.%m %H:%M') if r.created_at else '' }}</span>
+                                </span>
+                                <span class="card-meta" style="margin-top:2px">
+                                    <span>Suche: {{ r.search_keywords }}</span>
+                                </span>
+                            </div>
+                        </a>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state" id="empty-state">No searches yet. Create one above!</div>
-            {% endif %}
+                </div>
+
+                <!-- Pagination for Results -->
+                <div class="dashboard-pagination" id="results-pagination">
+                    <!-- Wird via JavaScript gefüllt -->
+                </div>
+                {% else %}
+                {% set running_tasks = tasks | selectattr('status', 'in', ['pending', 'running']) | list %}
+                {% if running_tasks %}
+                <!-- A search is still in flight: show shimmering skeleton
+                     cards instead of a bare "no results" message -->
+                <p class="skeleton-note">Deine Suche läuft &mdash; neue Ergebnisse erscheinen hier in Kürze.</p>
+                <div class="grid" aria-hidden="true">
+                    {% for _ in range(3) %}
+                    <div class="result-card skeleton-card">
+                        <div class="thumb-placeholder skeleton"></div>
+                        <div class="card-body">
+                            <span class="skeleton skeleton-line" style="width:35%"></span>
+                            <span class="skeleton skeleton-line" style="width:85%"></span>
+                            <span class="skeleton skeleton-line" style="width:60%"></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">Noch keine Ergebnisse &mdash; neue Anzeigen deiner Suchen erscheinen hier.</div>
+                {% endif %}
+                {% endif %}
+
+                <!-- Favorites Sub-tab -->
+                {% if favorites %}
+                <h4 style="margin-top: 32px;">⭐ Meine Favoriten</h4>
+                <div class="grid">
+                    {% for fav in favorites %}
+                    <div class="result-card-wrapper">
+                        <div class="result-card-header">
+                            <button class="favorite-btn favorited" onclick="toggleFavorite({{ fav.id }}, this)" title="Aus Favoriten entfernen">
+                                ♥
+                            </button>
+                        </div>
+                        <a class="result-card" {% if fav.url %}href="{{ fav.url }}" target="_blank" rel="noopener"{% endif %}>
+                            {% if fav.image_url %}
+                            <img class="thumb" src="{{ fav.image_url }}" alt="" loading="lazy"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="thumb-placeholder" style="display:none">Kein Bild</div>
+                            {% else %}
+                            <div class="thumb-placeholder">Kein Bild</div>
+                            {% endif %}
+                            <div class="card-body">
+                                <span class="price-row">
+                                    <span class="card-price">{{ fav.price }}</span>
+                                    {% if fav.deal %}<span class="deal {{ fav.deal.cls }}">{{ fav.deal.label }}</span>{% endif %}
+                                </span>
+                                <span class="card-title">{{ fav.title }}</span>
+                                {% if fav.description %}<span class="card-desc">{{ fav.description }}</span>{% endif %}
+                                <span class="card-meta">
+                                    <span>{{ fav.location }}</span>
+                                    <span>{{ fav.created_at.strftime('%d.%m %H:%M') if fav.created_at else '' }}</span>
+                                </span>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
+        </div><!-- /tab-my-results -->
+
+        {% if is_admin %}
+        <div id="tab-admin" class="tab-pane">
+            <div class="card">
+                <h3>Benachrichtigungen testen</h3>
+                <form method="post" action="/admin/test-notification" style="margin:0">
+                    <button type="submit">Test-Benachrichtigung senden</button>
+                </form>
+            </div>
+        </div><!-- /tab-admin -->
+        {% endif %}
+
+    </div>
+
+    <!--
+        NEW: fixed bottom navigation, mobile only (hidden above 560px via
+        style.css, where the .tab-nav at the top takes over instead).
+        Three core destinations only — Admin is intentionally excluded
+        here and reachable via the header link instead, since it's a rare
+        destination for a tiny fraction of users and doesn't deserve equal
+        weight with Suchen/Neu/Ergebnisse in the thumb zone.
+    -->
+    <nav class="bottom-nav" aria-label="Hauptnavigation">
+        <button class="bottom-nav-item active" data-tab="my-searches" onclick="showTab('my-searches', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+            Suchen
+        </button>
+        <button class="bottom-nav-item primary" data-tab="new-search" onclick="showTab('new-search', this)">
+            <span class="bottom-nav-icon-wrap">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+        </button>
+        <button class="bottom-nav-item" data-tab="my-results" onclick="showTab('my-results', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Ergebnisse
+        </button>
+    </nav>
+
+    <!-- Pull-to-refresh spinner (standalone PWA only, driven by JS) -->
+    <div class="ptr-indicator" id="ptr" aria-hidden="true"><span class="ptr-spinner"></span></div>
+
+    <!-- Confirm action sheet: in-design replacement for native confirm() -->
+    <div class="sheet-backdrop" id="sheet-backdrop"></div>
+    <div class="action-sheet" id="action-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+        <h4 id="sheet-title"></h4>
+        <p id="sheet-message"></p>
+        <div class="sheet-actions">
+            <button type="button" class="sheet-btn sheet-btn-danger" id="sheet-confirm"></button>
+            <button type="button" class="sheet-btn sheet-btn-cancel" id="sheet-cancel">Zurück</button>
         </div>
     </div>
 
-    <script>
-        document.querySelectorAll('input[name="interval_seconds"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                document.getElementById('fast-warning').style.display =
-                    this.value === '5' ? 'block' : 'none';
-            });
-        });
+    {% include "_version_footer.html" %}
 
-        // ── Push notification helpers ────────────────────────────────────────
+    <script>
+        // ── Tab Navigation ──
+        // CHANGED: now keeps both the top .tab-btn set and the bottom-nav
+        // set in sync, since either one can be tapped depending on
+        // viewport width. Also updates the URL hash so state survives a
+        // page reload (used by goToNewSearchTab() below too).
+        function showTab(name, btn) {
+            document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+            document.querySelectorAll('.tab-btn, .bottom-nav-item').forEach(function(b) { b.classList.remove('active'); });
+            var pane = document.getElementById('tab-' + name);
+            if (pane) pane.classList.add('active');
+            document.querySelectorAll('[data-tab="' + name + '"]').forEach(function(b) { b.classList.add('active'); });
+            if (history.replaceState) history.replaceState(null, '', '#tab-' + name);
+        }
+
+        // NEW: used by the empty-state CTA to jump straight into the wizard.
+        function goToNewSearchTab() {
+            var btn = document.querySelector('.bottom-nav-item[data-tab="new-search"]') || document.querySelector('.tab-btn[data-tab="new-search"]');
+            showTab('new-search', btn);
+            var kwField = document.getElementById('keywords');
+            if (kwField) setTimeout(function() { kwField.focus(); }, 50);
+        }
+
+        // Restore tab from URL hash
+        (function() {
+            var hash = window.location.hash;
+            if (hash.indexOf('#tab-') === 0) {
+                var name = hash.slice(5);
+                var btn = document.querySelector('[data-tab="' + name + '"]');
+                if (btn) showTab(name, btn);
+            }
+        })();
+
+        // ── NEW: Advanced filter accordion ──
+        (function() {
+            var toggle = document.getElementById('filter-toggle');
+            var panel = document.getElementById('filter-panel');
+            var countBadge = document.getElementById('filter-count');
+            if (!toggle || !panel) return;
+
+            function countActiveFilters() {
+                var fields = panel.querySelectorAll('select, input[type="number"]');
+                var count = 0;
+                fields.forEach(function(f) {
+                    if (f.value && f.value.trim() !== '') count++;
+                });
+                return count;
+            }
+
+            function refreshBadge() {
+                var n = countActiveFilters();
+                if (n > 0) {
+                    countBadge.textContent = n;
+                    countBadge.style.display = 'inline-block';
+                } else {
+                    countBadge.style.display = 'none';
+                }
+            }
+
+            toggle.addEventListener('click', function() {
+                var isOpen = panel.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+
+            panel.addEventListener('change', refreshBadge);
+            refreshBadge();
+        })();
+
+        // ── Favorite Toggle ──
+        function toggleFavorite(resultId, btn) {
+            fetch('/scrapes/results/' + resultId + '/favorite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (data.favorite === 'added') {
+                        btn.classList.add('favorited');
+                        btn.textContent = '♥';
+                    } else {
+                        btn.classList.remove('favorited');
+                        btn.textContent = '♡';
+                    }
+                }
+            })
+            .catch(err => console.error('Favorite toggle failed:', err));
+        }
+
+        // ── Results Filtering & Sorting ──
+        var currentFilter = 'all';
+        var currentSort = 'newest';
+
+        function filterResultsBySearch(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.sub-tab-filter').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-filter="' + filter + '"]').classList.add('active');
+            applyFiltersAndSort();
+        }
+
+        function sortResults(sortBy) {
+            currentSort = sortBy;
+            applyFiltersAndSort();
+        }
+
+        // Master card list, captured once from the server-rendered grid.
+        // The grid is re-rendered with clones on every filter/sort/page
+        // change, so it must never be re-queried from the live DOM (that
+        // would lose everything beyond the current page). Scoped to
+        // #results-grid so the favorites grid stays out of it.
+        var allResultCards = null;
+        var filteredResultCards = [];
+
+        function applyFiltersAndSort() {
+            if (!document.getElementById('results-grid')) return;
+            if (allResultCards === null) {
+                allResultCards = Array.prototype.slice.call(
+                    document.querySelectorAll('#results-grid .result-card-wrapper')
+                );
+            }
+
+            filteredResultCards = allResultCards.filter(function(card) {
+                return currentFilter === 'all' || card.dataset.taskId === currentFilter;
+            });
+
+            filteredResultCards.sort(function(a, b) {
+                switch (currentSort) {
+                    case 'newest':
+                        return parseInt(b.dataset.date) - parseInt(a.dataset.date);
+                    case 'oldest':
+                        return parseInt(a.dataset.date) - parseInt(b.dataset.date);
+                    case 'price-low':
+                        return parseInt(a.dataset.price) - parseInt(b.dataset.price);
+                    case 'price-high':
+                        return parseInt(b.dataset.price) - parseInt(a.dataset.price);
+                    case 'trust-high':
+                        return parseInt(b.dataset.trust) - parseInt(a.dataset.trust);
+                    default:
+                        return 0;
+                }
+            });
+
+            renderResultsPage(1);
+        }
+
+        // Global (not nested in applyFiltersAndSort) so the pagination
+        // links' inline onclick can actually reach it.
+        function renderResultsPage(page) {
+            var grid = document.getElementById('results-grid');
+            var pagination = document.getElementById('results-pagination');
+            if (!grid || !pagination) return;
+
+            var pageSize = 10;
+            var totalPages = Math.max(1, Math.ceil(filteredResultCards.length / pageSize));
+            page = Math.min(Math.max(1, page), totalPages);
+
+            var start = (page - 1) * pageSize;
+            var pageCards = filteredResultCards.slice(start, start + pageSize);
+
+            grid.innerHTML = '';
+            pageCards.forEach(function(card) { grid.appendChild(card.cloneNode(true)); });
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            var html = '';
+            html += page > 1
+                ? '<a onclick="renderResultsPage(' + (page - 1) + ')">&laquo;</a>'
+                : '<span class="disabled">&laquo;</span>';
+
+            for (var p = 1; p <= totalPages; p++) {
+                if (p === page) {
+                    html += '<span class="current">' + p + '</span>';
+                } else if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+                    html += '<a onclick="renderResultsPage(' + p + ')">' + p + '</a>';
+                } else if (p === page - 3 || p === page + 3) {
+                    html += '<span>…</span>';
+                }
+            }
+
+            html += page < totalPages
+                ? '<a onclick="renderResultsPage(' + (page + 1) + ')">&raquo;</a>'
+                : '<span class="disabled">&raquo;</span>';
+
+            pagination.innerHTML = html;
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', applyFiltersAndSort);
+
+        // ── Push Notifications & Wizard (from original) ──
         function urlBase64ToUint8Array(b64) {
             var pad = '='.repeat((4 - b64.length % 4) % 4);
             var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
             return Uint8Array.from(Array.from(raw).map(function(c) { return c.charCodeAt(0); }));
         }
 
+        function notifSupported() {
+            return ('Notification' in window) && ('PushManager' in window) && ('serviceWorker' in navigator);
+        }
+
+        function isStandalone() {
+            return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        }
+
+        function isIOS() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
         function updateNotifBar(perm) {
             var bar = document.getElementById('notif-bar');
             var btn = document.getElementById('notif-btn');
-            if (!('PushManager' in window) || !('serviceWorker' in navigator)) return;
+            var label = document.getElementById('notif-label');
+            if (!notifSupported()) {
+                if (isIOS() && !isStandalone()) {
+                    bar.style.display = 'flex';
+                    btn.style.display = 'none';
+                    label.textContent = '📲 Auf iPhone/iPad: Teilen antippen → „Zum Home-Bildschirm", dann die App öffnen, um Benachrichtigungen zu aktivieren';
+                } else {
+                    bar.style.display = 'none';
+                }
+                return;
+            }
+            btn.style.display = '';
+            bar.style.display = 'flex';
             if (perm === 'granted') {
-                btn.textContent = 'Notifications on ✓';
+                label.textContent = '🔔 Benachrichtigungen sind aktiviert';
+                btn.textContent = 'Aktiviert ✓';
                 btn.disabled = true;
             } else if (perm === 'denied') {
-                btn.textContent = 'Blocked by browser';
+                label.textContent = 'Benachrichtigungen sind blockiert — aktiviere sie in deinen Browsereinstellungen';
+                btn.textContent = 'Blockiert';
                 btn.disabled = true;
             } else {
-                bar.style.display = 'flex';
+                label.textContent = 'Benachrichtigt werden, wenn neue Anzeigen gefunden werden';
+                btn.textContent = 'Benachrichtigungen aktivieren';
+                btn.disabled = false;
             }
+        }
+
+        async function subscribeToPush() {
+            var keyResp = await fetch('/push/vapid-public-key');
+            if (!keyResp.ok) return false;
+            var publicKey = (await keyResp.json()).publicKey;
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                });
+            }
+            var subResp = await fetch('/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub),
+            });
+            return subResp.ok;
         }
 
         async function handleNotifClick() {
             var btn = document.getElementById('notif-btn');
+            var label = document.getElementById('notif-label');
             btn.disabled = true;
-            btn.textContent = 'Requesting…';
+            btn.textContent = 'Wird angefragt…';
             try {
                 var perm = await Notification.requestPermission();
                 if (perm !== 'granted') { updateNotifBar(perm); return; }
-
-                var keyResp = await fetch('/push/vapid-public-key');
-                if (!keyResp.ok) { btn.textContent = 'Not configured'; return; }
-                var publicKey = (await keyResp.json()).publicKey;
-
-                var reg = await navigator.serviceWorker.ready;
-                var sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(publicKey),
-                });
-
-                await fetch('/push/subscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(sub),
-                });
+                var ok = await subscribeToPush();
+                if (!ok) {
+                    label.textContent = 'Dein Abonnement konnte nicht gespeichert werden — bitte erneut anmelden und wiederholen';
+                    btn.textContent = 'Erneut versuchen';
+                    btn.disabled = false;
+                    return;
+                }
                 updateNotifBar('granted');
             } catch (err) {
-                btn.textContent = 'Failed — try again';
+                label.textContent = 'Benachrichtigungen konnten nicht aktiviert werden — bitte erneut versuchen';
+                btn.textContent = 'Erneut versuchen';
                 btn.disabled = false;
             }
         }
-        // ────────────────────────────────────────────────────────────────────
 
-        function formatInterval(iv) {
-            if (iv === 5) return '5 s';
-            if (iv === 300) return '5 min';
-            if (iv === 1800) return '30 min';
-            if (iv === 3600) return '60 min';
-            return 'one-shot';
-        }
+        // Wizard (from original)
+        (function() {
+            var step1 = document.getElementById('wizard-step-1');
+            var step2 = document.getElementById('wizard-step-2');
+            var nextBtn = document.getElementById('wizard-next-btn');
+            var backBtn = document.getElementById('wizard-back-btn');
+            var warning = document.getElementById('step1-warning');
+            var indicator1 = document.querySelector('.wizard-step-indicator[data-step="1"]');
+            var indicator2 = document.querySelector('.wizard-step-indicator[data-step="2"]');
+            var summary = document.getElementById('wizard-summary');
+            if (!step1 || !step2 || !nextBtn || !backBtn) return;
 
-        function renderTasks(tasks) {
-            var container = document.getElementById('tasks-container');
-            if (!tasks || tasks.length === 0) {
-                container.innerHTML = '<div class="empty-state">No searches yet. Create one above!</div>';
-                return;
+            function buildSummary() {
+                var kw = document.getElementById('keywords').value.trim();
+                var loc = document.getElementById('location-input').value.trim();
+                var catSelect = document.getElementById('category');
+                var cat = catSelect.value ? catSelect.options[catSelect.selectedIndex].text : '';
+                var parts = [];
+                if (kw) parts.push('"' + kw + '"');
+                if (cat) parts.push(cat);
+                if (loc) parts.push(loc);
+                summary.textContent = parts.length ? parts.join(' · ') : 'Alle Anzeigen';
             }
 
-            var table = document.createElement('table');
-            var thead = document.createElement('thead');
-            thead.innerHTML = '<tr><th>#</th><th>Keywords</th><th>Location</th><th>Filters</th><th>Interval</th><th>Status</th><th>Results</th><th></th></tr>';
-            table.appendChild(thead);
-
-            var tbody = document.createElement('tbody');
-            tbody.id = 'tasks-tbody';
-
-            tasks.forEach(function(task) {
-                var tr = document.createElement('tr');
-
-                var params = task.parameters || {};
-                var canCancel = ['pending', 'running', 'completed'].indexOf(task.status) !== -1 && params.interval_seconds;
-
-                var idTd = document.createElement('td');
-                idTd.textContent = task.id;
-
-                var kwTd = document.createElement('td');
-                kwTd.textContent = params.keywords || '—';
-
-                var locTd = document.createElement('td');
-                locTd.textContent = params.location || '—';
-
-                var filterParts = [];
-                if (params.ad_type) filterParts.push(params.ad_type);
-                if (params.poster_type) filterParts.push(params.poster_type);
-                if (params.condition) filterParts.push(params.condition.replace(/_/g, ' '));
-                if (params.price_min || params.price_max)
-                    filterParts.push((params.price_min || '0') + '–' + (params.price_max || '∞') + ' €');
-                if (params.radius) filterParts.push(params.radius + ' km');
-                var filterTd = document.createElement('td');
-                filterTd.textContent = filterParts.length ? filterParts.join(', ') : '—';
-                filterTd.style.fontSize = '12px';
-                filterTd.style.color = '#666';
-
-                var ivTd = document.createElement('td');
-                ivTd.textContent = formatInterval(params.interval_seconds);
-
-                var statusTd = document.createElement('td');
-                var badge = document.createElement('span');
-                badge.className = 'badge badge-' + task.status;
-                badge.textContent = task.status;
-                statusTd.appendChild(badge);
-
-                var countTd = document.createElement('td');
-                countTd.textContent = task.result_count;
-
-                var actionTd = document.createElement('td');
-                if (canCancel) {
-                    var form = document.createElement('form');
-                    form.method = 'post';
-                    form.action = '/scrapes/' + task.id + '/cancel';
-                    form.style.margin = '0';
-                    var btn = document.createElement('button');
-                    btn.type = 'submit';
-                    btn.className = 'cancel-btn';
-                    btn.textContent = 'Cancel';
-                    form.appendChild(btn);
-                    actionTd.appendChild(form);
+            function goToStep2() {
+                var kw = document.getElementById('keywords').value.trim();
+                var loc = document.getElementById('location-input').value.trim();
+                if (!kw && !loc) {
+                    warning.style.display = 'block';
+                    return;
                 }
+                warning.style.display = 'none';
+                buildSummary();
+                step1.classList.remove('active');
+                step2.classList.add('active');
+                indicator1.classList.remove('active');
+                indicator1.classList.add('done');
+                indicator2.classList.add('active');
+            }
 
-                tr.appendChild(idTd);
-                tr.appendChild(kwTd);
-                tr.appendChild(locTd);
-                tr.appendChild(filterTd);
-                tr.appendChild(ivTd);
-                tr.appendChild(statusTd);
-                tr.appendChild(countTd);
-                tr.appendChild(actionTd);
-                tbody.appendChild(tr);
+            function goToStep1() {
+                step2.classList.remove('active');
+                step1.classList.add('active');
+                indicator2.classList.remove('active');
+                indicator1.classList.remove('done');
+                indicator1.classList.add('active');
+            }
+
+            nextBtn.addEventListener('click', goToStep2);
+            backBtn.addEventListener('click', goToStep1);
+
+            document.getElementById('scrape-form').addEventListener('submit', function(e) {
+                if (!step2.classList.contains('active')) {
+                    e.preventDefault();
+                    goToStep2();
+                }
+            });
+        })();
+
+        // ── Confirm action sheet (replaces native confirm()) ──
+        (function() {
+            var backdrop = document.getElementById('sheet-backdrop');
+            var sheet = document.getElementById('action-sheet');
+            if (!backdrop || !sheet) return;
+            var titleEl = document.getElementById('sheet-title');
+            var msgEl = document.getElementById('sheet-message');
+            var confirmBtn = document.getElementById('sheet-confirm');
+            var onConfirm = null;
+
+            window.openConfirmSheet = function(opts, cb) {
+                titleEl.textContent = opts.title || 'Bist du sicher?';
+                msgEl.textContent = opts.message || '';
+                confirmBtn.textContent = opts.label || 'Bestätigen';
+                onConfirm = cb;
+                backdrop.classList.add('open');
+                sheet.classList.add('open');
+            };
+
+            window.closeConfirmSheet = function() {
+                backdrop.classList.remove('open');
+                sheet.classList.remove('open');
+                onConfirm = null;
+            };
+
+            confirmBtn.addEventListener('click', function() {
+                var cb = onConfirm;
+                closeConfirmSheet();
+                if (cb) cb();
+            });
+            document.getElementById('sheet-cancel').addEventListener('click', closeConfirmSheet);
+            backdrop.addEventListener('click', closeConfirmSheet);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeConfirmSheet();
             });
 
-            table.appendChild(tbody);
-            container.innerHTML = '';
-            container.appendChild(table);
-        }
+            // Any form carrying data-confirm-title asks via the sheet first.
+            // form.submit() bypasses this listener, so no loop.
+            document.addEventListener('submit', function(e) {
+                var form = e.target;
+                if (!form.dataset || !form.dataset.confirmTitle) return;
+                e.preventDefault();
+                openConfirmSheet({
+                    title: form.dataset.confirmTitle,
+                    message: form.dataset.confirmMessage,
+                    label: form.dataset.confirmLabel
+                }, function() { form.submit(); });
+            });
+        })();
 
-        if (typeof EventSource !== 'undefined') {
-            var es = new EventSource('/scrapes/stream');
-            es.onmessage = function(e) {
-                try {
-                    renderTasks(JSON.parse(e.data));
-                } catch (err) {}
-            };
-            es.onerror = function() {
-                // On error the browser will auto-reconnect; nothing to do
-            };
-        }
+        // ── Collapsing header: hide on scroll-down, reveal on scroll-up ──
+        // (CSS neutralises the transform above 560px, so desktop is unaffected)
+        (function() {
+            var header = document.querySelector('.header-row');
+            if (!header) return;
+            var lastY = window.scrollY, ticking = false;
+            window.addEventListener('scroll', function() {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(function() {
+                    var y = window.scrollY;
+                    if (y > lastY + 6 && y > 60) header.classList.add('header-hidden');
+                    else if (y < lastY - 6) header.classList.remove('header-hidden');
+                    header.classList.toggle('header-scrolled', y > 8);
+                    lastY = y;
+                    ticking = false;
+                });
+            }, { passive: true });
+        })();
 
+        // ── Compact notify-card for users who already opted in once ──
+        (function() {
+            var card = document.querySelector('.notify-card');
+            if (!card) return;
+            var opted = false;
+            try { opted = localStorage.getItem('ka-notify-opted') === '1'; } catch (e) {}
+            if (opted || (('Notification' in window) && Notification.permission === 'granted')) {
+                card.classList.add('compact');
+            }
+            var form = document.getElementById('scrape-form');
+            if (form) form.addEventListener('submit', function() {
+                var push = document.getElementById('push_notifications');
+                if (push && push.checked) {
+                    try { localStorage.setItem('ka-notify-opted', '1'); } catch (e) {}
+                }
+            });
+        })();
+
+        // ── Swipe gestures (touch + phone widths only) ──
+        // Swipe a search card left → confirm-delete sheet.
+        // Swipe a result card right → toggle favorite.
+        (function() {
+            if (!('ontouchstart' in window)) return;
+
+            function delegateSwipe(container, selector, dir, threshold, maxShift, onTrigger) {
+                var el = null, startX = 0, startY = 0, dx = 0, horiz = false, cancelled = false;
+
+                container.addEventListener('touchstart', function(e) {
+                    el = e.target.closest(selector);
+                    if (!el || window.innerWidth > 640) { el = null; return; }
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    dx = 0; horiz = false; cancelled = false;
+                    el.style.transition = '';
+                }, { passive: true });
+
+                container.addEventListener('touchmove', function(e) {
+                    if (!el || cancelled) return;
+                    var mx = e.touches[0].clientX - startX;
+                    var my = e.touches[0].clientY - startY;
+                    if (!horiz) {
+                        if (Math.abs(my) > 12 && Math.abs(my) > Math.abs(mx)) { cancelled = true; return; }
+                        if (Math.abs(mx) < 12) return;
+                        horiz = true;
+                    }
+                    dx = dir === 'left' ? Math.min(0, mx) : Math.max(0, mx);
+                    var shift = Math.max(-maxShift, Math.min(maxShift, dx));
+                    el.style.transform = 'translateX(' + shift + 'px)';
+                    el.classList.toggle('swipe-armed', Math.abs(dx) >= threshold);
+                }, { passive: true });
+
+                container.addEventListener('touchend', function() {
+                    if (!el) return;
+                    var target = el;
+                    var fired = horiz && !cancelled && Math.abs(dx) >= threshold;
+                    el = null;
+                    target.style.transition = 'transform 0.2s ease';
+                    target.style.transform = '';
+                    target.classList.remove('swipe-armed');
+                    if (fired) onTrigger(target);
+                });
+            }
+
+            var tasksContainer = document.getElementById('tasks-container');
+            if (tasksContainer) {
+                delegateSwipe(tasksContainer, '#tasks-tbody tr', 'left', 70, 90, function(row) {
+                    var form = row.querySelector('form[data-confirm-title]');
+                    if (!form) return;
+                    openConfirmSheet({
+                        title: form.dataset.confirmTitle,
+                        message: form.dataset.confirmMessage,
+                        label: form.dataset.confirmLabel
+                    }, function() { form.submit(); });
+                });
+            }
+
+            var resultsPane = document.getElementById('tab-my-results');
+            if (resultsPane) {
+                delegateSwipe(resultsPane, '.result-card-wrapper', 'right', 60, 28, function(wrapper) {
+                    var btn = wrapper.querySelector('.favorite-btn');
+                    if (!btn) return;
+                    btn.classList.add('fav-pop');
+                    setTimeout(function() { btn.classList.remove('fav-pop'); }, 400);
+                    btn.click();
+                });
+            }
+        })();
+
+        // ── Pull-to-refresh (installed PWA only — browser tabs keep the
+        //    native gesture, so ours is off there to avoid double-firing) ──
+        (function() {
+            var ind = document.getElementById('ptr');
+            if (!ind || !('ontouchstart' in window) || !isStandalone()) return;
+            ind.classList.add('ptr-enabled');
+            var startY = 0, pulling = false, dist = 0;
+            var THRESHOLD = 56;
+
+            document.addEventListener('touchstart', function(e) {
+                pulling = window.scrollY <= 0;
+                if (pulling) { startY = e.touches[0].clientY; dist = 0; }
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!pulling) return;
+                dist = e.touches[0].clientY - startY;
+                if (dist <= 0 || window.scrollY > 0) {
+                    ind.style.transform = '';
+                    ind.classList.remove('armed');
+                    return;
+                }
+                var shift = Math.min(dist * 0.35, 64);
+                ind.style.transform = 'translateY(' + shift + 'px)';
+                ind.classList.toggle('armed', shift >= THRESHOLD);
+            }, { passive: true });
+
+            document.addEventListener('touchend', function() {
+                if (!pulling) return;
+                pulling = false;
+                if (Math.min(dist * 0.35, 64) >= THRESHOLD) {
+                    ind.classList.add('spinning');
+                    window.location.reload();
+                } else {
+                    ind.style.transform = '';
+                    ind.classList.remove('armed');
+                }
+            });
+        })();
+
+        // Service worker registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(function() {});
-            if ('Notification' in window && 'PushManager' in window) {
+            if (notifSupported()) {
                 updateNotifBar(Notification.permission);
+                if (Notification.permission === 'granted') {
+                    subscribeToPush().catch(function() {});
+                }
             }
         }
 

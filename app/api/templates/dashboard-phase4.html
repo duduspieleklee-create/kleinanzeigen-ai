@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - kleinanzeigen-ai</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="KA-AI">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* ── Trust Score Badge ── */
+        .trust-score-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .trust-score-badge.excellent { background-color: #28a745; }
+        .trust-score-badge.good { background-color: #ffc107; color: #333; }
+        .trust-score-badge.fair { background-color: #ff9800; }
+        .trust-score-badge.poor { background-color: #f44336; }
+
+        /* ── Favorite Heart Button ── */
+        .favorite-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px 8px;
+            color: #ccc;
+            transition: color 0.2s;
+        }
+        .favorite-btn:hover { color: #ff6b6b; }
+        .favorite-btn.favorited { color: #ff6b6b; }
+
+        /* ── Token Stats ── */
+        .token-stats {
+            display: flex;
+            gap: 20px;
+            margin: 12px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        .token-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .token-stat-value {
+            font-weight: 700;
+            color: #333;
+        }
+
+        /* ── Sub-tabs for Results ── */
+        .sub-tab-bar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0 0.5rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.5rem;
+        }
+        .sub-tab-bar button {
+            background: none;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .sub-tab-bar button:hover {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .sub-tab-bar button.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        /* ── Sorting Controls ── */
+        .sort-controls {
+            display: flex;
+            gap: 8px;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        .sort-controls select {
+            padding: 6px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 13px;
+            background-color: white;
+            cursor: pointer;
+        }
+
+        /* ── Notification Checkboxes in Step 2 ── */
+        .notification-options {
+            margin: 16px 0;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        .notification-options label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .notification-options input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* ── Delete Confirmation ── */
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        /* ── Pagination in Dashboard ── */
+        .dashboard-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .dashboard-pagination a,
+        .dashboard-pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.2rem;
+            height: 2.2rem;
+            padding: 0 0.7rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            border: 1.5px solid #dee2e6;
+            color: #495057;
+            background: white;
+            transition: all 0.15s;
+        }
+        .dashboard-pagination a:hover {
+            border-color: #adb5bd;
+            background: #f8f9fa;
+        }
+        .dashboard-pagination .current {
+            border-color: #007bff;
+            background: #007bff;
+            color: white;
+            font-weight: 700;
+        }
+        .dashboard-pagination .disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="dashboard-page">
+    <div class="container">
+        <div class="header-row">
+            <h2 style="margin:0">kleinanzeigen-ai</h2>
+            <a class="logout-link" href="/auth/logout">Abmelden</a>
+        </div>
+
+        <div id="notif-bar" class="notif-bar" style="display:none">
+            <span id="notif-label">Benachrichtigt werden, wenn neue Anzeigen gefunden werden</span>
+            <button id="notif-btn" onclick="handleNotifClick()">Benachrichtigungen aktivieren</button>
+        </div>
+
+        {% if is_admin %}
+        <div class="quota-bar">Admin-Konto &mdash; unbegrenzte Suchen</div>
+        {% else %}
+        <div class="quota-bar plan-bar">
+            <span>
+                <strong>{{ plan_label }}</strong>-Tarif &middot;
+                <strong>{{ credits }}</strong> Guthaben übrig
+                {% if credits_reset_at %} &middot; Zurücksetzung am {{ credits_reset_at.strftime('%d.%m. %H:%M') }} UTC{% endif %}
+                &middot; {{ active_searches }}/{{ max_active_searches }} wiederkehrende Suchen
+            </span>
+            <a href="/billing" class="upgrade-link">{% if plan_name == 'pro' %}Tarif verwalten{% else %}Upgrade&nbsp;&rarr;{% endif %}</a>
+        </div>
+        {% endif %}
+
+        {% if not is_admin and not email_verified %}
+        <div class="flash-error" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <span>Bitte bestätige deine E-Mail-Adresse ({{ user_email }}), um Suchen zu starten &mdash; überprüfe dein Postfach für den Link.</span>
+            <form method="post" action="/auth/resend-verification" style="margin:0">
+                <button type="submit" style="white-space:nowrap;padding:6px 12px;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer;font-size:0.85rem">Bestätigungs-E-Mail erneut senden</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if plan_notice %}
+        <div class="flash-error">{{ plan_notice }}</div>
+        {% endif %}
+
+        {% if flash_success %}
+        <div class="flash-success">{{ flash_success }}</div>
+        {% endif %}
+        {% if flash_error %}
+        <div class="flash-error">{{ flash_error }}</div>
+        {% endif %}
+
+        <!-- ── Main Tab Navigation ── -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="my-searches" onclick="showTab('my-searches', this)">Meine Suchen</button>
+            <button class="tab-btn" data-tab="new-search" onclick="showTab('new-search', this)">Neue Suche</button>
+            <button class="tab-btn" data-tab="my-results" onclick="showTab('my-results', this)">Meine Ergebnisse</button>
+            {% if is_admin %}
+            <button class="tab-btn" data-tab="admin" onclick="showTab('admin', this)">Admin</button>
+            {% endif %}
+        </div>
+
+        <!-- ── TAB: My Searches ── -->
+        <div id="tab-my-searches" class="tab-pane active">
+            <div class="card">
+                <h3>Meine Suchen</h3>
+                
+                <!-- Token Usage Stats -->
+                {% if token_stats %}
+                <div class="token-stats">
+                    <div class="token-stat">
+                        <span>Letzte 24h:</span>
+                        <span class="token-stat-value">{{ token_stats.last_24h }}</span>
+                        <span>Tokens</span>
+                    </div>
+                    <div class="token-stat">
+                        <span>Letzte 7 Tage:</span>
+                        <span class="token-stat-value">{{ token_stats.last_7d }}</span>
+                        <span>Tokens</span>
+                    </div>
+                    <div class="token-stat">
+                        <span>Gesamt:</span>
+                        <span class="token-stat-value">{{ token_stats.total }}</span>
+                        <span>Tokens</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div id="tasks-container">
+                {% if tasks %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Stichwörter</th>
+                            <th>Ort</th>
+                            <th>Filter</th>
+                            <th>Intervall</th>
+                            <th>Status</th>
+                            <th>Ergebnisse</th>
+                            <th>Token (24h)</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-tbody">
+                        {% for task in tasks %}
+                        <tr>
+                            <td>{{ task.id }}</td>
+                            <td>{{ task.parameters.get('keywords', '&mdash;') }}</td>
+                            <td>{{ task.parameters.get('location', '&mdash;') }}</td>
+                            <td style="font-size:12px;color:#666">
+                                {% set parts = [] %}
+                                {% if task.parameters.get('ad_type') %}{% set _ = parts.append(task.parameters.get('ad_type')) %}{% endif %}
+                                {% if task.parameters.get('poster_type') %}{% set _ = parts.append(task.parameters.get('poster_type')) %}{% endif %}
+                                {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
+                                {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
+                                    {% set _ = parts.append(task.parameters.get('price_min', '0') ~ '–' ~ task.parameters.get('price_max', '∞') ~ ' €') %}
+                                {% endif %}
+                                {% if task.parameters.get('radius') %}{% set _ = parts.append(task.parameters.get('radius') ~ ' km') %}{% endif %}
+                                {{ parts | join(', ') if parts else '&mdash;' }}
+                            </td>
+                            <td>
+                                {% set iv = task.parameters.get('interval_seconds') %}
+                                {% if iv == 5 %}5 s
+                                {% elif iv == 60 %}Sofort
+                                {% elif iv == 300 %}5 Min.
+                                {% elif iv == 1800 %}30 Min.
+                                {% elif iv == 3600 %}60 Min.
+                                {% else %}einmalig{% endif %}
+                            </td>
+                            <td><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
+                            <td><a href="/scrapes/{{ task.id }}/results" title="Alle gelieferten Ergebnisse anzeigen">{{ task.result_count }}</a></td>
+                            <td style="font-size:12px">
+                                {% set task_tokens = token_stats.by_task | selectattr('task_id', 'equalto', task.id) | first %}
+                                {{ task_tokens.total_tokens if task_tokens else 0 }}
+                            </td>
+                            <td style="white-space:nowrap">
+                                <a href="/scrapes/{{ task.id }}/results" class="view-link">Anzeigen</a>
+                                <form method="post" action="/scrapes/{{ task.id }}/delete" style="display:inline" onsubmit="return confirm('Diese Suche und alle Ergebnisse löschen?')">
+                                    <button type="submit" class="delete-btn">Löschen</button>
+                                </form>
+                                {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
+                                <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0;display:inline">
+                                    <button type="submit" class="cancel-btn">Abbrechen</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state" id="empty-state">Noch keine Suchen. Erstelle eine neue!</div>
+                {% endif %}
+                </div>
+            </div>
+        </div><!-- /tab-my-searches -->
+
+        <!-- ── TAB: New Search (Wizard) ── -->
+        <div id="tab-new-search" class="tab-pane">
+            <div class="card">
+                <h3>Neue wiederkehrende Suche</h3>
+                <form action="/scrapes/" method="post" id="scrape-form" class="search-form">
+                  <div class="wizard-steps">
+                    <div class="wizard-step-indicator active" data-step="1">
+                        <span class="wizard-step-num">1</span>
+                        <span class="wizard-step-label">Suche</span>
+                    </div>
+                    <div class="wizard-step-line"></div>
+                    <div class="wizard-step-indicator" data-step="2">
+                        <span class="wizard-step-num">2</span>
+                        <span class="wizard-step-label">Smart Enhancements</span>
+                    </div>
+                  </div>
+
+                  <div id="wizard-step-1" class="wizard-panel active">
+                  <div class="form-grid">
+                    <div class="form-field">
+                    <label for="keywords">Stichwörter</label>
+                    <input type="text" id="keywords" name="keywords" placeholder="z. B. handwerker">
+                    </div>
+
+                    <div class="form-field">
+                    <label for="category">Kategorie</label>
+                    <select id="category" name="category">
+                        <option value="">Alle Kategorien</option>
+                        <optgroup label="Fahrzeuge">
+                            <option value="autos">Autos</option>
+                            <option value="motorraeder-scooter">Motorräder &amp; Scooter</option>
+                            <option value="transporter-lkw">Transporter &amp; LKW</option>
+                            <option value="fahrraeder">Fahrräder</option>
+                            <option value="bootszubehoer">Boote &amp; Zubehör</option>
+                        </optgroup>
+                        <optgroup label="Immobilien">
+                            <option value="wohnungen">Wohnungen</option>
+                            <option value="haeuser">Häuser</option>
+                            <option value="garagen">Garagen</option>
+                            <option value="grundstuecke">Grundstücke</option>
+                        </optgroup>
+                        <optgroup label="Elektronik">
+                            <option value="computer">Computer</option>
+                            <option value="handy-zubehoer">Handy &amp; Zubehör</option>
+                            <option value="foto-video">Foto &amp; Video</option>
+                        </optgroup>
+                    </select>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="location-input">Ort</label>
+                    <input type="text" id="location-input" placeholder="z. B. Berlin" autocomplete="off">
+                    <input type="hidden" id="location_id" name="location_id">
+                    <ul id="location-suggestions" style="display:none;position:absolute;background:white;border:1px solid #ccc;border-radius:4px;max-height:200px;overflow-y:auto;width:200px;z-index:10"></ul>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="price_min">Min. Preis (€)</label>
+                    <input type="number" id="price_min" name="price_min" placeholder="0">
+                    </div>
+
+                    <div class="form-field">
+                    <label for="price_max">Max. Preis (€)</label>
+                    <input type="number" id="price_max" name="price_max" placeholder="10000">
+                    </div>
+
+                    <div class="form-field">
+                    <label for="radius">Umkreis (km)</label>
+                    <input type="number" id="radius" name="radius" placeholder="50">
+                    </div>
+
+                    <div class="form-field">
+                    <label for="ad_type">Anzeigentyp</label>
+                    <select id="ad_type" name="ad_type">
+                        <option value="">Egal</option>
+                        <option value="offer">Angebot</option>
+                        <option value="wanted">Gesucht</option>
+                    </select>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="poster_type">Von</label>
+                    <select id="poster_type" name="poster_type">
+                        <option value="">Egal</option>
+                        <option value="private">Privat</option>
+                        <option value="commercial">Gewerblich</option>
+                    </select>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="condition">Zustand</label>
+                    <select id="condition" name="condition">
+                        <option value="">Egal</option>
+                        <option value="new">Neu</option>
+                        <option value="like_new">Wie neu</option>
+                        <option value="good">Gut</option>
+                        <option value="acceptable">Akzeptabel</option>
+                    </select>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="shipping">Versand</label>
+                    <select id="shipping" name="shipping">
+                        <option value="">Egal</option>
+                        <option value="ja">Versand möglich</option>
+                        <option value="nein">Nur Abholung</option>
+                    </select>
+                    </div>
+                  </div>
+
+                  <div class="wizard-inline-warning" id="step1-warning" style="display:none">
+                      Bitte gib Stichwörter oder einen Ort ein &mdash; genau wie bei kleinanzeigen.de.
+                  </div>
+
+                  <button type="button" class="wizard-next-btn" id="wizard-next-btn">Weiter zu Smart Enhancements &rarr;</button>
+                  </div><!-- /wizard-step-1 -->
+
+                  <div id="wizard-step-2" class="wizard-panel">
+                    <div class="wizard-summary" id="wizard-summary"></div>
+
+                    <label>Häufigkeit</label>
+                    {% set min_iv = min_interval_seconds or 300 %}
+                    {% set default_iv = 300 if min_iv <= 300 else min_iv %}
+                    <div class="frequency-group frequency-group-compact">
+                        {% for val, lbl in [(60, 'Sofort'), (300, 'Alle 5 Minuten'), (1800, 'Alle 30 Minuten'), (3600, 'Alle 60 Minuten')] %}
+                        <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
+                            <input type="radio" name="interval_seconds" value="{{ val }}"{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
+                            {{ lbl }}
+                            {% if val < min_iv %}<a href="/billing" class="freq-upgrade">Upgrade</a>{% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    <!-- ── Notification Options (NEW) ── -->
+                    <div class="notification-options">
+                        <label>
+                            <input type="checkbox" name="push_notifications" id="push_notifications">
+                            <strong>🔔 Push-Benachrichtigungen</strong>
+                            <span style="font-size: 12px; color: #666;">(Sofort auf diesem Gerät)</span>
+                        </label>
+                        <label>
+                            <input type="checkbox" name="email_notifications" id="email_notifications">
+                            <strong>📧 E-Mail-Benachrichtigungen</strong>
+                            <span style="font-size: 12px; color: #666;">(An {{ user_email }})</span>
+                        </label>
+                    </div>
+
+                    <div class="promo-box">
+                        <span class="promo-icon">&#10024;</span>
+                        <div>
+                            <strong>Smart Alerts &mdash; demnächst verfügbar</strong>
+                            <p>KI-gestützte Angebotsbewertung, Preissenkungs-Prognosen und sofortige Treffer-Zusammenfassungen kommen hier als Nächstes hinzu.</p>
+                        </div>
+                    </div>
+
+                    <div class="wizard-actions">
+                        <button type="button" class="wizard-back-btn" id="wizard-back-btn">&larr; Zurück</button>
+                        <button type="submit">Wiederkehrende Suche starten</button>
+                    </div>
+                  </div><!-- /wizard-step-2 -->
+                </form>
+            </div>
+        </div><!-- /tab-new-search -->
+
+        <!-- ── TAB: My Results ── -->
+        <div id="tab-my-results" class="tab-pane">
+            <div class="card">
+                <h3>Meine Ergebnisse</h3>
+                <p style="font-size:14px;color:#666;margin:0 0 14px">
+                    Die neuesten Anzeigen, die deine Suchen gefunden haben.
+                    {% if not show_deals %}Angebots-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">Upgrade</a>, um sie freizuschalten.{% endif %}
+                </p>
+
+                <!-- Sub-tabs for search filtering -->
+                {% if tasks %}
+                <div class="sub-tab-bar">
+                    <button class="sub-tab-filter active" data-filter="all" onclick="filterResultsBySearch('all')">Alle Suchen</button>
+                    {% for task in tasks %}
+                    <button class="sub-tab-filter" data-filter="task-{{ task.id }}" onclick="filterResultsBySearch('task-{{ task.id }}')">
+                        {{ task.parameters.get('keywords', 'Search #' ~ task.id) | truncate(20) }}
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Sorting Controls -->
+                <div class="sort-controls">
+                    <label for="sort-by">Sortieren nach:</label>
+                    <select id="sort-by" onchange="sortResults(this.value)">
+                        <option value="newest">Neueste zuerst</option>
+                        <option value="oldest">Älteste zuerst</option>
+                        <option value="price-low">Preis: Niedrig → Hoch</option>
+                        <option value="price-high">Preis: Hoch → Niedrig</option>
+                        <option value="trust-high">Trust Score: Hoch → Niedrig</option>
+                    </select>
+                </div>
+
+                {% if recent_results %}
+                <div class="grid" id="results-grid">
+                    {% for r in recent_results %}
+                    <div class="result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}">
+                        <div class="result-card-header">
+                            <button class="favorite-btn" onclick="toggleFavorite({{ r.id }}, this)" title="Zu Favoriten hinzufügen">
+                                ♡
+                            </button>
+                        </div>
+                        <a class="result-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
+                            {% if r.image_url %}
+                            <img class="thumb" src="{{ r.image_url }}" alt="" loading="lazy"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="thumb-placeholder" style="display:none">Kein Bild</div>
+                            {% else %}
+                            <div class="thumb-placeholder">Kein Bild</div>
+                            {% endif %}
+                            <div class="card-body">
+                                <span class="price-row">
+                                    <span class="card-price">{{ r.price }}</span>
+                                    {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
+                                </span>
+                                <span class="card-title">{{ r.title }}</span>
+                                {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
+                                {% if r.trust_score %}
+                                <span class="card-meta">
+                                    {% if r.trust_score >= 80 %}
+                                    <span class="trust-score-badge excellent">Trust: {{ r.trust_score }}/100</span>
+                                    {% elif r.trust_score >= 60 %}
+                                    <span class="trust-score-badge good">Trust: {{ r.trust_score }}/100</span>
+                                    {% elif r.trust_score >= 40 %}
+                                    <span class="trust-score-badge fair">Trust: {{ r.trust_score }}/100</span>
+                                    {% else %}
+                                    <span class="trust-score-badge poor">Trust: {{ r.trust_score }}/100</span>
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                                <span class="card-meta">
+                                    <span>{{ r.location }}</span>
+                                    <span>{{ r.created_at.strftime('%d.%m %H:%M') if r.created_at else '' }}</span>
+                                </span>
+                                <span class="card-meta" style="margin-top:2px">
+                                    <span>Suche: {{ r.search_keywords }}</span>
+                                </span>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination for Results -->
+                <div class="dashboard-pagination" id="results-pagination">
+                    <!-- Wird via JavaScript gefüllt -->
+                </div>
+                {% else %}
+                <div class="empty-state">Noch keine Ergebnisse &mdash; neue Anzeigen deiner Suchen erscheinen hier.</div>
+                {% endif %}
+
+                <!-- Favorites Sub-tab -->
+                {% if favorites %}
+                <h4 style="margin-top: 32px;">⭐ Meine Favoriten</h4>
+                <div class="grid">
+                    {% for fav in favorites %}
+                    <div class="result-card-wrapper">
+                        <div class="result-card-header">
+                            <button class="favorite-btn favorited" onclick="toggleFavorite({{ fav.id }}, this)" title="Aus Favoriten entfernen">
+                                ♥
+                            </button>
+                        </div>
+                        <a class="result-card" {% if fav.url %}href="{{ fav.url }}" target="_blank" rel="noopener"{% endif %}>
+                            {% if fav.image_url %}
+                            <img class="thumb" src="{{ fav.image_url }}" alt="" loading="lazy"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="thumb-placeholder" style="display:none">Kein Bild</div>
+                            {% else %}
+                            <div class="thumb-placeholder">Kein Bild</div>
+                            {% endif %}
+                            <div class="card-body">
+                                <span class="price-row">
+                                    <span class="card-price">{{ fav.price }}</span>
+                                    {% if fav.deal %}<span class="deal {{ fav.deal.cls }}">{{ fav.deal.label }}</span>{% endif %}
+                                </span>
+                                <span class="card-title">{{ fav.title }}</span>
+                                {% if fav.description %}<span class="card-desc">{{ fav.description }}</span>{% endif %}
+                                <span class="card-meta">
+                                    <span>{{ fav.location }}</span>
+                                    <span>{{ fav.created_at.strftime('%d.%m %H:%M') if fav.created_at else '' }}</span>
+                                </span>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div><!-- /tab-my-results -->
+
+        {% if is_admin %}
+        <div id="tab-admin" class="tab-pane">
+            <!-- Admin content (unchanged from original) -->
+            <div class="card">
+                <h3>Benachrichtigungen testen</h3>
+                <form method="post" action="/admin/test-notification" style="margin:0">
+                    <button type="submit">Test-Benachrichtigung senden</button>
+                </form>
+            </div>
+        </div><!-- /tab-admin -->
+        {% endif %}
+
+    </div>
+
+    <script>
+        // ── Tab Navigation ──
+        function showTab(name, btn) {
+            document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            var pane = document.getElementById('tab-' + name);
+            if (pane) pane.classList.add('active');
+            if (btn) btn.classList.add('active');
+        }
+
+        // Restore tab from URL hash
+        (function() {
+            var hash = window.location.hash;
+            if (hash.indexOf('#tab-') === 0) {
+                var name = hash.slice(5);
+                var btn = document.querySelector('.tab-btn[data-tab="' + name + '"]');
+                if (btn) showTab(name, btn);
+            }
+        })();
+
+        // ── Favorite Toggle ──
+        function toggleFavorite(resultId, btn) {
+            fetch('/scrapes/results/' + resultId + '/favorite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (data.favorite === 'added') {
+                        btn.classList.add('favorited');
+                        btn.textContent = '♥';
+                    } else {
+                        btn.classList.remove('favorited');
+                        btn.textContent = '♡';
+                    }
+                }
+            })
+            .catch(err => console.error('Favorite toggle failed:', err));
+        }
+
+        // ── Results Filtering & Sorting ──
+        var currentFilter = 'all';
+        var currentSort = 'newest';
+
+        function filterResultsBySearch(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.sub-tab-filter').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-filter="' + filter + '"]').classList.add('active');
+            applyFiltersAndSort();
+        }
+
+        function sortResults(sortBy) {
+            currentSort = sortBy;
+            applyFiltersAndSort();
+        }
+
+        function applyFiltersAndSort() {
+            var cards = document.querySelectorAll('.result-card-wrapper');
+            var filtered = [];
+
+            cards.forEach(card => {
+                if (currentFilter === 'all' || card.dataset.taskId === currentFilter) {
+                    filtered.push(card);
+                }
+            });
+
+            // Sort
+            filtered.sort((a, b) => {
+                switch(currentSort) {
+                    case 'newest':
+                        return parseInt(b.dataset.date) - parseInt(a.dataset.date);
+                    case 'oldest':
+                        return parseInt(a.dataset.date) - parseInt(b.dataset.date);
+                    case 'price-low':
+                        return parseInt(a.dataset.price) - parseInt(b.dataset.price);
+                    case 'price-high':
+                        return parseInt(b.dataset.price) - parseInt(a.dataset.price);
+                    case 'trust-high':
+                        return parseInt(b.dataset.trust) - parseInt(a.dataset.trust);
+                    default:
+                        return 0;
+                }
+            });
+
+            // Pagination
+            var pageSize = 10;
+            var totalPages = Math.ceil(filtered.length / pageSize);
+            var currentPage = 1;
+
+            function renderPage(page) {
+                var start = (page - 1) * pageSize;
+                var end = start + pageSize;
+                var pageCards = filtered.slice(start, end);
+
+                var grid = document.getElementById('results-grid');
+                grid.innerHTML = '';
+                pageCards.forEach(card => grid.appendChild(card.cloneNode(true)));
+
+                // Update pagination
+                var paginationHtml = '';
+                if (page > 1) {
+                    paginationHtml += '<a onclick="renderPage(' + (page - 1) + ')">&laquo;</a>';
+                } else {
+                    paginationHtml += '<span class="disabled">&laquo;</span>';
+                }
+
+                for (var p = 1; p <= totalPages; p++) {
+                    if (p === page) {
+                        paginationHtml += '<span class="current">' + p + '</span>';
+                    } else if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+                        paginationHtml += '<a onclick="renderPage(' + p + ')">' + p + '</a>';
+                    } else if (p === page - 3 || p === page + 3) {
+                        paginationHtml += '<span>…</span>';
+                    }
+                }
+
+                if (page < totalPages) {
+                    paginationHtml += '<a onclick="renderPage(' + (page + 1) + ')">&raquo;</a>';
+                } else {
+                    paginationHtml += '<span class="disabled">&raquo;</span>';
+                }
+
+                document.getElementById('results-pagination').innerHTML = paginationHtml;
+            }
+
+            renderPage(currentPage);
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', applyFiltersAndSort);
+
+        // ── Push Notifications & Wizard (from original) ──
+        function urlBase64ToUint8Array(b64) {
+            var pad = '='.repeat((4 - b64.length % 4) % 4);
+            var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+            return Uint8Array.from(Array.from(raw).map(function(c) { return c.charCodeAt(0); }));
+        }
+
+        function notifSupported() {
+            return ('Notification' in window) && ('PushManager' in window) && ('serviceWorker' in navigator);
+        }
+
+        function isStandalone() {
+            return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        }
+
+        function isIOS() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        function updateNotifBar(perm) {
+            var bar = document.getElementById('notif-bar');
+            var btn = document.getElementById('notif-btn');
+            var label = document.getElementById('notif-label');
+            if (!notifSupported()) {
+                if (isIOS() && !isStandalone()) {
+                    bar.style.display = 'flex';
+                    btn.style.display = 'none';
+                    label.textContent = '📲 Auf iPhone/iPad: Teilen antippen → „Zum Home-Bildschirm", dann die App öffnen, um Benachrichtigungen zu aktivieren';
+                } else {
+                    bar.style.display = 'none';
+                }
+                return;
+            }
+            btn.style.display = '';
+            bar.style.display = 'flex';
+            if (perm === 'granted') {
+                label.textContent = '🔔 Benachrichtigungen sind aktiviert';
+                btn.textContent = 'Aktiviert ✓';
+                btn.disabled = true;
+            } else if (perm === 'denied') {
+                label.textContent = 'Benachrichtigungen sind blockiert — aktiviere sie in deinen Browsereinstellungen';
+                btn.textContent = 'Blockiert';
+                btn.disabled = true;
+            } else {
+                label.textContent = 'Benachrichtigt werden, wenn neue Anzeigen gefunden werden';
+                btn.textContent = 'Benachrichtigungen aktivieren';
+                btn.disabled = false;
+            }
+        }
+
+        async function subscribeToPush() {
+            var keyResp = await fetch('/push/vapid-public-key');
+            if (!keyResp.ok) return false;
+            var publicKey = (await keyResp.json()).publicKey;
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                });
+            }
+            var subResp = await fetch('/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub),
+            });
+            return subResp.ok;
+        }
+
+        async function handleNotifClick() {
+            var btn = document.getElementById('notif-btn');
+            var label = document.getElementById('notif-label');
+            btn.disabled = true;
+            btn.textContent = 'Wird angefragt…';
+            try {
+                var perm = await Notification.requestPermission();
+                if (perm !== 'granted') { updateNotifBar(perm); return; }
+                var ok = await subscribeToPush();
+                if (!ok) {
+                    label.textContent = 'Dein Abonnement konnte nicht gespeichert werden — bitte erneut anmelden und wiederholen';
+                    btn.textContent = 'Erneut versuchen';
+                    btn.disabled = false;
+                    return;
+                }
+                updateNotifBar('granted');
+            } catch (err) {
+                label.textContent = 'Benachrichtigungen konnten nicht aktiviert werden — bitte erneut versuchen';
+                btn.textContent = 'Erneut versuchen';
+                btn.disabled = false;
+            }
+        }
+
+        // Wizard (from original)
+        (function() {
+            var step1 = document.getElementById('wizard-step-1');
+            var step2 = document.getElementById('wizard-step-2');
+            var nextBtn = document.getElementById('wizard-next-btn');
+            var backBtn = document.getElementById('wizard-back-btn');
+            var warning = document.getElementById('step1-warning');
+            var indicator1 = document.querySelector('.wizard-step-indicator[data-step="1"]');
+            var indicator2 = document.querySelector('.wizard-step-indicator[data-step="2"]');
+            var summary = document.getElementById('wizard-summary');
+            if (!step1 || !step2 || !nextBtn || !backBtn) return;
+
+            function buildSummary() {
+                var kw = document.getElementById('keywords').value.trim();
+                var loc = document.getElementById('location-input').value.trim();
+                var catSelect = document.getElementById('category');
+                var cat = catSelect.value ? catSelect.options[catSelect.selectedIndex].text : '';
+                var parts = [];
+                if (kw) parts.push('"' + kw + '"');
+                if (cat) parts.push(cat);
+                if (loc) parts.push(loc);
+                summary.textContent = parts.length ? parts.join(' · ') : 'Alle Anzeigen';
+            }
+
+            function goToStep2() {
+                var kw = document.getElementById('keywords').value.trim();
+                var loc = document.getElementById('location-input').value.trim();
+                if (!kw && !loc) {
+                    warning.style.display = 'block';
+                    return;
+                }
+                warning.style.display = 'none';
+                buildSummary();
+                step1.classList.remove('active');
+                step2.classList.add('active');
+                indicator1.classList.remove('active');
+                indicator1.classList.add('done');
+                indicator2.classList.add('active');
+            }
+
+            function goToStep1() {
+                step2.classList.remove('active');
+                step1.classList.add('active');
+                indicator2.classList.remove('active');
+                indicator1.classList.remove('done');
+                indicator1.classList.add('active');
+            }
+
+            nextBtn.addEventListener('click', goToStep2);
+            backBtn.addEventListener('click', goToStep1);
+
+            document.getElementById('scrape-form').addEventListener('submit', function(e) {
+                if (!step2.classList.contains('active')) {
+                    e.preventDefault();
+                    goToStep2();
+                }
+            });
+        })();
+
+        // Service worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function() {});
+            if (notifSupported()) {
+                updateNotifBar(Notification.permission);
+                if (Notification.permission === 'granted') {
+                    subscribeToPush().catch(function() {});
+                }
+            }
+        }
+    </script>
+</body>
+</html>
