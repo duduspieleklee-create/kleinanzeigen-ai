@@ -409,7 +409,24 @@ body.dashboard-page {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px; /* compact on mobile */
+  /* Mobile: sticky header that hides on scroll-down and reveals on
+     scroll-up (JS toggles .header-hidden). Negative margins bleed it
+     across the container padding so it spans the full viewport width. */
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--color-bg);
+  margin: -20px -16px 18px;
+  padding: 14px 16px 10px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.header-row.header-hidden {
+  transform: translateY(-110%);
+}
+
+.header-row.header-scrolled {
+  box-shadow: 0 1px 0 var(--color-border);
 }
 
 .header-row h2 {
@@ -418,7 +435,14 @@ body.dashboard-page {
 
 @media (min-width: 561px) {
   .header-row {
-    margin-bottom: 28px;
+    position: static;
+    margin: 0 0 28px;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .header-row.header-hidden {
+    transform: none;
   }
 
   .header-row h2 {
@@ -681,31 +705,54 @@ body.dashboard-page {
   background: #e2e6ea;
 }
 
+/* Collapsed <details> disclosure — one line when closed so wizard step 2
+   stays short; expands on tap for the curious. */
 .promo-box {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  display: block;
   background: linear-gradient(135deg, #eef1ff, #f5f0ff);
   border: 1px solid var(--color-accent-soft-border);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 12px 16px;
   margin: 18px 0 6px;
 }
 
+.promo-box summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  min-height: 28px;
+}
+
+.promo-box summary::-webkit-details-marker {
+  display: none;
+}
+
+.promo-box summary::after {
+  content: "+";
+  margin-left: auto;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-subtle);
+}
+
+.promo-box[open] summary::after {
+  content: "\2013";
+}
+
 .promo-icon {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
 }
 
 .promo-box strong {
-  display: block;
   font-size: 13.5px;
   color: #33395b;
-  margin-bottom: 2px;
 }
 
 .promo-box p {
-  margin: 0;
+  margin: 8px 0 2px;
   font-size: 12.5px;
   color: var(--color-text-muted);
 }
@@ -800,6 +847,22 @@ body.dashboard-page {
   font-weight: 400;
   color: var(--color-text-subtle);
   margin-top: 1px;
+}
+
+/* Compact variant once the user has opted in before (JS adds .compact):
+   the pitch is dropped, only the toggles remain. */
+.notify-card.compact {
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+
+.notify-card.compact .notify-card-sub {
+  display: none;
+}
+
+.notify-card.compact .notify-card-title {
+  font-size: 13.5px;
+  margin-bottom: 10px;
 }
 
 /* ---------- flash / quota bars ------------------------------------------- */
@@ -1070,10 +1133,56 @@ tbody tr:hover td {
   content: "";
 }
 
-.responsive-table .row-actions {
+/* Mobile: row actions are full-size thumb-friendly buttons in a 2-column
+   grid (Anzeigen | Löschen, Abbrechen spans below), not small text links. */
+.responsive-table td.row-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px 0 14px;
+}
+
+.responsive-table td.row-actions::before {
+  display: none;
+}
+
+.responsive-table .row-actions form {
+  display: contents;
+}
+
+.responsive-table .row-actions .view-link {
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  border: 1.5px solid var(--color-accent-soft-border);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.responsive-table .row-actions .delete-btn {
+  width: 100%;
+  min-height: 44px;
+  border: 1.5px solid var(--color-error-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.responsive-table .row-actions .cancel-btn {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+  font-weight: 600;
 }
 
 @media (min-width: 641px) {
@@ -1131,8 +1240,44 @@ tbody tr:hover td {
     border-bottom: 1px solid var(--color-border);
   }
 
-  .responsive-table .row-actions {
+  .responsive-table td.row-actions {
     display: table-cell;
+    padding: 12px 14px;
+  }
+
+  .responsive-table .row-actions form {
+    display: inline;
+  }
+
+  .responsive-table .row-actions .view-link {
+    display: inline;
+    min-height: 0;
+    margin-right: 14px;
+    border: none;
+    background: none;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .responsive-table .row-actions .delete-btn {
+    width: auto;
+    min-height: 0;
+    border: none;
+    border-radius: 4px;
+    background: var(--color-error-text);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .responsive-table .row-actions .cancel-btn {
+    min-height: 32px;
+    border: none;
+    border-radius: 0;
+    background: none;
+    color: var(--color-error-text);
+    font-size: 12px;
+    font-weight: 500;
   }
 }
 
@@ -1177,6 +1322,28 @@ tbody tr:hover td {
 .badge-running {
   background: #e5efff;
   color: #1655c4;
+}
+
+/* Animated dot signals "working" while a scrape is in flight */
+.badge-running::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 6px;
+  animation: badge-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .badge-completed {
@@ -1241,6 +1408,40 @@ tbody tr:hover td {
   color: #fff;
 }
 
+/* ---------- skeleton loading states ---------------------------------------- */
+/* Shown in "Meine Ergebnisse" while a search is still running and no
+   results have arrived yet — signals "working" instead of "empty". */
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ebedf1 25%, #f7f8fa 50%, #ebedf1 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+  border-radius: 6px;
+  color: transparent;
+}
+
+.skeleton-line {
+  display: block;
+  height: 12px;
+  margin: 4px 0;
+}
+
+.skeleton-note {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 4px 0 14px;
+}
+
 /* ---------- action buttons ------------------------------------------------ */
 
 .cancel-btn {
@@ -1270,19 +1471,39 @@ tbody tr:hover td {
   text-decoration: underline;
 }
 
-.delete-btn {
-  background-color: var(--color-error-text);
+/* button.delete-btn (element + class) so this outranks the generic
+   button[type="submit"] accent styling — a destructive action must never
+   look like the primary CTA. */
+button.delete-btn {
+  width: auto;
+  background: var(--color-error-text);
   color: white;
   border: none;
   padding: 6px 12px;
+  margin: 0;
+  min-height: 0;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 400;
   transition: background-color 0.2s;
 }
 
-.delete-btn:hover {
-  background-color: #921d17;
+button.delete-btn:hover {
+  background: #921d17;
+}
+
+/* Same specificity trick for the cancel action (also type="submit") */
+button.cancel-btn {
+  width: auto;
+  background: none;
+  color: var(--color-error-text);
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* ---------- location suggestions ------------------------------------------ */
@@ -1468,6 +1689,28 @@ tbody tr:hover td {
   color: white;
 }
 
+/* ---------- sticky results toolbar (mobile) -------------------------------- */
+/* Wraps the sub-tab bar + sort controls in "Meine Ergebnisse" so they stay
+   reachable while scrolling a long result list. Negative margins bleed it
+   to the card edges so scrolling content disappears cleanly under it. */
+
+.results-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--color-surface);
+  margin: 0 -16px;
+  padding: 0 16px 2px;
+}
+
+@media (min-width: 561px) {
+  .results-toolbar {
+    position: static;
+    margin: 0;
+    padding: 0;
+  }
+}
+
 /* ---------- sorting controls (mobile-first: full-width) ------------------- */
 
 .sort-controls {
@@ -1524,9 +1767,33 @@ tbody tr:hover td {
   color: #ff6b6b;
 }
 
+.result-card-wrapper {
+  position: relative;
+}
+
+/* Mobile: the favorite heart floats over the card's top-right corner
+   instead of occupying its own row above the card. */
 .result-card-header {
-  display: flex;
-  justify-content: flex-end;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.result-card-wrapper .card-body {
+  padding-right: 44px; /* keep text clear of the floating heart */
+}
+
+@media (min-width: 481px) {
+  .result-card-header {
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .result-card-wrapper .card-body {
+    padding-right: 16px;
+  }
 }
 
 /* ---------- trust score badges -------------------------------------------- */
@@ -1773,10 +2040,19 @@ body.results-page {
   border-radius: var(--radius-md);
   overflow: hidden;
   display: flex;
-  flex-direction: column;
+  /* Mobile: horizontal list card — thumbnail left, content right. Matches
+     kleinanzeigen.de's own mobile results and roughly doubles the number
+     of listings per screen. Vertical gallery card returns at 481px+. */
+  flex-direction: row;
   text-decoration: none;
   color: inherit;
   transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+@media (min-width: 481px) {
+  .result-card {
+    flex-direction: column;
+  }
 }
 
 .result-card:hover {
@@ -1784,31 +2060,56 @@ body.results-page {
   transform: translateY(-2px);
 }
 
-.thumb {
-  width: 100%;
-  aspect-ratio: 4 / 3;
+/* Mobile: fixed-width thumbnail column stretching the card's height */
+.thumb,
+.thumb-placeholder {
+  width: 108px;
+  flex: 0 0 108px;
+  min-height: 100px;
+  align-self: stretch;
   object-fit: cover;
   background: #eee;
   display: block;
 }
 
 .thumb-placeholder {
-  width: 100%;
-  aspect-ratio: 4 / 3;
   background: #eef0f2;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #b0b6bd;
-  font-size: 13px;
+  font-size: 11.5px;
+}
+
+@media (min-width: 481px) {
+  .thumb,
+  .thumb-placeholder {
+    width: 100%;
+    flex: 0 1 auto;
+    min-height: 0;
+    align-self: auto;
+    aspect-ratio: 4 / 3;
+  }
+
+  .thumb-placeholder {
+    font-size: 13px;
+  }
 }
 
 .card-body {
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 481px) {
+  .card-body {
+    padding: 14px 16px;
+    gap: 5px;
+  }
 }
 
 .price-row {
@@ -1850,15 +2151,26 @@ body.results-page {
 .card-title {
   font-size: 14px;
   line-height: 1.35;
-  max-height: 3.7em;
+  max-height: 2.75em; /* 2 lines on the compact mobile list card */
   overflow: hidden;
 }
 
 .card-desc {
+  display: none; /* hidden on mobile for list density */
   font-size: 12px;
   color: var(--color-text-muted);
   max-height: 3.2em;
   overflow: hidden;
+}
+
+@media (min-width: 481px) {
+  .card-title {
+    max-height: 3.7em;
+  }
+
+  .card-desc {
+    display: block;
+  }
 }
 
 .card-meta {
@@ -2171,4 +2483,210 @@ body.offline-page {
   font-weight: 600;
   color: #28a745;
   padding: 10px 0;
+}
+
+/* ---------- confirm action sheet ------------------------------------------- */
+/* In-design replacement for the native confirm() dialog: bottom sheet on
+   mobile, centered dialog on tablet/desktop. Opened by JS for any form
+   carrying data-confirm-title. */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 26, 0.45);
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.sheet-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.action-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 95;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 22px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(105%);
+  transition: transform 0.25s ease;
+  box-shadow: 0 -8px 30px rgba(20, 20, 26, 0.18);
+}
+
+.action-sheet.open {
+  transform: translateY(0);
+}
+
+.action-sheet h4 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.action-sheet p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+}
+
+.sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.sheet-btn {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sheet-btn-danger {
+  background: var(--color-error-text);
+  color: #fff;
+}
+
+.sheet-btn-danger:hover {
+  background: #921d17;
+}
+
+.sheet-btn-cancel {
+  background: #f1f3f5;
+  color: #344054;
+}
+
+.sheet-btn-cancel:hover {
+  background: #e2e6ea;
+}
+
+@media (min-width: 561px) {
+  .action-sheet {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    width: 380px;
+    max-width: calc(100vw - 48px);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    transform: translate(-50%, -46%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    box-shadow: var(--shadow-md);
+  }
+
+  .action-sheet.open {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sheet-actions {
+    flex-direction: row-reverse;
+  }
+}
+
+/* ---------- swipe gesture feedback ----------------------------------------- */
+/* JS translates the element while the finger moves; these classes give the
+   "armed past threshold" signal. */
+
+.responsive-table tr,
+.result-card-wrapper {
+  touch-action: pan-y;
+}
+
+.responsive-table tr.swipe-armed {
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
+}
+
+.result-card-wrapper.swipe-armed .favorite-btn {
+  color: #ff6b6b;
+}
+
+@keyframes fav-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.favorite-btn.fav-pop {
+  animation: fav-pop 0.35s ease;
+}
+
+/* ---------- pull-to-refresh indicator (standalone PWA only) ---------------- */
+
+.ptr-indicator {
+  display: none; /* JS adds .ptr-enabled only in standalone PWA mode */
+  position: fixed;
+  top: -48px;
+  left: 50%;
+  margin-left: -19px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+}
+
+.ptr-indicator.ptr-enabled {
+  display: flex;
+}
+
+.ptr-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid var(--color-accent-soft);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  opacity: 0.6;
+}
+
+.ptr-indicator.armed .ptr-spinner {
+  opacity: 1;
+}
+
+.ptr-indicator.spinning .ptr-spinner {
+  animation: ptr-rotate 0.7s linear infinite;
+}
+
+@keyframes ptr-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- version stamp -------------------------------------------------- */
+/* Keep the build stamp above the fixed bottom nav on the dashboard */
+
+body.dashboard-page .version-stamp {
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 4px) !important;
+}
+
+@media (min-width: 561px) {
+  body.dashboard-page .version-stamp {
+    bottom: 4px !important;
+  }
 }
