@@ -6,6 +6,9 @@
     <title>Anmelden - kleinanzeigen-ai</title>
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="KA-AI">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="auth-page">
@@ -21,7 +24,6 @@
             <div class="form-group">
                 <label for="username">Benutzername</label>
                 <input type="text" id="username" name="username"
-                       value="{{ username if username is defined else '' }}"
                        autocomplete="username" autocapitalize="off" spellcheck="false"
                        required autofocus>
             </div>
@@ -53,6 +55,7 @@
             navigator.serviceWorker.register('/sw.js').catch(function () {});
         }
 
+        // NEW: password show/hide toggle, shared pattern also used on register.html
         document.querySelectorAll('.password-toggle').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var input = document.getElementById(btn.dataset.target);
