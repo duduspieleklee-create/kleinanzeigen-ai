@@ -44,25 +44,74 @@ self.addEventListener('fetch', e => {
 });
 
 self.addEventListener('push', e => {
-  let data = { title: 'kleinanzeigen-ai', body: 'New results found' };
-  try { if (e.data) data = e.data.json(); } catch (_) {}
+  let data = {
+    title: 'kleinanzeigen-ai',
+    body: 'New results found',
+    icon: '/static/icons/icon-192.png',
+    badge: '/static/icons/icon-72.png',
+    tag: 'notification',
+    requireInteraction: false,
+    data: { url: '/dashboard' },
+    actions: []
+  };
+  try {
+    if (e.data) {
+      const parsed = e.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (_) {}
+
   e.waitUntil(
     self.registration.showNotification(data.title || 'kleinanzeigen-ai', {
       body: data.body || '',
-      icon: '/static/icons/icon-192.png',
-      badge: '/static/icons/icon-192.png',
-      data: { url: '/dashboard' },
+      icon: data.icon || '/static/icons/icon-192.png',
+      badge: data.badge || '/static/icons/icon-72.png',
+      tag: data.tag || 'notification',
+      requireInteraction: data.requireInteraction !== false,
+      actions: data.actions || [],
+      data: {
+        url: data.data?.url || '/dashboard',
+        searchKeywords: data.data?.searchKeywords,
+        taskId: data.data?.taskId,
+        resultCount: data.data?.resultCount
+      }
     })
   );
 });
 
 self.addEventListener('notificationclick', e => {
+  const { action, notification } = e;
+  const notifData = notification.data || {};
+
+  if (action === 'dismiss') {
+    e.notification.close();
+    return;
+  }
+
+  const urls = {
+    'view-results': `/dashboard#tab-my-results`,
+    'open-search': `/dashboard#tab-my-results`,
+    default: notifData.url || '/dashboard'
+  };
+
   e.notification.close();
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.url.includes('/dashboard') && 'focus' in c);
-      if (existing) return existing.focus();
-      return clients.openWindow(e.notification.data.url || '/dashboard');
+      const url = urls[action] || urls.default;
+      if (existing) {
+        existing.navigate(url);
+        return existing.focus();
+      }
+      return clients.openWindow(url);
     })
   );
+});
+
+self.addEventListener('notificationclose', e => {
+  // Optional: track notification dismissal in analytics
+  const { notification } = e;
+  if (notification.data?.taskId) {
+    // Could send a beacon to track dismissed notifications
+  }
 });

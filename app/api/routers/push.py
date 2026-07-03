@@ -70,3 +70,25 @@ def unsubscribe(
     ).delete()
     db.commit()
     return {"status": "unsubscribed"}
+
+
+@router.post("/test")
+def send_test_push(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    from app.worker.tasks import _send_push_notifications
+
+    summary = _send_push_notifications(
+        db,
+        user_id=current_user["id"],
+        result_count=1,
+        keywords="Test Search",
+        highlight="✓ Test notification working!",
+        location="Everywhere",
+        task_id=0,
+    )
+    return {
+        "status": "success" if summary["sent"] > 0 else "no_subscriptions",
+        "summary": summary,
+    }

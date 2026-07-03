@@ -19,10 +19,11 @@
         <!-- Notifications Section -->
         <div class="settings-section">
             <h2>Benachrichtigungen</h2>
+
             <div class="settings-item">
                 <div class="settings-label">
                     <span>Push-Benachrichtigungen</span>
-                    <small>Erhalte Benachrichtigungen über neue Angebote</small>
+                    <small>Sofort-Benachrichtigungen auf diesem Gerät</small>
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="push-notifications-toggle"
@@ -30,6 +31,34 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span>Nur bei großartigen Angeboten benachrichtigen</span>
+                    <small>Erhalte nur Benachrichtigungen für Top-Deals (🔥 Badge)</small>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="deals-only-toggle"
+                           {% if user_settings.deals_only_enabled %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span>Benachrichtigungen kündigen</span>
+                    <small>Stille Zeiten einstellen (z.B. keine Benachrichtigungen 22:00–08:00)</small>
+                </div>
+                <div class="quiet-hours">
+                    <label>Von:
+                        <input type="time" id="quiet-start" value="{% if user_settings.quiet_start %}{{ user_settings.quiet_start }}{% else %}22:00{% endif %}">
+                    </label>
+                    <label>Bis:
+                        <input type="time" id="quiet-end" value="{% if user_settings.quiet_end %}{{ user_settings.quiet_end }}{% else %}08:00{% endif %}">
+                    </label>
+                </div>
+            </div>
+
             <div class="settings-item">
                 <div class="settings-label">
                     <span>E-Mail-Benachrichtigungen</span>
@@ -40,6 +69,10 @@
                            {% if user_settings.email_notifications_enabled %}checked{% endif %}>
                     <span class="toggle-slider"></span>
                 </label>
+            </div>
+
+            <div class="settings-item">
+                <button class="test-notification-btn" onclick="sendTestNotification()">📬 Test-Benachrichtigung senden</button>
             </div>
         </div>
 
@@ -118,21 +151,44 @@
     {% include "_version_footer.html" %}
 
     <script>
-        document.getElementById('push-notifications-toggle').addEventListener('change', function() {
+        // Save notification settings
+        function saveNotificationSettings() {
+            var settings = {
+                push_enabled: document.getElementById('push-notifications-toggle').checked,
+                deals_only: document.getElementById('deals-only-toggle').checked,
+                email_enabled: document.getElementById('email-notifications-toggle').checked,
+                quiet_start: document.getElementById('quiet-start').value,
+                quiet_end: document.getElementById('quiet-end').value
+            };
             fetch('/api/settings/notifications', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ push_enabled: this.checked })
+                body: JSON.stringify(settings)
             }).catch(err => console.error('Error saving notification settings:', err));
-        });
+        }
 
-        document.getElementById('email-notifications-toggle').addEventListener('change', function() {
-            fetch('/api/settings/notifications', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email_enabled: this.checked })
-            }).catch(err => console.error('Error saving notification settings:', err));
-        });
+        document.getElementById('push-notifications-toggle').addEventListener('change', saveNotificationSettings);
+        document.getElementById('deals-only-toggle').addEventListener('change', saveNotificationSettings);
+        document.getElementById('email-notifications-toggle').addEventListener('change', saveNotificationSettings);
+        document.getElementById('quiet-start').addEventListener('change', saveNotificationSettings);
+        document.getElementById('quiet-end').addEventListener('change', saveNotificationSettings);
+
+        // Send test notification
+        function sendTestNotification() {
+            fetch('/push/test', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('✓ Test notification sent! Check your device.');
+                    } else {
+                        alert('⚠ Test notification could not be sent. Make sure push notifications are enabled.');
+                    }
+                })
+                .catch(err => {
+                    console.error('Test notification error:', err);
+                    alert('Error sending test notification');
+                });
+        }
     </script>
 </body>
 </html>
