@@ -1,4 +1,4 @@
-const CACHE = 'ka-ai-v1';
+const CACHE = 'ka-ai-v2';
 const PRECACHE = ['/offline', '/static/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -14,29 +14,53 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Navigation requests: network-first, offline page only after a retry.
+// A single failed fetch does NOT mean the user is offline: switching between
+// wifi and cellular, waking from sleep, or the server restarting during a
+// deploy all reject the first attempt while the connection is actually fine.
+async function navigate(request) {
+  try {
+    return await fetch(request);
+  } catch (_) {
+    try {
+      return await fetch(request);
+    } catch (_) {
+      return (await caches.match('/offline')) || Response.error();
+    }
+  }
+}
+
+// Static assets: serve from cache, refresh the cache in the background so
+// updated CSS/JS is picked up on the next load instead of being stale forever.
+async function staleWhileRevalidate(request) {
+  const cached = await caches.match(request);
+  const network = fetch(request).then(res => {
+    if (res.ok) {
+      const copy = res.clone();
+      caches.open(CACHE).then(c => c.put(request, copy));
+    }
+    return res;
+  });
+  if (cached) {
+    network.catch(() => {});
+    return cached;
+  }
+  return network;
+}
+
 self.addEventListener('fetch', e => {
   const { request } = e;
 
   // Only intercept GET requests over HTTP(S)
   if (request.method !== 'GET' || !request.url.startsWith('http')) return;
 
-  // Navigation requests: network-first, serve offline page on failure
   if (request.mode === 'navigate') {
-    e.respondWith(fetch(request).catch(() => caches.match('/offline')));
+    e.respondWith(navigate(request));
     return;
   }
 
-  // Static assets: cache-first, populate cache on first fetch
   if (new URL(request.url).pathname.startsWith('/static/')) {
-    e.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(res => {
-          if (res.ok) caches.open(CACHE).then(c => c.put(request, res.clone()));
-          return res;
-        });
-      })
-    );
+    e.respondWith(staleWhileRevalidate(request));
     return;
   }
 
