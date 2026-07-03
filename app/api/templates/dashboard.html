@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="KA-AI">
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <!--
         NOTE: All page-specific rules that used to live in an inline <style>
         block here (trust-score badges, favorite button, token stats,
@@ -418,7 +419,7 @@
                     </div>
                     {% endif %}
 
-                    <!-- Sorting Controls -->
+                    <!-- Sorting Controls & Map Toggle -->
                     <div class="sort-controls">
                         <label for="sort-by">Sortieren nach:</label>
                         <select id="sort-by" onchange="sortResults(this.value)">
@@ -428,13 +429,20 @@
                             <option value="price-high">Preis: Hoch → Niedrig</option>
                             <option value="trust-high">Trust Score: Hoch → Niedrig</option>
                         </select>
+                        <button id="map-toggle-btn" class="map-toggle" onclick="toggleMapView()" title="Kartenansicht">🗺️</button>
                     </div>
+                </div>
+
+                <!-- Map Container (hidden by default) -->
+                <div id="map-container" class="map-container" style="display:none;">
+                    <div id="map" class="map-view"></div>
+                    <button class="close-map-btn" onclick="toggleMapView()">✕ Schließen</button>
                 </div>
 
                 {% if recent_results %}
                 <div class="grid" id="results-grid">
                     {% for r in recent_results %}
-                    <div class="result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords }}">
+                    <div class="result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords }}" data-location="{{ r.location }}">
                         <div class="result-card-header">
                             <button class="favorite-btn" onclick="toggleFavorite({{ r.id }}, this)" title="Zu Favoriten hinzufügen">
                                 ♡
@@ -673,6 +681,7 @@
 
         // ── Favorite Toggle ──
         function toggleFavorite(resultId, btn) {
+            var wrapper = btn.closest('.result-card-wrapper');
             fetch('/scrapes/results/' + resultId + '/favorite', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
@@ -683,9 +692,22 @@
                     if (data.favorite === 'added') {
                         btn.classList.add('favorited');
                         btn.textContent = '♥';
+                        if (wrapper) {
+                            wrapper.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                            wrapper.style.opacity = '0.5';
+                            wrapper.style.transform = 'scale(0.95)';
+                            setTimeout(function() {
+                                wrapper.style.display = 'none';
+                            }, 300);
+                        }
                     } else {
                         btn.classList.remove('favorited');
                         btn.textContent = '♡';
+                        if (wrapper) {
+                            wrapper.style.display = 'grid';
+                            wrapper.style.opacity = '1';
+                            wrapper.style.transform = 'scale(1)';
+                        }
                     }
                 }
             })
@@ -1156,6 +1178,65 @@
             }
         }
 
+        // ── Location map view ──
+        var mapInstance = null;
+        var mapMarkers = [];
+
+        function toggleMapView() {
+            var container = document.getElementById('map-container');
+            var isHidden = container.style.display === 'none';
+            container.style.display = isHidden ? 'flex' : 'none';
+            if (isHidden) {
+                initializeMap();
+            } else {
+                if (mapInstance) mapInstance.remove();
+                mapInstance = null;
+                mapMarkers = [];
+            }
+        }
+
+        function initializeMap() {
+            if (mapInstance) return;
+            var mapEl = document.getElementById('map');
+            mapInstance = L.map(mapEl).setView([51.5, 10], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mapInstance);
+
+            var bounds = L.latLngBounds();
+            document.querySelectorAll('.result-card-wrapper[data-location]').forEach(function(wrapper) {
+                var location = wrapper.dataset.location;
+                if (location) {
+                    geocodeLocation(location, wrapper, bounds);
+                }
+            });
+
+            if (bounds.isValid()) {
+                mapInstance.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        function geocodeLocation(location, wrapper, bounds) {
+            if (!mapInstance) return;
+            var query = encodeURIComponent(location + ', Germany');
+            fetch('https://nominatim.openstreetmap.org/search?q=' + query + '&format=json&limit=1')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var lat = parseFloat(data[0].lat);
+                        var lon = parseFloat(data[0].lon);
+                        var marker = L.marker([lat, lon]).addTo(mapInstance);
+                        var title = wrapper.querySelector('.card-title')?.textContent || 'Item';
+                        var price = wrapper.querySelector('.card-price')?.textContent || 'N/A';
+                        marker.bindPopup(title + ' - ' + price);
+                        mapMarkers.push(marker);
+                        bounds.extend([lat, lon]);
+                    }
+                })
+                .catch(err => console.error('Geocoding error:', err));
+        }
+
         // ── Smart sharing functions ──
         function copyLink(url) {
             if (!url) return;
@@ -1214,6 +1295,7 @@
         }
 
         // Add NEW badges to results created after last visit
+        var newCountsBySearch = {};
         document.querySelectorAll('.result-card-wrapper[data-date][data-search]').forEach(function(wrapper) {
             var createdAt = parseFloat(wrapper.dataset.date);
             var search = wrapper.dataset.search;
@@ -1222,7 +1304,22 @@
                 badge.className = 'new-badge';
                 badge.textContent = 'NEW';
                 wrapper.appendChild(badge);
+                newCountsBySearch[search] = (newCountsBySearch[search] || 0) + 1;
             }
+        });
+
+        // Update sub-tab buttons with NEW counts
+        Object.keys(newCountsBySearch).forEach(function(search) {
+            var tabs = document.querySelectorAll('.sub-tab-filter');
+            tabs.forEach(function(tab) {
+                if (tab.textContent.includes(search.substring(0, 20))) {
+                    var count = newCountsBySearch[search];
+                    var oldText = tab.textContent.trim();
+                    if (!oldText.includes('(')) {
+                        tab.textContent = oldText + ' (' + count + ' new)';
+                    }
+                }
+            });
         });
 
         // Mark searches as visited on page load (delayed so NEW badges appear first)
@@ -1236,5 +1333,6 @@
             });
         }, 500);
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </body>
 </html>
