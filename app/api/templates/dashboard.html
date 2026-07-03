@@ -371,23 +371,9 @@
                         option explains its own "why" in one line.
                     -->
                     <div class="notify-card">
-                        <div class="notify-card-title">🔔 Damit du's als Erste/r siehst</div>
-                        <p class="notify-card-sub">Neue Anzeigen verschwinden oft in Minuten &mdash; lass dich benachrichtigen, statt manuell nachzuschauen.</p>
-
-                        <label class="notify-option">
-                            <input type="checkbox" name="push_notifications" id="push_notifications" checked>
-                            <span class="notify-option-label">
-                                Push-Benachrichtigung
-                                <span class="notify-option-detail">Sofort auf diesem Gerät</span>
-                            </span>
-                        </label>
-                        <label class="notify-option">
-                            <input type="checkbox" name="email_notifications" id="email_notifications">
-                            <span class="notify-option-label">
-                                E-Mail-Benachrichtigung
-                                <span class="notify-option-detail">An {{ user_email }}</span>
-                            </span>
-                        </label>
+                        <div class="notify-card-title">🔔 Benachrichtigungen & Einstellungen</div>
+                        <p class="notify-card-sub">Verwalte Push- und E-Mail-Benachrichtigungen und weitere Einstellungen.</p>
+                        <a href="/settings" class="notify-cta">Einstellungen öffnen →</a>
                     </div>
 
                     <!-- Collapsed by default so step 2 stays short on a phone -->
@@ -448,11 +434,23 @@
                 {% if recent_results %}
                 <div class="grid" id="results-grid">
                     {% for r in recent_results %}
-                    <div class="result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}">
+                    <div class="result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords }}">
                         <div class="result-card-header">
                             <button class="favorite-btn" onclick="toggleFavorite({{ r.id }}, this)" title="Zu Favoriten hinzufügen">
                                 ♡
                             </button>
+                            {% if r.trust_score %}
+                            <div class="trust-indicator" title="{% if show_trust_scores %}Trust Score: {{ r.trust_score }}/100{% else %}Upgrade zum Pro-Plan um Trust Scores freizuschalten{% endif %}">
+                                {% if show_trust_scores %}
+                                    {% if r.trust_score >= 80 %}🟢
+                                    {% elif r.trust_score >= 60 %}🟡
+                                    {% elif r.trust_score >= 40 %}🟠
+                                    {% else %}🔴{% endif %}
+                                {% else %}
+                                🔒
+                                {% endif %}
+                            </div>
+                            {% endif %}
                         </div>
                         <a class="result-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
                             {% if r.image_url %}
@@ -469,30 +467,16 @@
                                 </span>
                                 <span class="card-title">{{ r.title }}</span>
                                 {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
-                                {% if r.trust_score %}
-                                <span class="card-meta">
-                                    {% if show_trust_scores %}
-                                        {% if r.trust_score >= 80 %}
-                                        <span class="trust-score-badge excellent">Trust: {{ r.trust_score }}/100</span>
-                                        {% elif r.trust_score >= 60 %}
-                                        <span class="trust-score-badge good">Trust: {{ r.trust_score }}/100</span>
-                                        {% elif r.trust_score >= 40 %}
-                                        <span class="trust-score-badge fair">Trust: {{ r.trust_score }}/100</span>
-                                        {% else %}
-                                        <span class="trust-score-badge poor">Trust: {{ r.trust_score }}/100</span>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="trust-score-badge disabled" title="Upgrade auf Core oder Pro Plan um Trust Scores freizuschalten">Check Trust</span>
-                                        <a href="/billing" style="margin-left: 8px; font-size: 12px; color: #007bff; text-decoration: none;">Upgrade</a>
-                                    {% endif %}
-                                </span>
-                                {% endif %}
                                 <span class="card-meta">
                                     <span>{{ r.location }}</span>
                                     <span>{{ r.created_at.strftime('%d.%m %H:%M') if r.created_at else '' }}</span>
                                 </span>
                                 <span class="card-meta" style="margin-top:2px">
                                     <span>Suche: {{ r.search_keywords }}</span>
+                                </span>
+                                <span class="card-actions">
+                                    <button class="share-btn" onclick="shareResult({{ r.id }}, '{{ r.title | replace(\"'\", \"\\\\'\" ) }}', '{{ r.url }}');" title="Teilen">📤</button>
+                                    <button class="copy-link-btn" onclick="copyLink('{{ r.url }}');" title="Link kopieren">🔗</button>
                                 </span>
                             </div>
                         </a>
@@ -1171,6 +1155,86 @@
                 }
             }
         }
+
+        // ── Smart sharing functions ──
+        function copyLink(url) {
+            if (!url) return;
+            navigator.clipboard.writeText(url).then(function() {
+                alert('Link kopiert! ✓');
+            }).catch(function() {
+                prompt('Link kopieren:', url);
+            });
+        }
+
+        function shareResult(resultId, title, url) {
+            if (!url) return;
+            var isMobile = /iPhone|iPad|Android|WebOS/i.test(navigator.userAgent);
+            if (isMobile && navigator.share) {
+                navigator.share({
+                    title: 'kleinanzeigen-ai',
+                    text: title,
+                    url: url
+                }).catch(function() {});
+            } else {
+                var shareText = encodeURIComponent(title + ' - ' + url);
+                var options = {
+                    'WhatsApp': 'https://wa.me/?text=' + shareText,
+                    'E-Mail': 'mailto:?subject=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(url),
+                    'Facebook': 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url),
+                    'Twitter': 'https://twitter.com/intent/tweet?text=' + shareText,
+                    'In Zwischenablage': null
+                };
+                var choice = prompt('Wo möchtest du das Angebot teilen?\n- WhatsApp\n- E-Mail\n- Facebook\n- Twitter\n- In Zwischenablage\n(oder Enter zum Abbrechen)', 'WhatsApp');
+                if (choice === 'In Zwischenablage') {
+                    copyLink(url);
+                } else if (choice && options[choice]) {
+                    window.open(options[choice], '_blank');
+                }
+            }
+        }
+
+        // ── NEW badge tracking via localStorage ──
+        function getSearchVisitKey(searchKeywords) {
+            return 'search_visit_' + searchKeywords.replace(/\s+/g, '_').slice(0, 50);
+        }
+
+        function markSearchAsVisited(searchKeywords) {
+            var key = getSearchVisitKey(searchKeywords);
+            var now = new Date().getTime();
+            localStorage.setItem(key, now);
+        }
+
+        function isResultNew(createdAtTimestamp, searchKeywords) {
+            var key = getSearchVisitKey(searchKeywords);
+            var lastVisit = localStorage.getItem(key);
+            if (!lastVisit) return false;
+            var createdTime = createdAtTimestamp * 1000;
+            var lastVisitTime = parseInt(lastVisit, 10);
+            return createdTime > lastVisitTime;
+        }
+
+        // Add NEW badges to results created after last visit
+        document.querySelectorAll('.result-card-wrapper[data-date][data-search]').forEach(function(wrapper) {
+            var createdAt = parseFloat(wrapper.dataset.date);
+            var search = wrapper.dataset.search;
+            if (isResultNew(createdAt, search)) {
+                var badge = document.createElement('div');
+                badge.className = 'new-badge';
+                badge.textContent = 'NEW';
+                wrapper.appendChild(badge);
+            }
+        });
+
+        // Mark searches as visited on page load (delayed so NEW badges appear first)
+        setTimeout(function() {
+            var uniqueSearches = new Set();
+            document.querySelectorAll('.result-card-wrapper[data-search]').forEach(function(wrapper) {
+                uniqueSearches.add(wrapper.dataset.search);
+            });
+            uniqueSearches.forEach(function(search) {
+                markSearchAsVisited(search);
+            });
+        }, 500);
     </script>
 </body>
 </html>

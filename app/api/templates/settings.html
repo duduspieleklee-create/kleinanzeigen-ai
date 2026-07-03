@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Einstellungen - kleinanzeigen-ai</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="settings-page">
+    <div class="topbar">
+        <a class="back" href="/dashboard">&larr; Zurück zum Dashboard</a>
+    </div>
+
+    <div class="wrap">
+        <h1>Einstellungen</h1>
+
+        <!-- Notifications Section -->
+        <div class="settings-section">
+            <h2>Benachrichtigungen</h2>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span>Push-Benachrichtigungen</span>
+                    <small>Erhalte Benachrichtigungen über neue Angebote</small>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="push-notifications-toggle"
+                           {% if user_settings.push_notifications_enabled %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span>E-Mail-Benachrichtigungen</span>
+                    <small>Wöchentliche Zusammenfassung deiner Suchen</small>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="email-notifications-toggle"
+                           {% if user_settings.email_notifications_enabled %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Plan & Quota Section -->
+        <div class="settings-section">
+            <h2>Abo & Kontingent</h2>
+            <div class="plan-info">
+                <div class="plan-card">
+                    <div class="plan-header">
+                        <h3>{{ plan_label }}</h3>
+                        <span class="plan-badge">{{ plan_name | upper }}</span>
+                    </div>
+                    <div class="plan-details">
+                        <div class="plan-detail-row">
+                            <span>Verfügbare Suchen</span>
+                            <strong>{{ max_active_searches }}</strong>
+                        </div>
+                        <div class="plan-detail-row">
+                            <span>Minimales Abfrageintervall</span>
+                            <strong>{{ min_interval_seconds }} Sekunden</strong>
+                        </div>
+                        <div class="plan-detail-row">
+                            <span>Deal-Badges</span>
+                            <strong>{% if show_deals %}✓ Aktiviert{% else %}📦 Core/Pro Feature{% endif %}</strong>
+                        </div>
+                        <div class="plan-detail-row">
+                            <span>Trust Scores</span>
+                            <strong>{% if show_trust_scores %}✓ Aktiviert{% else %}🔒 Core/Pro Feature{% endif %}</strong>
+                        </div>
+                    </div>
+                    {% if plan_name == 'basic' %}
+                    <a href="/billing" class="plan-upgrade-btn">Upgrade zu Core oder Pro →</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if credits is defined %}
+            <div class="credit-info">
+                <h3>Wöchentliche Credits</h3>
+                <div class="credit-bar">
+                    <div class="credit-used" style="width: calc(100% * ({{ max_credits - credits }} / {{ max_credits }}))"></div>
+                </div>
+                <p class="credit-text">{{ max_credits - credits }} / {{ max_credits }} Credits verwendet</p>
+                <small>Credits werden jeden Montag um 00:00 UTC zurückgesetzt</small>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Account Section -->
+        <div class="settings-section">
+            <h2>Konto</h2>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span>Benutzername</span>
+                </div>
+                <div class="settings-value">{{ user_email }}</div>
+            </div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span>E-Mail-Bestätigung</span>
+                </div>
+                <div class="settings-value">
+                    {% if email_verified %}
+                    <span class="badge-success">✓ Bestätigt</span>
+                    {% else %}
+                    <span class="badge-warning">⚠ Nicht bestätigt</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="settings-item">
+                <a href="/auth/logout" class="logout-link">Abmelden</a>
+            </div>
+        </div>
+    </div>
+
+    {% include "_version_footer.html" %}
+
+    <script>
+        document.getElementById('push-notifications-toggle').addEventListener('change', function() {
+            fetch('/api/settings/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ push_enabled: this.checked })
+            }).catch(err => console.error('Error saving notification settings:', err));
+        });
+
+        document.getElementById('email-notifications-toggle').addEventListener('change', function() {
+            fetch('/api/settings/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email_enabled: this.checked })
+            }).catch(err => console.error('Error saving notification settings:', err));
+        });
+    </script>
+</body>
+</html>
