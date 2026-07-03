@@ -10,11 +10,20 @@
 </head>
 <body class="offline-page">
     <div class="offline-card">
-        <h2>You're offline</h2>
-        <p>kleinanzeigen-ai needs a network connection to show your searches and results.</p>
-        <p>Check your connection, then try again.</p>
+        <h2>Connection lost</h2>
+        <p>kleinanzeigen-ai couldn't reach the server. You may be offline, or the server may be restarting.</p>
+        <p>This page retries automatically and reloads as soon as the connection is back.</p>
         <a href="/dashboard" class="retry-btn">Try again</a>
     </div>
     {% include "_version_footer.html" %}
+    <script>
+        // Reload the originally requested page as soon as connectivity returns.
+        window.addEventListener('online', function () { location.reload(); });
+        setInterval(function () {
+            fetch('/healthz', { cache: 'no-store' })
+                .then(function (r) { if (r.ok) location.reload(); })
+                .catch(function () {});
+        }, 5000);
+    </script>
 </body>
 </html>
