@@ -16,8 +16,14 @@ templates = Jinja2Templates(directory="app/api/templates")
 def settings_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
 ):
+    try:
+        current_user = get_current_user(
+            request, token=request.cookies.get("access_token") or "", db=db
+        )
+    except Exception:
+        return RedirectResponse(url="/")
+
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
     if not db_user:
         return RedirectResponse(url="/")
