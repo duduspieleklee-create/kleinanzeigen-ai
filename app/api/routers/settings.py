@@ -13,17 +13,11 @@ templates = Jinja2Templates(directory="app/api/templates")
 
 
 @router.get("/settings")
-async def settings_page(
+def settings_page(
     request: Request,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    try:
-        current_user = get_current_user(
-            request, token=request.cookies.get("access_token") or "", db=db
-        )
-    except HTTPException:
-        return RedirectResponse(url="/")
-
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
     if not db_user:
         return RedirectResponse(url="/")
@@ -40,16 +34,19 @@ async def settings_page(
             "user_email": db_user.email,
             "email_verified": bool(db_user.email_verified),
             "plan_name": plan_name,
-            "plan_label": cfg["label"] if cfg else "Basic",
-            "max_active_searches": cfg["max_active_searches"] if cfg else 5,
-            "min_interval_seconds": cfg["min_interval_seconds"] if cfg else 300,
+            "plan_label": cfg.get("label", "Basic") if cfg else "Basic",
+            "max_active_searches": cfg.get("max_active_searches", 5) if cfg else 5,
+            "min_interval_seconds": cfg.get("min_interval_seconds", 300) if cfg else 300,
             "show_deals": show_deals,
             "show_trust_scores": show_trust_scores,
-            "max_credits": cfg["weekly_credits"] if cfg else 0,
-            "credits": db_user.credits if hasattr(db_user, 'credits') else 0,
+            "max_credits": cfg.get("weekly_credits", 0) if cfg else 0,
+            "credits": getattr(db_user, 'credits', 0),
             "user_settings": {
-                "push_notifications_enabled": True,  # Default to True
-                "email_notifications_enabled": False,
+                "push_notifications_enabled": getattr(db_user, 'push_notifications_enabled', True),
+                "email_notifications_enabled": getattr(db_user, 'email_notifications_enabled', False),
+                "deals_only_enabled": getattr(db_user, 'deals_only_enabled', False),
+                "quiet_start": getattr(db_user, 'quiet_start', "22:00"),
+                "quiet_end": getattr(db_user, 'quiet_end', "08:00"),
             },
         },
     )
