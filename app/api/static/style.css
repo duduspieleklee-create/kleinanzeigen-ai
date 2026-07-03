@@ -2690,3 +2690,505 @@ body.dashboard-page .version-stamp {
     bottom: 4px !important;
   }
 }
+
+/* ---------- settings page -------------------------------------------------- */
+
+.settings-page {
+  background: var(--color-bg);
+}
+
+.settings-section {
+  margin-bottom: 32px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--color-text-primary);
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  gap: 16px;
+}
+
+.settings-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-label > span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.settings-label > small {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.settings-value {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 28px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--color-accent);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+}
+
+/* Plan info card */
+.plan-info {
+  margin-bottom: 24px;
+}
+
+.plan-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.plan-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.plan-badge {
+  display: inline-block;
+  background: var(--color-accent);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.plan-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.plan-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.plan-detail-row:last-child {
+  border-bottom: none;
+}
+
+.plan-detail-row span {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.plan-detail-row strong {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.plan-upgrade-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--color-accent);
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.plan-upgrade-btn:hover {
+  background: #0056b3;
+}
+
+/* Credit info */
+.credit-info {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.credit-info h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--color-text-primary);
+}
+
+.credit-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.credit-used {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.3s;
+}
+
+.credit-text {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  margin: 8px 0;
+  font-weight: 500;
+}
+
+.credit-info small {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  display: block;
+}
+
+/* Badges */
+.badge-success {
+  display: inline-block;
+  background: #d4edda;
+  color: #155724;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-warning {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Logout link */
+.logout-link {
+  display: block;
+  color: #dc3545;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+.logout-link:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 561px) {
+  .settings-section {
+    padding: 28px 0;
+  }
+
+  .plan-card {
+    padding: 28px;
+  }
+
+  .credit-info {
+    padding: 28px;
+  }
+}
+
+/* ---------- trust indicator (compact icon in header) ----------------------- */
+
+.trust-indicator {
+  font-size: 18px;
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.trust-indicator:hover {
+  opacity: 1;
+}
+
+/* ---------- smart sharing --------------------------------------------------- */
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.share-btn,
+.copy-link-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.share-btn:active,
+.copy-link-btn:active {
+  transform: scale(0.98);
+  background: var(--color-border);
+}
+
+.notify-cta {
+  display: inline-block;
+  background: var(--color-accent);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+/* ---------- NEW badge on result cards ---------------------------------------- */
+
+.new-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #ff4444;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.result-card-wrapper {
+  position: relative;
+}
+
+/* ---------- map view -------------------------------------------------------- */
+
+.map-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.map-container.hidden {
+  display: none;
+}
+
+.map-view {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+}
+
+.close-map-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.map-toggle {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.map-toggle:active {
+  background: var(--color-border);
+  transform: scale(0.95);
+}
+
+/* Quiet hours settings */
+.quiet-hours {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
+
+.quiet-hours label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.quiet-hours input[type="time"] {
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: monospace;
+}
+
+/* Test notification button */
+.test-notification-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.test-notification-btn:hover {
+  background: #0056b3;
+}
+
+.test-notification-btn:active {
+  transform: scale(0.98);
+}
+
+/* Notification badge in header */
+.notif-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.notif-badge .notif-icon {
+  font-size: 18px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.notif-badge .notif-icon:hover {
+  transform: scale(1.1) rotate(10deg);
+}
+
+.notif-badge #notif-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.notif-badge #notif-count[style*="display: none"] {
+  display: none !important;
+}

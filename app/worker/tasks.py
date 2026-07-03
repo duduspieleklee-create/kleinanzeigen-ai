@@ -39,7 +39,9 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
 
 
 def _send_push_notifications(
-    db, user_id: int, result_count: int, keywords: str, highlight: str = None
+    db, user_id: int, result_count: int, keywords: str, highlight: str = None,
+    location: str = None, price_range: str = None, best_price: str = None,
+    image_url: str = None, task_id: int = None
 ) -> dict:
     """Send a web push to every subscription of a user.
 
@@ -72,11 +74,49 @@ def _send_push_notifications(
     if not subs:
         return summary
 
-    # Lead with a deal highlight when there is one, otherwise the plain count.
-    body = highlight or f"{result_count} new listing(s) found for \"{keywords}\""
+    # Build compelling notification title and body
+    if highlight:
+        # Highlight the best deal
+        title = "🎯 Great Deal Found!"
+        body = highlight
+    else:
+        # Multiple new listings
+        title = f"✨ {result_count} new listing{'s' if result_count != 1 else ''}"
+        body = f"{keywords}"
+
+    # Build rich notification payload with actions and metadata
     payload = json.dumps({
-        "title": "kleinanzeigen-ai",
+        "title": title,
         "body": body,
+        "icon": "/static/icon-192x192.png",
+        "badge": "/static/badge-72x72.png",
+        "tag": f"search-{task_id}",  # Group by search to avoid notification spam
+        "requireInteraction": True,  # Keep notification visible
+        "data": {
+            "searchKeywords": keywords,
+            "resultCount": result_count,
+            "location": location or "All locations",
+            "priceRange": price_range or "Any price",
+            "bestPrice": best_price,
+            "taskId": task_id,
+            "url": "/dashboard#tab-my-results",
+        },
+        "actions": [
+            {
+                "action": "view-results",
+                "title": "View Results",
+                "icon": "/static/icon-view.png"
+            },
+            {
+                "action": "open-search",
+                "title": "Open Search",
+                "icon": "/static/icon-search.png"
+            },
+            {
+                "action": "dismiss",
+                "title": "Dismiss"
+            }
+        ]
     })
     # VAPID private keys come in two shapes and py_vapid picks its parser by
     # looking for "BEGIN"/newlines in the string:
@@ -424,6 +464,8 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             # Deal badges are a Core/Pro feature — Basic owners get the plain
             # "N new listing(s)" body.
             highlight = None
+            best_price_str = None
+            best_image_url = None
             if owner and (owner.is_admin or plan_config(owner.plan).get("deal_badges")):
                 all_values = [
                     v for (v,) in db.query(ScrapeResult.price_value)
@@ -435,9 +477,18 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     badge = deal_badge(r.price_value, med)
                     if badge and badge["cls"] == "deal-great":
                         if best is None or r.price_value < best[0]:
-                            best = (r.price_value, r.title, badge["label"])
+                            best = (r.price_value, r.title, badge["label"], r.image_url)
                 if best:
                     highlight = f"🔥 {best[2]}: {best[1]}"
+                    best_price_str = f"€{best[0]}"
+                    best_image_url = best[3]
+
+            location = parameters.get("location", "All locations")
+            price_min = parameters.get("price_min")
+            price_max = parameters.get("price_max")
+            price_range = None
+            if price_min or price_max:
+                price_range = f"€{price_min or '0'}–€{price_max or '∞'}"
 
             _send_push_notifications(
                 db,
@@ -445,6 +496,11 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 result_count=new_count,
                 keywords=parameters.get("keywords", "your search"),
                 highlight=highlight,
+                location=location,
+                price_range=price_range,
+                best_price=best_price_str,
+                image_url=best_image_url,
+                task_id=resolved_task_id,
             )
         # ───────────────────────────────────────────────────────────────────
 

@@ -44,25 +44,117 @@ self.addEventListener('fetch', e => {
 });
 
 self.addEventListener('push', e => {
-  let data = { title: 'kleinanzeigen-ai', body: 'New results found' };
-  try { if (e.data) data = e.data.json(); } catch (_) {}
+  let data = {
+    title: 'kleinanzeigen-ai',
+    body: 'New results found',
+    icon: '/static/icons/icon-192.png',
+    badge: '/static/icons/icon-72.png',
+    tag: 'notification',
+    requireInteraction: true,
+    data: { url: '/dashboard' },
+    actions: [],
+    sound: '/static/notification.mp3'
+  };
+  try {
+    if (e.data) {
+      const parsed = e.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (_) {}
+
+  // Play notification sound (optional)
+  if (data.sound && typeof playNotificationSound === 'function') {
+    playNotificationSound();
+  }
+
+  // Vibration pattern for mobile
+  const vibrationPattern = [200, 100, 200];
+
   e.waitUntil(
     self.registration.showNotification(data.title || 'kleinanzeigen-ai', {
       body: data.body || '',
-      icon: '/static/icons/icon-192.png',
-      badge: '/static/icons/icon-192.png',
-      data: { url: '/dashboard' },
+      icon: data.icon || '/static/icons/icon-192.png',
+      badge: data.badge || '/static/icons/icon-72.png',
+      tag: data.tag || `search-${Date.now()}`,
+      requireInteraction: data.requireInteraction !== false,
+      actions: data.actions || [],
+      vibrate: vibrationPattern,
+      data: {
+        url: data.data?.url || '/dashboard',
+        searchKeywords: data.data?.searchKeywords,
+        taskId: data.data?.taskId,
+        resultCount: data.data?.resultCount,
+        vibrate: vibrationPattern
+      }
+    }).then(() => {
+      // Trigger vibration when notification is shown
+      if (navigator.vibrate && vibrationPattern) {
+        navigator.vibrate(vibrationPattern);
+      }
+      // Notify clients about notification
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'notificationShown',
+            data: data
+          });
+        });
+      });
     })
   );
 });
 
 self.addEventListener('notificationclick', e => {
+  const { action, notification } = e;
+  const notifData = notification.data || {};
+
+  if (action === 'dismiss') {
+    e.notification.close();
+    // Notify clients about dismissal
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({ type: 'notificationDismissed' });
+      });
+    });
+    return;
+  }
+
+  const urls = {
+    'view-results': `/dashboard#tab-my-results`,
+    'open-search': `/dashboard#tab-my-results`,
+    default: notifData.url || '/dashboard'
+  };
+
   e.notification.close();
+
+  // Notify clients about click
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'notificationClicked',
+        action: action,
+        url: urls[action] || urls.default
+      });
+    });
+  });
+
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.url.includes('/dashboard') && 'focus' in c);
-      if (existing) return existing.focus();
-      return clients.openWindow(e.notification.data.url || '/dashboard');
+      const url = urls[action] || urls.default;
+      if (existing) {
+        existing.navigate(url);
+        return existing.focus();
+      }
+      return clients.openWindow(url);
     })
   );
+});
+
+self.addEventListener('notificationclose', e => {
+  // Optional: track notification dismissal in analytics
+  const { notification } = e;
+  if (notification.data?.taskId) {
+    // Could send a beacon to track dismissed notifications
+  }
 });

@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.config import settings
-from app.api.routers import admin, auth, billing, scrapes, push, locations
+from app.api.routers import (
+    admin, auth, billing, scrapes, push, locations, settings as settings_router
+)
 from app.api.dependencies import get_current_user
 from app.api.security import limiter
 from app.api.version import BUILD_INFO, register_globals
@@ -103,6 +105,7 @@ app.include_router(push.router, prefix="/push", tags=["Push"])
 app.include_router(locations.router, prefix="/locations", tags=["Locations"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(billing.router, prefix="/billing", tags=["Billing"])
+app.include_router(settings_router.router, tags=["Settings"])
 
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
@@ -128,11 +131,17 @@ async def offline(request: Request):
 
 
 @app.get("/", tags=["Web"])
-async def home(request: Request):
-    return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "google_enabled": bool(settings.google_client_id)},
-    )
+async def home(request: Request, db: Session = Depends(get_db)):
+    try:
+        get_current_user(
+            request, token=request.cookies.get("access_token") or "", db=db
+        )
+        return RedirectResponse(url="/dashboard")
+    except HTTPException:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "google_enabled": bool(settings.google_client_id)},
+        )
 
 
 @app.get("/dashboard", tags=["Web"])
@@ -269,7 +278,12 @@ async def dashboard(
             # Token stats for "Meine Suchen" tab
             "token_stats": get_token_usage_stats(db, current_user["id"]),
             # Favorites for "Favoriten" sub-tab
-            "favorites": db.query(ScrapeResult).join(Favorite).filter(Favorite.user_id == current_user["id"]).all(),
+            "favorites": (
+                db.query(ScrapeResult)
+                .join(Favorite)
+                .filter(Favorite.user_id == current_user["id"])
+                .all()
+            ),
         },
     )
 
