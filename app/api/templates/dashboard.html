@@ -164,11 +164,19 @@
                             </td>
                             <td data-label="" class="row-actions">
                                 <a href="/scrapes/{{ task.id }}/results" class="view-link">Anzeigen</a>
-                                <form method="post" action="/scrapes/{{ task.id }}/delete" style="display:inline" onsubmit="return confirm('Diese Suche und alle Ergebnisse löschen?')">
+                                <!-- data-confirm-* forms are intercepted by JS and ask via the
+                                     in-design action sheet instead of the native confirm() -->
+                                <form method="post" action="/scrapes/{{ task.id }}/delete"
+                                      data-confirm-title="Suche löschen?"
+                                      data-confirm-message="Diese Suche und alle gefundenen Ergebnisse werden dauerhaft gelöscht."
+                                      data-confirm-label="Endgültig löschen">
                                     <button type="submit" class="delete-btn">Löschen</button>
                                 </form>
                                 {% if task.status in ('pending', 'running', 'completed') and task.parameters.get('interval_seconds') %}
-                                <form method="post" action="/scrapes/{{ task.id }}/cancel" style="margin:0;display:inline">
+                                <form method="post" action="/scrapes/{{ task.id }}/cancel"
+                                      data-confirm-title="Suche stoppen?"
+                                      data-confirm-message="Die wiederkehrende Suche wird gestoppt. Bereits gefundene Ergebnisse bleiben erhalten."
+                                      data-confirm-label="Suche stoppen">
                                     <button type="submit" class="cancel-btn">Abbrechen</button>
                                 </form>
                                 {% endif %}
@@ -382,13 +390,14 @@
                         </label>
                     </div>
 
-                    <div class="promo-box">
-                        <span class="promo-icon">&#10024;</span>
-                        <div>
+                    <!-- Collapsed by default so step 2 stays short on a phone -->
+                    <details class="promo-box">
+                        <summary>
+                            <span class="promo-icon">&#10024;</span>
                             <strong>Smart Alerts &mdash; demnächst verfügbar</strong>
-                            <p>KI-gestützte Angebotsbewertung, Preissenkungs-Prognosen und sofortige Treffer-Zusammenfassungen kommen hier als Nächstes hinzu.</p>
-                        </div>
-                    </div>
+                        </summary>
+                        <p>KI-gestützte Angebotsbewertung, Preissenkungs-Prognosen und sofortige Treffer-Zusammenfassungen kommen hier als Nächstes hinzu.</p>
+                    </details>
 
                     <div class="wizard-actions">
                         <button type="button" class="wizard-back-btn" id="wizard-back-btn">&larr; Zurück</button>
@@ -408,28 +417,32 @@
                     {% if not show_deals %}Angebots-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">Upgrade</a>, um sie freizuschalten.{% endif %}
                 </p>
 
-                <!-- Sub-tabs for search filtering (horizontally scrollable on mobile, see style.css) -->
-                {% if tasks %}
-                <div class="sub-tab-bar">
-                    <button class="sub-tab-filter active" data-filter="all" onclick="filterResultsBySearch('all')">Alle Suchen</button>
-                    {% for task in tasks %}
-                    <button class="sub-tab-filter" data-filter="task-{{ task.id }}" onclick="filterResultsBySearch('task-{{ task.id }}')">
-                        {{ task.parameters.get('keywords', 'Search #' ~ task.id) | truncate(20) }}
-                    </button>
-                    {% endfor %}
-                </div>
-                {% endif %}
+                <!-- Sticky on mobile so filter + sort stay reachable while
+                     scrolling a long result list (see .results-toolbar) -->
+                <div class="results-toolbar">
+                    <!-- Sub-tabs for search filtering (horizontally scrollable on mobile, see style.css) -->
+                    {% if tasks %}
+                    <div class="sub-tab-bar">
+                        <button class="sub-tab-filter active" data-filter="all" onclick="filterResultsBySearch('all')">Alle Suchen</button>
+                        {% for task in tasks %}
+                        <button class="sub-tab-filter" data-filter="task-{{ task.id }}" onclick="filterResultsBySearch('task-{{ task.id }}')">
+                            {{ task.parameters.get('keywords', 'Search #' ~ task.id) | truncate(20) }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
 
-                <!-- Sorting Controls -->
-                <div class="sort-controls">
-                    <label for="sort-by">Sortieren nach:</label>
-                    <select id="sort-by" onchange="sortResults(this.value)">
-                        <option value="newest">Neueste zuerst</option>
-                        <option value="oldest">Älteste zuerst</option>
-                        <option value="price-low">Preis: Niedrig → Hoch</option>
-                        <option value="price-high">Preis: Hoch → Niedrig</option>
-                        <option value="trust-high">Trust Score: Hoch → Niedrig</option>
-                    </select>
+                    <!-- Sorting Controls -->
+                    <div class="sort-controls">
+                        <label for="sort-by">Sortieren nach:</label>
+                        <select id="sort-by" onchange="sortResults(this.value)">
+                            <option value="newest">Neueste zuerst</option>
+                            <option value="oldest">Älteste zuerst</option>
+                            <option value="price-low">Preis: Niedrig → Hoch</option>
+                            <option value="price-high">Preis: Hoch → Niedrig</option>
+                            <option value="trust-high">Trust Score: Hoch → Niedrig</option>
+                        </select>
+                    </div>
                 </div>
 
                 {% if recent_results %}
@@ -492,7 +505,26 @@
                     <!-- Wird via JavaScript gefüllt -->
                 </div>
                 {% else %}
+                {% set running_tasks = tasks | selectattr('status', 'in', ['pending', 'running']) | list %}
+                {% if running_tasks %}
+                <!-- A search is still in flight: show shimmering skeleton
+                     cards instead of a bare "no results" message -->
+                <p class="skeleton-note">Deine Suche läuft &mdash; neue Ergebnisse erscheinen hier in Kürze.</p>
+                <div class="grid" aria-hidden="true">
+                    {% for _ in range(3) %}
+                    <div class="result-card skeleton-card">
+                        <div class="thumb-placeholder skeleton"></div>
+                        <div class="card-body">
+                            <span class="skeleton skeleton-line" style="width:35%"></span>
+                            <span class="skeleton skeleton-line" style="width:85%"></span>
+                            <span class="skeleton skeleton-line" style="width:60%"></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
                 <div class="empty-state">Noch keine Ergebnisse &mdash; neue Anzeigen deiner Suchen erscheinen hier.</div>
+                {% endif %}
                 {% endif %}
 
                 <!-- Favorites Sub-tab -->
@@ -570,6 +602,20 @@
             Ergebnisse
         </button>
     </nav>
+
+    <!-- Pull-to-refresh spinner (standalone PWA only, driven by JS) -->
+    <div class="ptr-indicator" id="ptr" aria-hidden="true"><span class="ptr-spinner"></span></div>
+
+    <!-- Confirm action sheet: in-design replacement for native confirm() -->
+    <div class="sheet-backdrop" id="sheet-backdrop"></div>
+    <div class="action-sheet" id="action-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+        <h4 id="sheet-title"></h4>
+        <p id="sheet-message"></p>
+        <div class="sheet-actions">
+            <button type="button" class="sheet-btn sheet-btn-danger" id="sheet-confirm"></button>
+            <button type="button" class="sheet-btn sheet-btn-cancel" id="sheet-cancel">Zurück</button>
+        </div>
+    </div>
 
     {% include "_version_footer.html" %}
 
@@ -678,19 +724,28 @@
             applyFiltersAndSort();
         }
 
-        function applyFiltersAndSort() {
-            var cards = document.querySelectorAll('.result-card-wrapper');
-            var filtered = [];
+        // Master card list, captured once from the server-rendered grid.
+        // The grid is re-rendered with clones on every filter/sort/page
+        // change, so it must never be re-queried from the live DOM (that
+        // would lose everything beyond the current page). Scoped to
+        // #results-grid so the favorites grid stays out of it.
+        var allResultCards = null;
+        var filteredResultCards = [];
 
-            cards.forEach(card => {
-                if (currentFilter === 'all' || card.dataset.taskId === currentFilter) {
-                    filtered.push(card);
-                }
+        function applyFiltersAndSort() {
+            if (!document.getElementById('results-grid')) return;
+            if (allResultCards === null) {
+                allResultCards = Array.prototype.slice.call(
+                    document.querySelectorAll('#results-grid .result-card-wrapper')
+                );
+            }
+
+            filteredResultCards = allResultCards.filter(function(card) {
+                return currentFilter === 'all' || card.dataset.taskId === currentFilter;
             });
 
-            // Sort
-            filtered.sort((a, b) => {
-                switch(currentSort) {
+            filteredResultCards.sort(function(a, b) {
+                switch (currentSort) {
                     case 'newest':
                         return parseInt(b.dataset.date) - parseInt(a.dataset.date);
                     case 'oldest':
@@ -706,48 +761,51 @@
                 }
             });
 
-            // Pagination
+            renderResultsPage(1);
+        }
+
+        // Global (not nested in applyFiltersAndSort) so the pagination
+        // links' inline onclick can actually reach it.
+        function renderResultsPage(page) {
+            var grid = document.getElementById('results-grid');
+            var pagination = document.getElementById('results-pagination');
+            if (!grid || !pagination) return;
+
             var pageSize = 10;
-            var totalPages = Math.ceil(filtered.length / pageSize);
-            var currentPage = 1;
+            var totalPages = Math.max(1, Math.ceil(filteredResultCards.length / pageSize));
+            page = Math.min(Math.max(1, page), totalPages);
 
-            function renderPage(page) {
-                var start = (page - 1) * pageSize;
-                var end = start + pageSize;
-                var pageCards = filtered.slice(start, end);
+            var start = (page - 1) * pageSize;
+            var pageCards = filteredResultCards.slice(start, start + pageSize);
 
-                var grid = document.getElementById('results-grid');
-                grid.innerHTML = '';
-                pageCards.forEach(card => grid.appendChild(card.cloneNode(true)));
+            grid.innerHTML = '';
+            pageCards.forEach(function(card) { grid.appendChild(card.cloneNode(true)); });
 
-                // Update pagination
-                var paginationHtml = '';
-                if (page > 1) {
-                    paginationHtml += '<a onclick="renderPage(' + (page - 1) + ')">&laquo;</a>';
-                } else {
-                    paginationHtml += '<span class="disabled">&laquo;</span>';
-                }
-
-                for (var p = 1; p <= totalPages; p++) {
-                    if (p === page) {
-                        paginationHtml += '<span class="current">' + p + '</span>';
-                    } else if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
-                        paginationHtml += '<a onclick="renderPage(' + p + ')">' + p + '</a>';
-                    } else if (p === page - 3 || p === page + 3) {
-                        paginationHtml += '<span>…</span>';
-                    }
-                }
-
-                if (page < totalPages) {
-                    paginationHtml += '<a onclick="renderPage(' + (page + 1) + ')">&raquo;</a>';
-                } else {
-                    paginationHtml += '<span class="disabled">&raquo;</span>';
-                }
-
-                document.getElementById('results-pagination').innerHTML = paginationHtml;
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
             }
 
-            renderPage(currentPage);
+            var html = '';
+            html += page > 1
+                ? '<a onclick="renderResultsPage(' + (page - 1) + ')">&laquo;</a>'
+                : '<span class="disabled">&laquo;</span>';
+
+            for (var p = 1; p <= totalPages; p++) {
+                if (p === page) {
+                    html += '<span class="current">' + p + '</span>';
+                } else if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+                    html += '<a onclick="renderResultsPage(' + p + ')">' + p + '</a>';
+                } else if (p === page - 3 || p === page + 3) {
+                    html += '<span>…</span>';
+                }
+            }
+
+            html += page < totalPages
+                ? '<a onclick="renderResultsPage(' + (page + 1) + ')">&raquo;</a>'
+                : '<span class="disabled">&raquo;</span>';
+
+            pagination.innerHTML = html;
         }
 
         // Initialize on load
@@ -901,6 +959,204 @@
                 if (!step2.classList.contains('active')) {
                     e.preventDefault();
                     goToStep2();
+                }
+            });
+        })();
+
+        // ── Confirm action sheet (replaces native confirm()) ──
+        (function() {
+            var backdrop = document.getElementById('sheet-backdrop');
+            var sheet = document.getElementById('action-sheet');
+            if (!backdrop || !sheet) return;
+            var titleEl = document.getElementById('sheet-title');
+            var msgEl = document.getElementById('sheet-message');
+            var confirmBtn = document.getElementById('sheet-confirm');
+            var onConfirm = null;
+
+            window.openConfirmSheet = function(opts, cb) {
+                titleEl.textContent = opts.title || 'Bist du sicher?';
+                msgEl.textContent = opts.message || '';
+                confirmBtn.textContent = opts.label || 'Bestätigen';
+                onConfirm = cb;
+                backdrop.classList.add('open');
+                sheet.classList.add('open');
+            };
+
+            window.closeConfirmSheet = function() {
+                backdrop.classList.remove('open');
+                sheet.classList.remove('open');
+                onConfirm = null;
+            };
+
+            confirmBtn.addEventListener('click', function() {
+                var cb = onConfirm;
+                closeConfirmSheet();
+                if (cb) cb();
+            });
+            document.getElementById('sheet-cancel').addEventListener('click', closeConfirmSheet);
+            backdrop.addEventListener('click', closeConfirmSheet);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeConfirmSheet();
+            });
+
+            // Any form carrying data-confirm-title asks via the sheet first.
+            // form.submit() bypasses this listener, so no loop.
+            document.addEventListener('submit', function(e) {
+                var form = e.target;
+                if (!form.dataset || !form.dataset.confirmTitle) return;
+                e.preventDefault();
+                openConfirmSheet({
+                    title: form.dataset.confirmTitle,
+                    message: form.dataset.confirmMessage,
+                    label: form.dataset.confirmLabel
+                }, function() { form.submit(); });
+            });
+        })();
+
+        // ── Collapsing header: hide on scroll-down, reveal on scroll-up ──
+        // (CSS neutralises the transform above 560px, so desktop is unaffected)
+        (function() {
+            var header = document.querySelector('.header-row');
+            if (!header) return;
+            var lastY = window.scrollY, ticking = false;
+            window.addEventListener('scroll', function() {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(function() {
+                    var y = window.scrollY;
+                    if (y > lastY + 6 && y > 60) header.classList.add('header-hidden');
+                    else if (y < lastY - 6) header.classList.remove('header-hidden');
+                    header.classList.toggle('header-scrolled', y > 8);
+                    lastY = y;
+                    ticking = false;
+                });
+            }, { passive: true });
+        })();
+
+        // ── Compact notify-card for users who already opted in once ──
+        (function() {
+            var card = document.querySelector('.notify-card');
+            if (!card) return;
+            var opted = false;
+            try { opted = localStorage.getItem('ka-notify-opted') === '1'; } catch (e) {}
+            if (opted || (('Notification' in window) && Notification.permission === 'granted')) {
+                card.classList.add('compact');
+            }
+            var form = document.getElementById('scrape-form');
+            if (form) form.addEventListener('submit', function() {
+                var push = document.getElementById('push_notifications');
+                if (push && push.checked) {
+                    try { localStorage.setItem('ka-notify-opted', '1'); } catch (e) {}
+                }
+            });
+        })();
+
+        // ── Swipe gestures (touch + phone widths only) ──
+        // Swipe a search card left → confirm-delete sheet.
+        // Swipe a result card right → toggle favorite.
+        (function() {
+            if (!('ontouchstart' in window)) return;
+
+            function delegateSwipe(container, selector, dir, threshold, maxShift, onTrigger) {
+                var el = null, startX = 0, startY = 0, dx = 0, horiz = false, cancelled = false;
+
+                container.addEventListener('touchstart', function(e) {
+                    el = e.target.closest(selector);
+                    if (!el || window.innerWidth > 640) { el = null; return; }
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    dx = 0; horiz = false; cancelled = false;
+                    el.style.transition = '';
+                }, { passive: true });
+
+                container.addEventListener('touchmove', function(e) {
+                    if (!el || cancelled) return;
+                    var mx = e.touches[0].clientX - startX;
+                    var my = e.touches[0].clientY - startY;
+                    if (!horiz) {
+                        if (Math.abs(my) > 12 && Math.abs(my) > Math.abs(mx)) { cancelled = true; return; }
+                        if (Math.abs(mx) < 12) return;
+                        horiz = true;
+                    }
+                    dx = dir === 'left' ? Math.min(0, mx) : Math.max(0, mx);
+                    var shift = Math.max(-maxShift, Math.min(maxShift, dx));
+                    el.style.transform = 'translateX(' + shift + 'px)';
+                    el.classList.toggle('swipe-armed', Math.abs(dx) >= threshold);
+                }, { passive: true });
+
+                container.addEventListener('touchend', function() {
+                    if (!el) return;
+                    var target = el;
+                    var fired = horiz && !cancelled && Math.abs(dx) >= threshold;
+                    el = null;
+                    target.style.transition = 'transform 0.2s ease';
+                    target.style.transform = '';
+                    target.classList.remove('swipe-armed');
+                    if (fired) onTrigger(target);
+                });
+            }
+
+            var tasksContainer = document.getElementById('tasks-container');
+            if (tasksContainer) {
+                delegateSwipe(tasksContainer, '#tasks-tbody tr', 'left', 70, 90, function(row) {
+                    var form = row.querySelector('form[data-confirm-title]');
+                    if (!form) return;
+                    openConfirmSheet({
+                        title: form.dataset.confirmTitle,
+                        message: form.dataset.confirmMessage,
+                        label: form.dataset.confirmLabel
+                    }, function() { form.submit(); });
+                });
+            }
+
+            var resultsPane = document.getElementById('tab-my-results');
+            if (resultsPane) {
+                delegateSwipe(resultsPane, '.result-card-wrapper', 'right', 60, 28, function(wrapper) {
+                    var btn = wrapper.querySelector('.favorite-btn');
+                    if (!btn) return;
+                    btn.classList.add('fav-pop');
+                    setTimeout(function() { btn.classList.remove('fav-pop'); }, 400);
+                    btn.click();
+                });
+            }
+        })();
+
+        // ── Pull-to-refresh (installed PWA only — browser tabs keep the
+        //    native gesture, so ours is off there to avoid double-firing) ──
+        (function() {
+            var ind = document.getElementById('ptr');
+            if (!ind || !('ontouchstart' in window) || !isStandalone()) return;
+            ind.classList.add('ptr-enabled');
+            var startY = 0, pulling = false, dist = 0;
+            var THRESHOLD = 56;
+
+            document.addEventListener('touchstart', function(e) {
+                pulling = window.scrollY <= 0;
+                if (pulling) { startY = e.touches[0].clientY; dist = 0; }
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!pulling) return;
+                dist = e.touches[0].clientY - startY;
+                if (dist <= 0 || window.scrollY > 0) {
+                    ind.style.transform = '';
+                    ind.classList.remove('armed');
+                    return;
+                }
+                var shift = Math.min(dist * 0.35, 64);
+                ind.style.transform = 'translateY(' + shift + 'px)';
+                ind.classList.toggle('armed', shift >= THRESHOLD);
+            }, { passive: true });
+
+            document.addEventListener('touchend', function() {
+                if (!pulling) return;
+                pulling = false;
+                if (Math.min(dist * 0.35, 64) >= THRESHOLD) {
+                    ind.classList.add('spinning');
+                    window.location.reload();
+                } else {
+                    ind.style.transform = '';
+                    ind.classList.remove('armed');
                 }
             });
         })();
