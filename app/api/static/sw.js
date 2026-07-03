@@ -50,9 +50,10 @@ self.addEventListener('push', e => {
     icon: '/static/icons/icon-192.png',
     badge: '/static/icons/icon-72.png',
     tag: 'notification',
-    requireInteraction: false,
+    requireInteraction: true,
     data: { url: '/dashboard' },
-    actions: []
+    actions: [],
+    sound: '/static/notification.mp3'
   };
   try {
     if (e.data) {
@@ -61,20 +62,44 @@ self.addEventListener('push', e => {
     }
   } catch (_) {}
 
+  // Play notification sound (optional)
+  if (data.sound && typeof playNotificationSound === 'function') {
+    playNotificationSound();
+  }
+
+  // Vibration pattern for mobile
+  const vibrationPattern = [200, 100, 200];
+
   e.waitUntil(
     self.registration.showNotification(data.title || 'kleinanzeigen-ai', {
       body: data.body || '',
       icon: data.icon || '/static/icons/icon-192.png',
       badge: data.badge || '/static/icons/icon-72.png',
-      tag: data.tag || 'notification',
+      tag: data.tag || `search-${Date.now()}`,
       requireInteraction: data.requireInteraction !== false,
       actions: data.actions || [],
+      vibrate: vibrationPattern,
       data: {
         url: data.data?.url || '/dashboard',
         searchKeywords: data.data?.searchKeywords,
         taskId: data.data?.taskId,
-        resultCount: data.data?.resultCount
+        resultCount: data.data?.resultCount,
+        vibrate: vibrationPattern
       }
+    }).then(() => {
+      // Trigger vibration when notification is shown
+      if (navigator.vibrate && vibrationPattern) {
+        navigator.vibrate(vibrationPattern);
+      }
+      // Notify clients about notification
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'notificationShown',
+            data: data
+          });
+        });
+      });
     })
   );
 });
@@ -85,6 +110,12 @@ self.addEventListener('notificationclick', e => {
 
   if (action === 'dismiss') {
     e.notification.close();
+    // Notify clients about dismissal
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({ type: 'notificationDismissed' });
+      });
+    });
     return;
   }
 
@@ -95,6 +126,18 @@ self.addEventListener('notificationclick', e => {
   };
 
   e.notification.close();
+
+  // Notify clients about click
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'notificationClicked',
+        action: action,
+        url: urls[action] || urls.default
+      });
+    });
+  });
+
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.url.includes('/dashboard') && 'focus' in c);

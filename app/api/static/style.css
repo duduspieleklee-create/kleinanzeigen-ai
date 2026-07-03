@@ -3156,3 +3156,39 @@ input:checked + .toggle-slider:before {
 .test-notification-btn:active {
   transform: scale(0.98);
 }
+
+/* Notification badge in header */
+.notif-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.notif-badge .notif-icon {
+  font-size: 18px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.notif-badge .notif-icon:hover {
+  transform: scale(1.1) rotate(10deg);
+}
+
+.notif-badge #notif-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.notif-badge #notif-count[style*="display: none"] {
+  display: none !important;
+}
