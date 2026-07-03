@@ -25,7 +25,6 @@ from sqlalchemy.orm import Session
 
 from app.api.config import settings
 from app.api.dependencies import get_current_user
-from app.api.version import register_globals
 from app.shared.database import get_db
 from app.shared.models import User
 from app.shared.plans import (
@@ -39,7 +38,6 @@ logger = logging.getLogger("kleinanzeigen-ai")
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
-register_globals(templates)
 
 
 def _billing_enabled() -> bool:
