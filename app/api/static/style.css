@@ -1035,43 +1035,6 @@ body.dashboard-page {
   color: var(--color-accent);
 }
 
-/* Floating settings gear button (bottom-right corner) */
-.floating-settings-btn {
-  position: fixed;
-  bottom: 76px;
-  right: 16px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  box-shadow: 0 4px 12px rgba(59, 91, 253, 0.35);
-  transition: all 0.2s ease;
-  z-index: 40;
-}
-
-.floating-settings-btn:active {
-  background: var(--color-accent-hover);
-  transform: scale(0.95);
-}
-
-.floating-settings-btn svg {
-  width: 24px;
-  height: 24px;
-  stroke-width: 2;
-}
-
-@media (min-width: 561px) {
-  /* On tablet/desktop, position higher since bottom-nav is hidden */
-  .floating-settings-btn {
-    bottom: 24px;
-  }
-}
-
 /* ---------- tables -------------------------------------------------------- */
 
 table {
