@@ -36,11 +36,6 @@
             </div>
         </div>
 
-        <div id="notif-bar" class="notif-bar" style="display:none">
-            <span id="notif-label">Benachrichtigt werden, wenn neue Anzeigen gefunden werden</span>
-            <button id="notif-btn" onclick="handleNotifClick()">Benachrichtigungen aktivieren</button>
-        </div>
-
         {% if is_admin %}
         <div class="quota-bar">Admin-Konto &mdash; unbegrenzte Suchen</div>
         {% else %}
@@ -840,37 +835,6 @@
             return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         }
 
-        function updateNotifBar(perm) {
-            var bar = document.getElementById('notif-bar');
-            var btn = document.getElementById('notif-btn');
-            var label = document.getElementById('notif-label');
-            if (!notifSupported()) {
-                if (isIOS() && !isStandalone()) {
-                    bar.style.display = 'flex';
-                    btn.style.display = 'none';
-                    label.textContent = '📲 Auf iPhone/iPad: Teilen antippen → „Zum Home-Bildschirm", dann die App öffnen, um Benachrichtigungen zu aktivieren';
-                } else {
-                    bar.style.display = 'none';
-                }
-                return;
-            }
-            btn.style.display = '';
-            bar.style.display = 'flex';
-            if (perm === 'granted') {
-                label.textContent = '🔔 Benachrichtigungen sind aktiviert';
-                btn.textContent = 'Aktiviert ✓';
-                btn.disabled = true;
-            } else if (perm === 'denied') {
-                label.textContent = 'Benachrichtigungen sind blockiert — aktiviere sie in deinen Browsereinstellungen';
-                btn.textContent = 'Blockiert';
-                btn.disabled = true;
-            } else {
-                label.textContent = 'Benachrichtigt werden, wenn neue Anzeigen gefunden werden';
-                btn.textContent = 'Benachrichtigungen aktivieren';
-                btn.disabled = false;
-            }
-        }
-
         async function subscribeToPush() {
             var keyResp = await fetch('/push/vapid-public-key');
             if (!keyResp.ok) return false;
@@ -889,29 +853,6 @@
                 body: JSON.stringify(sub),
             });
             return subResp.ok;
-        }
-
-        async function handleNotifClick() {
-            var btn = document.getElementById('notif-btn');
-            var label = document.getElementById('notif-label');
-            btn.disabled = true;
-            btn.textContent = 'Wird angefragt…';
-            try {
-                var perm = await Notification.requestPermission();
-                if (perm !== 'granted') { updateNotifBar(perm); return; }
-                var ok = await subscribeToPush();
-                if (!ok) {
-                    label.textContent = 'Dein Abonnement konnte nicht gespeichert werden — bitte erneut anmelden und wiederholen';
-                    btn.textContent = 'Erneut versuchen';
-                    btn.disabled = false;
-                    return;
-                }
-                updateNotifBar('granted');
-            } catch (err) {
-                label.textContent = 'Benachrichtigungen konnten nicht aktiviert werden — bitte erneut versuchen';
-                btn.textContent = 'Erneut versuchen';
-                btn.disabled = false;
-            }
         }
 
         // Wizard (from original)
@@ -1208,11 +1149,8 @@
         // Service worker registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(function() {});
-            if (notifSupported()) {
-                updateNotifBar(Notification.permission);
-                if (Notification.permission === 'granted') {
-                    subscribeToPush().catch(function() {});
-                }
+            if (notifSupported() && Notification.permission === 'granted') {
+                subscribeToPush().catch(function() {});
             }
         }
 
