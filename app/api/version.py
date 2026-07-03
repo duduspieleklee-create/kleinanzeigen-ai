@@ -3,8 +3,8 @@
 Values come from settings, which read them from environment variables baked
 into the Docker image at build time (see app/api/Dockerfile and the CI build
 job). Import BUILD_INFO wherever the version needs to be displayed, and call
-register_globals() on each Jinja2Templates instance so templates can render
-the {{ build_info }} footer.
+register_globals() on any Jinja2Templates instance whose templates render
+the {{ build_info }} footer (currently only the settings page).
 """
 from app.api.config import settings
 

@@ -11,7 +11,6 @@ from app.shared.database import get_db, SessionLocal
 from app.shared.models import ScrapeTask, ScrapeResult, User, Favorite
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
-from app.api.version import register_globals
 from app.shared.pricing import deal_badge, median_price
 from app.shared.plans import plan_config, ensure_weekly_credits
 from app.worker.tasks import scrape_kleinanzeigen
@@ -19,7 +18,6 @@ from app.api.config import settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
-register_globals(templates)
 
 MIN_INTERVAL_PROD = 60  # 1 minute — enforced in non-dev environments (Pro's floor)
 
