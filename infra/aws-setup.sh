@@ -126,12 +126,14 @@ aws iam get-role --role-name "$EXEC_ROLE_NAME" >/dev/null 2>&1 || {
   aws iam create-role --role-name "$EXEC_ROLE_NAME" --assume-role-policy-document file:///tmp/ecs-trust.json >/dev/null
   aws iam attach-role-policy --role-name "$EXEC_ROLE_NAME" \
     --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy >/dev/null
-  cat > /tmp/secrets-policy.json <<EOF
+}
+# Re-applied every run (not just on first creation) so a changed $REGION/$ACCOUNT_ID
+# always self-heals the policy instead of leaving a stale one from an earlier run.
+cat > /tmp/secrets-policy.json <<EOF
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"arn:aws:secretsmanager:$REGION:$ACCOUNT_ID:secret:$SECRET_PREFIX/*"}]}
 EOF
-  aws iam put-role-policy --role-name "$EXEC_ROLE_NAME" --policy-name kleinanzeigen-secrets-read \
-    --policy-document file:///tmp/secrets-policy.json >/dev/null
-}
+aws iam put-role-policy --role-name "$EXEC_ROLE_NAME" --policy-name kleinanzeigen-secrets-read \
+  --policy-document file:///tmp/secrets-policy.json >/dev/null
 
 echo "==> CloudWatch log groups..."
 for APP in api worker beat; do
