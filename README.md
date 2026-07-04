@@ -80,6 +80,8 @@ app/
 alembic/     Database migration scripts
 docs/        Architecture and runbook documentation
 docker-compose.yml
+docker-compose.prod.yml
+deploy/      Caddyfile for self-managed VPS deployments
 requirements.txt
 ```
 
@@ -87,3 +89,4 @@ requirements.txt
 
 - `dev` — local Docker Compose
 - `prod` — Google Cloud (Cloud Run, Cloud SQL for PostgreSQL, Memorystore for Redis) via GitHub Actions
+- self-managed VPS — Docker Compose on your own Ubuntu server, see `docs/vps-deployment.md`

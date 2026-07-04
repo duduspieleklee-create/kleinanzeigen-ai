@@ -1,0 +1,8 @@
+# IP-only phase: plain HTTP reverse proxy to the api container.
+# Once you have a domain, replace ":80" below with your domain name
+# (e.g. "your-domain.com") and reload Caddy — it will automatically
+# provision and renew a Let's Encrypt certificate. See the "Adding a
+# domain" section of docs/vps-deployment.md.
+:80 {
+	reverse_proxy 127.0.0.1:8000
+}
