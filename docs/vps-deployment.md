@@ -216,19 +216,43 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml logs -f api
 ```
 
-**Back up the database:**
+**Back up the database (one-off):**
 ```bash
-docker compose -f docker-compose.prod.yml exec db \
-  pg_dump -U kleinanzeigen kleinanzeigen_ai > backup-$(date +%F).sql
+./deploy/backup.sh
 ```
+Writes a gzip-compressed dump to `backups/<db>-<timestamp>.sql.gz` and deletes
+anything in that directory older than `RETENTION_DAYS` (default 14). Override
+`BACKUP_DIR` / `RETENTION_DAYS` as env vars if needed.
 
 **Restore:**
 ```bash
-cat backup-2026-07-04.sql | docker compose -f docker-compose.prod.yml exec -T db \
+gunzip -c backups/kleinanzeigen_ai-2026-07-04_030001.sql.gz | \
+  docker compose -f docker-compose.prod.yml exec -T db \
   psql -U kleinanzeigen kleinanzeigen_ai
 ```
 
-## Switching from a wildcard-DNS hostname (or bare IP) to your own domain later
+## Automated backups
+
+Run `deploy/backup.sh` nightly via cron. Edit the crontab for the user that
+owns the deployment (the one with `docker` group membership):
+
+```bash
+crontab -e
+```
+
+Add a line running it at, e.g., 03:00 every day, logging output so cron
+failures are visible:
+
+```
+0 3 * * * /opt/kleinanzeigen-ai/deploy/backup.sh >> /opt/kleinanzeigen-ai/backups/backup.log 2>&1
+```
+
+Backups land in `/opt/kleinanzeigen-ai/backups/` (gitignored — this directory
+lives only on the VPS). Since it's local-disk-only, a lost or wiped VPS loses
+the backups too; copy the directory off-box periodically (e.g. `scp` or
+`rsync` to another machine) if you need protection against that.
+
+## Adding a domain + HTTPS + Google OAuth later
 
 1. Point a DNS A record at the VPS's IP.
 2. Edit `/etc/caddy/Caddyfile`, replacing the hostname with your domain (drop

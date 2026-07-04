@@ -41,6 +41,9 @@ Thumbs.db
 secrets/
 logs/
 
+# Local database backups (deploy/backup.sh)
+/backups/
+
 # Replit
 .replit
 .replit-artifact/
