@@ -16,6 +16,17 @@ bare IP address for one. Until you have a domain, leave `GOOGLE_CLIENT_ID` /
 Google" button (see the comment in `app/api/config.py`) and you log in with
 the app's own `APP_USERNAME` / `APP_PASSWORD` credentials instead.
 
+## Why IP-only still needs HTTPS
+
+The login cookie is set with the `Secure` flag whenever `ENVIRONMENT != dev`
+(`app/api/routers/auth.py`), and browsers silently drop `Secure` cookies sent
+over plain HTTP — login will appear to succeed with no error but nothing
+actually persists. Since Let's Encrypt won't issue a certificate for a bare IP
+address, `deploy/Caddyfile` uses Caddy's built-in internal CA to self-sign one
+instead. Your browser will show a certificate warning to click through, but
+the connection is genuinely HTTPS, so the cookie works. Swap this out for a
+real Let's Encrypt certificate once you add a domain (see "Adding a domain").
+
 ## 1. Prerequisites
 
 SSH into the VPS and confirm Docker is ready:
@@ -38,6 +49,7 @@ sudo apt install -y docker-compose-plugin git
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw enable
 ```
 
@@ -51,7 +63,6 @@ sudo mkdir -p /opt/kleinanzeigen-ai
 sudo chown "$USER" /opt/kleinanzeigen-ai
 git clone <your-repo-url> /opt/kleinanzeigen-ai
 cd /opt/kleinanzeigen-ai
-git checkout claude/deploy-ubuntu-vps-docker-39lc9p   # or main, once merged
 ```
 
 ## 4. Configure `.env`
@@ -140,17 +151,19 @@ sudo systemctl reload caddy
 
 ## 8. First login
 
-Visit `http://<your-vps-ip>/` and log in with `APP_USERNAME` / `APP_PASSWORD`
-**right away**. This creates the app's `User` row, which gets id `1` in a
-fresh database — matching `SYSTEM_USER_ID=1` in `.env`. If Celery Beat's
-first scheduled scrape (every 30 minutes) fires before this row exists, it
-will fail on a foreign-key constraint, so do this step promptly after step 6.
+Visit `https://<your-vps-ip>/` (note **https** — see "Why IP-only still needs
+HTTPS" above) and click through the browser's self-signed certificate
+warning. Log in with `APP_USERNAME` / `APP_PASSWORD` **right away**. This
+creates the app's `User` row, which gets id `1` in a fresh database —
+matching `SYSTEM_USER_ID=1` in `.env`. If Celery Beat's first scheduled
+scrape (every 30 minutes) fires before this row exists, it will fail on a
+foreign-key constraint, so do this step promptly after step 6.
 
 ## 9. Verify
 
 ```bash
 curl http://127.0.0.1:8000/healthz          # direct to the api container
-curl http://<your-vps-ip>/healthz           # through Caddy
+curl -k https://127.0.0.1/healthz           # through Caddy (self-signed cert)
 docker compose -f docker-compose.prod.yml logs -f worker beat
 ```
 
@@ -184,14 +197,17 @@ cat backup-2026-07-04.sql | docker compose -f docker-compose.prod.yml exec -T db
 ## Adding a domain + HTTPS + Google OAuth later
 
 1. Point a DNS A record at the VPS's IP.
-2. Edit `/etc/caddy/Caddyfile`, replacing `:80` with your domain:
+2. Replace the entire contents of `/etc/caddy/Caddyfile` with a single block
+   using your domain (no `tls internal` needed — Caddy provisions a real
+   Let's Encrypt certificate automatically for a real domain):
    ```
    your-domain.com {
        reverse_proxy 127.0.0.1:8000
    }
    ```
 3. `sudo systemctl reload caddy` — Caddy automatically provisions and renews
-   a Let's Encrypt certificate.
+   the Let's Encrypt certificate, and the browser certificate warning goes
+   away for good.
 4. In Google Cloud Console, register
    `https://your-domain.com/auth/google/callback` as an authorized redirect
    URI, then set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`.
