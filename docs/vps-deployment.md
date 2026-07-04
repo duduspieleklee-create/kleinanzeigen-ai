@@ -1,31 +1,34 @@
 # VPS Deployment Guide
 
-How to run kleinanzeigen-ai on your own Ubuntu 22.04 VPS with Docker, starting
-IP-only (no domain yet) and using the built-in username/password login instead
-of Google OAuth. See "Adding a domain" at the end for upgrading later.
+How to run kleinanzeigen-ai on your own Ubuntu 22.04 VPS with Docker.
 
 This is a separate path from the Cloud Run deployment described in
 `docs/architecture.md` and `.github/workflows/build-and-push.yml` — nothing
 here touches that pipeline.
 
-## Why IP-only skips Google OAuth
+## Hostname options
 
-Google OAuth requires a registered redirect URI, and Google does not accept a
-bare IP address for one. Until you have a domain, leave `GOOGLE_CLIENT_ID` /
-`GOOGLE_CLIENT_SECRET` empty in `.env` — this disables the "Sign in with
-Google" button (see the comment in `app/api/config.py`) and you log in with
-the app's own `APP_USERNAME` / `APP_PASSWORD` credentials instead.
+The app sets its login cookie with the `Secure` flag whenever
+`ENVIRONMENT != dev` (`app/api/routers/auth.py`), and browsers silently drop
+`Secure` cookies sent over plain HTTP — login will appear to succeed with no
+error but nothing actually persists. So the site needs real HTTPS, which
+means Caddy needs a hostname (Let's Encrypt won't issue a certificate for a
+bare IP address). Pick one:
 
-## Why IP-only still needs HTTPS
+- **You own a domain** — point a DNS A record at the VPS's IP and use that
+  domain.
+- **You don't own a domain** — use a free wildcard-DNS hostname that just
+  resolves back to your own IP, e.g. `<ip-with-dashes>.eu-cloud-xip.com`
+  (also available as `.nip.io` / `.sslip.io`). No signup needed, and Caddy
+  gets a genuine trusted Let's Encrypt certificate for it exactly like a real
+  domain — no self-signed cert, no browser warning.
+- **Neither** — fall back to a self-signed cert on the bare IP; see
+  "Bare-IP fallback" below. You'll need to click through a browser warning
+  and Google OAuth won't work (it requires a real redirect URI).
 
-The login cookie is set with the `Secure` flag whenever `ENVIRONMENT != dev`
-(`app/api/routers/auth.py`), and browsers silently drop `Secure` cookies sent
-over plain HTTP — login will appear to succeed with no error but nothing
-actually persists. Since Let's Encrypt won't issue a certificate for a bare IP
-address, `deploy/Caddyfile` uses Caddy's built-in internal CA to self-sign one
-instead. Your browser will show a certificate warning to click through, but
-the connection is genuinely HTTPS, so the cookie works. Swap this out for a
-real Let's Encrypt certificate once you add a domain (see "Adding a domain").
+Either of the first two options also means you can turn on Google OAuth from
+day one (see step 4) since you have a valid HTTPS hostname for the redirect
+URI.
 
 ## 1. Prerequisites
 
@@ -94,7 +97,9 @@ DATABASE_URL=postgresql://kleinanzeigen:<same-password-as-above>@db:5432/kleinan
 
 REDIS_URL=redis://redis:6379/0
 
-# Leave empty for the IP-only phase (see "Why IP-only skips Google OAuth").
+# Leave empty if you're on the bare-IP fallback (no valid redirect URI to
+# register). If you have a domain or wildcard-DNS hostname, you can set
+# these now — see "Google OAuth" below.
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
@@ -109,6 +114,13 @@ optional and disable themselves cleanly when unset.
 `openssl rand -hex 32` prints straight to stdout; paste the result into
 `SECRET_KEY=` in the file rather than relying on the `$(...)` substitution
 above if you're editing `.env` directly instead of through a shell.
+
+### Google OAuth (optional, requires a hostname)
+
+If you have a domain or wildcard-DNS hostname from "Hostname options" above,
+register `https://<your-hostname>/auth/google/callback` as an authorized
+redirect URI in Google Cloud Console, then fill in `GOOGLE_CLIENT_ID` /
+`GOOGLE_CLIENT_SECRET` above.
 
 ## 5. Run database migrations
 
@@ -142,28 +154,50 @@ sudo apt update
 sudo apt install -y caddy
 ```
 
-Copy the repo's Caddyfile into place and reload:
+Copy the repo's Caddyfile into place, replacing the placeholder with your
+actual domain or wildcard-DNS hostname, then reload:
 
 ```bash
 sudo cp /opt/kleinanzeigen-ai/deploy/Caddyfile /etc/caddy/Caddyfile
+sudo sed -i 's/your-domain-or-xip-hostname/<your-hostname>/' /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
+### Bare-IP fallback
+
+If you have no hostname at all, replace the Caddyfile contents instead with:
+
+```
+:80 {
+	redir https://{host}{uri} permanent
+}
+
+:443 {
+	tls internal
+	reverse_proxy 127.0.0.1:8000
+}
+```
+
+`tls internal` makes Caddy self-sign a certificate since Let's Encrypt can't
+issue one for a bare IP — your browser will show a certificate warning to
+click through, but the connection is genuinely HTTPS so the login cookie
+still works. Switch to a real hostname later by replacing this with the
+single-block form above.
+
 ## 8. First login
 
-Visit `https://<your-vps-ip>/` (note **https** — see "Why IP-only still needs
-HTTPS" above) and click through the browser's self-signed certificate
-warning. Log in with `APP_USERNAME` / `APP_PASSWORD` **right away**. This
-creates the app's `User` row, which gets id `1` in a fresh database —
-matching `SYSTEM_USER_ID=1` in `.env`. If Celery Beat's first scheduled
-scrape (every 30 minutes) fires before this row exists, it will fail on a
-foreign-key constraint, so do this step promptly after step 6.
+Visit `https://<your-hostname>/` and log in with `APP_USERNAME` /
+`APP_PASSWORD` **right away**. This creates the app's `User` row, which gets
+id `1` in a fresh database — matching `SYSTEM_USER_ID=1` in `.env`. If Celery
+Beat's first scheduled scrape (every 30 minutes) fires before this row
+exists, it will fail on a foreign-key constraint, so do this step promptly
+after step 6.
 
 ## 9. Verify
 
 ```bash
 curl http://127.0.0.1:8000/healthz          # direct to the api container
-curl -k https://127.0.0.1/healthz           # through Caddy (self-signed cert)
+curl https://<your-hostname>/healthz        # through Caddy
 docker compose -f docker-compose.prod.yml logs -f worker beat
 ```
 
@@ -194,20 +228,18 @@ cat backup-2026-07-04.sql | docker compose -f docker-compose.prod.yml exec -T db
   psql -U kleinanzeigen kleinanzeigen_ai
 ```
 
-## Adding a domain + HTTPS + Google OAuth later
+## Switching from a wildcard-DNS hostname (or bare IP) to your own domain later
 
 1. Point a DNS A record at the VPS's IP.
-2. Replace the entire contents of `/etc/caddy/Caddyfile` with a single block
-   using your domain (no `tls internal` needed — Caddy provisions a real
-   Let's Encrypt certificate automatically for a real domain):
+2. Edit `/etc/caddy/Caddyfile`, replacing the hostname with your domain (drop
+   the `tls internal` block entirely if you were on the bare-IP fallback):
    ```
    your-domain.com {
        reverse_proxy 127.0.0.1:8000
    }
    ```
 3. `sudo systemctl reload caddy` — Caddy automatically provisions and renews
-   the Let's Encrypt certificate, and the browser certificate warning goes
-   away for good.
+   the Let's Encrypt certificate.
 4. In Google Cloud Console, register
    `https://your-domain.com/auth/google/callback` as an authorized redirect
    URI, then set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`.

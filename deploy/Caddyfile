@@ -1,21 +1,14 @@
-# IP-only phase: the app sets its login cookie with the Secure flag
-# whenever ENVIRONMENT != dev (app/api/routers/auth.py), and browsers
-# silently drop Secure cookies over plain HTTP — so login appears to
-# do nothing. Since Let's Encrypt won't issue a certificate for a bare
-# IP address, we use Caddy's built-in internal CA for a self-signed
-# cert instead. Browsers will show a certificate warning to click
-# through, but the connection is genuinely HTTPS, so the cookie sticks.
+# The app sets its login cookie with the Secure flag whenever
+# ENVIRONMENT != dev (app/api/routers/auth.py), and browsers silently
+# drop Secure cookies over plain HTTP — so login appears to do nothing.
+# A real hostname (even a free wildcard-DNS one like <ip-with-dashes>
+# .eu-cloud-xip.com / nip.io / sslip.io, which just resolves back to
+# your own IP) lets Caddy get you a genuine, trusted Let's Encrypt
+# certificate with zero extra config below — just put it in place of
+# "your-domain-or-xip-hostname" and reload Caddy.
 #
-# Once you have a domain, replace this whole file with a single block
-# using your domain name (e.g. "your-domain.com { reverse_proxy
-# 127.0.0.1:8000 }") and reload Caddy — it will automatically
-# provision and renew a real Let's Encrypt certificate instead. See
-# the "Adding a domain" section of docs/vps-deployment.md.
-:80 {
-	redir https://{host}{uri} permanent
-}
-
-:443 {
-	tls internal
+# See the "Hostname options" section of docs/vps-deployment.md if you
+# only have a bare IP and no hostname at all.
+your-domain-or-xip-hostname {
 	reverse_proxy 127.0.0.1:8000
 }
