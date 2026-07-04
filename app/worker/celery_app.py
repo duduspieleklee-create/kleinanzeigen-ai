@@ -8,8 +8,9 @@ load_dotenv()
 # Redis connection from environment variable
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# rediss:// (ElastiCache in-transit encryption) requires SSL — disable cert
-# verification since ElastiCache's certificate may not be in the default CA bundle.
+# rediss:// (Memorystore in-transit encryption, if enabled) requires SSL —
+# disable cert verification since the certificate may not be in the default
+# CA bundle. Plain redis:// (Memorystore's default, private-IP-only) skips this.
 _USE_SSL = REDIS_URL.startswith("rediss://")
 _SSL_OPTS = {"ssl_cert_reqs": ssl.CERT_NONE} if _USE_SSL else {}
 
