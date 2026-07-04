@@ -92,18 +92,21 @@ REDIS_ENGINE_VERSION=$(aws elasticache describe-cache-engine-versions --engine r
   | tr '\t' '\n' | sort -V | tail -1)
 echo "    using Redis $REDIS_ENGINE_VERSION"
 
-aws elasticache describe-cache-clusters --cache-cluster-id "$REDIS_ID" >/dev/null 2>&1 || \
-  aws elasticache create-cache-cluster \
-    --cache-cluster-id "$REDIS_ID" \
+# In-transit encryption (TLS) for Redis is only available on a replication
+# group, not a plain cache cluster — even a single-node one needs this API.
+aws elasticache describe-replication-groups --replication-group-id "$REDIS_ID" >/dev/null 2>&1 || \
+  aws elasticache create-replication-group \
+    --replication-group-id "$REDIS_ID" \
+    --replication-group-description "kleinanzeigen Celery broker" \
+    --num-cache-clusters 1 \
     --engine redis --engine-version "$REDIS_ENGINE_VERSION" \
     --cache-node-type cache.t4g.micro \
-    --num-cache-nodes 1 \
     --cache-subnet-group-name kleinanzeigen-redis-subnets \
     --security-group-ids "$SG_REDIS" \
     --transit-encryption-enabled \
     >/dev/null
 echo "    waiting for Redis to become available..."
-aws elasticache wait cache-cluster-available --cache-cluster-id "$REDIS_ID"
+aws elasticache wait replication-group-available --replication-group-id "$REDIS_ID"
 
 echo "==> Secrets Manager placeholders..."
 for NAME in DATABASE_URL REDIS_URL SECRET_KEY APP_USERNAME APP_PASSWORD ALLOWED_EMAILS \
@@ -216,7 +219,7 @@ aws iam put-role-policy --role-name "$GHA_ROLE_NAME" --policy-name kleinanzeigen
 
 # ── Collect output values ──────────────────────────────────────────────────────
 PG_HOST=$(aws rds describe-db-instances --db-instance-identifier "$PG_INSTANCE" --query "DBInstances[0].Endpoint.Address" --output text)
-REDIS_HOST=$(aws elasticache describe-cache-clusters --cache-cluster-id "$REDIS_ID" --show-cache-node-info --query "CacheClusters[0].CacheNodes[0].Endpoint.Address" --output text)
+REDIS_HOST=$(aws elasticache describe-replication-groups --replication-group-id "$REDIS_ID" --query "ReplicationGroups[0].NodeGroups[0].PrimaryEndpoint.Address" --output text)
 ALB_DNS=$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query "LoadBalancers[0].DNSName" --output text)
 GHA_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$GHA_ROLE_NAME"
 
