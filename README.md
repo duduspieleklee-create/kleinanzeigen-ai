@@ -15,8 +15,8 @@ A multi-service Python application that scrapes, stores, and surfaces classified
 | Scheduler | Celery Beat |
 | Database | PostgreSQL + SQLAlchemy + Alembic |
 | Auth | Google OAuth 2.0 (Authlib) |
-| Container registry | Azure Container Registry |
-| CI/CD | GitHub Actions → Octopus Deploy |
+| Container registry | Amazon ECR |
+| CI/CD | GitHub Actions → Amazon ECS (Fargate) |
 | Local dev | Docker Compose |
 
 ## Services
@@ -63,9 +63,9 @@ alembic revision --autogenerate -m "describe change"
 
 On every push to `main`:
 1. **lint** — ruff lints `app/`
-2. **build** — builds and pushes Docker images to Azure Container Registry
+2. **build** — builds and pushes Docker images to Amazon ECR
 3. **migrate** — runs `alembic upgrade head` against the target database
-4. **deploy** — creates an Octopus Deploy release and deploys to the `Dev` environment
+4. **deploy** — syncs secrets to AWS Secrets Manager and rolls out new ECS task definitions
 
 See `.github/workflows/build-and-push.yml` and `docs/architecture.md` for details.
 
@@ -85,6 +85,5 @@ requirements.txt
 
 ## Environments
 
-- `dev` — local Docker Compose or Azure (Dev)
-- `staging` — Azure (Staging) via Octopus
-- `prod` — Azure (Prod) via Octopus
+- `dev` — local Docker Compose
+- `prod` — AWS (ECS on Fargate, RDS for PostgreSQL, ElastiCache for Redis) via GitHub Actions

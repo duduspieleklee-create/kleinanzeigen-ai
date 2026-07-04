@@ -8,8 +8,8 @@ load_dotenv()
 # Redis connection from environment variable
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# rediss:// (Azure Cache for Redis) requires SSL — disable cert verification
-# because Azure uses a certificate that may not be in the default CA bundle.
+# rediss:// (ElastiCache in-transit encryption) requires SSL — disable cert
+# verification since ElastiCache's certificate may not be in the default CA bundle.
 _USE_SSL = REDIS_URL.startswith("rediss://")
 _SSL_OPTS = {"ssl_cert_reqs": ssl.CERT_NONE} if _USE_SSL else {}
 
