@@ -31,7 +31,7 @@ echo "==> Security groups..."
 get_or_create_sg() {
   local NAME="$1" DESC="$2" ID
   ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=$NAME" "Name=vpc-id,Values=$VPC_ID" \
-        --query "SecurityGroups[0].GroupId" --output text 2>/dev/null)
+        --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || true)
   if [[ -z "$ID" || "$ID" == "None" ]]; then
     ID=$(aws ec2 create-security-group --group-name "$NAME" --description "$DESC" --vpc-id "$VPC_ID" --query GroupId --output text)
   fi
@@ -141,21 +141,21 @@ echo "==> ECS cluster..."
 aws ecs create-cluster --cluster-name "$CLUSTER" >/dev/null
 
 echo "==> Application Load Balancer (api only)..."
-ALB_ARN=$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null)
+ALB_ARN=$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null || true)
 if [[ -z "$ALB_ARN" || "$ALB_ARN" == "None" ]]; then
   ALB_ARN=$(aws elbv2 create-load-balancer --name "$ALB_NAME" --subnets $SUBNET_IDS \
     --security-groups "$SG_ALB" --scheme internet-facing --type application \
     --query "LoadBalancers[0].LoadBalancerArn" --output text)
 fi
 
-TG_ARN=$(aws elbv2 describe-target-groups --names kleinanzeigen-api-tg --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null)
+TG_ARN=$(aws elbv2 describe-target-groups --names kleinanzeigen-api-tg --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null || true)
 if [[ -z "$TG_ARN" || "$TG_ARN" == "None" ]]; then
   TG_ARN=$(aws elbv2 create-target-group --name kleinanzeigen-api-tg --protocol HTTP --port 8000 \
     --vpc-id "$VPC_ID" --target-type ip --health-check-path /healthz \
     --query "TargetGroups[0].TargetGroupArn" --output text)
 fi
 
-LISTENER_EXISTS=$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query "length(Listeners)" --output text 2>/dev/null)
+LISTENER_EXISTS=$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query "length(Listeners)" --output text 2>/dev/null || true)
 if [[ -z "$LISTENER_EXISTS" || "$LISTENER_EXISTS" == "0" ]]; then
   aws elbv2 create-listener --load-balancer-arn "$ALB_ARN" --protocol HTTP --port 80 \
     --default-actions Type=forward,TargetGroupArn="$TG_ARN" >/dev/null
@@ -171,7 +171,7 @@ done
 service_exists() {
   local NAME="$1" STATUS
   STATUS=$(aws ecs describe-services --cluster "$CLUSTER" --services "$NAME" \
-             --query "services[0].status" --output text 2>/dev/null)
+             --query "services[0].status" --output text 2>/dev/null || true)
   [[ "$STATUS" == "ACTIVE" ]]
 }
 
