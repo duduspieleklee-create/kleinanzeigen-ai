@@ -230,6 +230,168 @@
                     </div>
                     <input type="hidden" id="location_id" name="location_id">
                     </div>
+
+                    <div class="form-field">
+                    <label for="radius">Umkreis (km)</label>
+                    <select id="radius" name="radius" disabled>
+                        <option value="">Zuerst Ort auswählen</option>
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="20">20 km</option>
+                        <option value="30">30 km</option>
+                        <option value="50">50 km</option>
+                        <option value="100">100 km</option>
+                        <option value="150">150 km</option>
+                        <option value="200">200 km</option>
+                    </select>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="category">Kategorie</label>
+                    <select id="category" name="category">
+                        <option value="">Alle Kategorien</option>
+                        <optgroup label="Auto, Rad &amp; Boot">
+                            <option value="autos">Autos</option>
+                            <option value="fahrraeder">Fahrräder &amp; Zubehör</option>
+                            <option value="autoteile-reifen">Autoteile &amp; Reifen</option>
+                            <option value="boote-bootszubehoer">Boote &amp; Bootszubehör</option>
+                            <option value="motorraeder-roller">Motorräder &amp; Motorroller</option>
+                            <option value="motorraeder-roller-teile">Motorradteile &amp; Zubehör</option>
+                            <option value="anhaenger-nutzfahrzeuge">Nutzfahrzeuge &amp; Anhänger</option>
+                            <option value="wohnwagen-mobile">Wohnwagen &amp; -mobile</option>
+                        </optgroup>
+                        <optgroup label="Immobilien">
+                            <option value="wohnung-mieten">Mietwohnungen</option>
+                            <option value="wohnung-kaufen">Eigentumswohnungen</option>
+                            <option value="haus-mieten">Häuser zur Miete</option>
+                            <option value="haus-kaufen">Häuser zum Kauf</option>
+                            <option value="auf-zeit-wg">WG-Zimmer &amp; Auf Zeit</option>
+                            <option value="garage-lagerraum">Garagen &amp; Stellplätze</option>
+                            <option value="grundstuecke-garten">Grundstücke &amp; Gärten</option>
+                            <option value="gewerbeimmobilien">Gewerbeimmobilien</option>
+                            <option value="ferienwohnung-ferienhaus">Ferien- &amp; Auslandsimmobilien</option>
+                        </optgroup>
+                        <optgroup label="Haus &amp; Garten">
+                            <option value="kueche-esszimmer">Küche &amp; Esszimmer</option>
+                            <option value="wohnzimmer">Wohnzimmer</option>
+                            <option value="schlafzimmer">Schlafzimmer</option>
+                            <option value="badezimmer">Badezimmer</option>
+                            <option value="bueromoebel">Büro</option>
+                            <option value="dekoration">Dekoration</option>
+                            <option value="garten-pflanzen">Gartenzubehör &amp; Pflanzen</option>
+                            <option value="heimtextilien">Heimtextilien</option>
+                            <option value="heimwerken">Heimwerken</option>
+                            <option value="lampen-licht">Lampen &amp; Licht</option>
+                        </optgroup>
+                        <optgroup label="Mode &amp; Beauty">
+                            <option value="kleidung-damen">Damenbekleidung</option>
+                            <option value="kleidung-herren">Herrenbekleidung</option>
+                            <option value="schuhe-damen">Damenschuhe</option>
+                            <option value="schuhe-herren">Herrenschuhe</option>
+                            <option value="beauty-gesundheit">Beauty &amp; Gesundheit</option>
+                            <option value="accessoires-schmuck">Taschen &amp; Accessoires</option>
+                            <option value="uhren-schmuck">Uhren &amp; Schmuck</option>
+                        </optgroup>
+                        <optgroup label="Elektronik">
+                            <option value="multimedia-elektronik">Elektronik (allgemein)</option>
+                            <option value="handy-telekom">Handy &amp; Telefon</option>
+                            <option value="haushaltsgeraete">Haushaltsgeräte</option>
+                            <option value="audio-hifi">Audio &amp; Hifi</option>
+                            <option value="foto">Foto</option>
+                            <option value="tv-video">TV &amp; Video</option>
+                            <option value="notebooks">Notebooks</option>
+                            <option value="pcs">PCs</option>
+                            <option value="pc-zubehoer-software">PC-Zubehör &amp; Software</option>
+                            <option value="tablets-reader">Tablets &amp; Reader</option>
+                            <option value="konsolen">Konsolen</option>
+                            <option value="pc-videospiele">Videospiele</option>
+                            <option value="wearables">Wearables</option>
+                        </optgroup>
+                        <optgroup label="Familie, Kind &amp; Baby">
+                            <option value="baby-kinderkleidung">Baby- &amp; Kinderkleidung</option>
+                            <option value="baby-kinderschuhe">Baby- &amp; Kinderschuhe</option>
+                            <option value="babyausstattung">Baby-Ausstattung</option>
+                            <option value="babyschalen-kindersitze">Babyschalen &amp; Kindersitze</option>
+                            <option value="kinderwagen-buggys">Kinderwagen &amp; Buggys</option>
+                            <option value="kinderzimmermoebel">Kinderzimmermöbel</option>
+                            <option value="spielzeug">Spielzeug</option>
+                            <option value="babysitter-kinderbetreuung">Babysitter &amp; Kinderbetreuung</option>
+                            <option value="altenpflege">Altenpflege</option>
+                        </optgroup>
+                        <optgroup label="Tiere">
+                            <option value="hunde">Hunde</option>
+                            <option value="katzen">Katzen</option>
+                            <option value="kleintiere">Kleintiere</option>
+                            <option value="voegel">Vögel</option>
+                            <option value="fische">Fische</option>
+                            <option value="pferde">Pferde</option>
+                            <option value="nutztiere">Nutztiere</option>
+                            <option value="tierbetreuung-training">Tierbetreuung &amp; Training</option>
+                            <option value="zubehoer">Tierzubehör</option>
+                        </optgroup>
+                        <optgroup label="Freizeit, Hobby &amp; Nachbarschaft">
+                            <option value="sammeln">Sammeln</option>
+                            <option value="kunst">Kunst &amp; Antiquitäten</option>
+                            <option value="sport-camping">Sport &amp; Camping</option>
+                            <option value="handarbeit-basteln-kunsthandwerk">Handarbeit, Basteln &amp; Kunsthandwerk</option>
+                            <option value="modellbau">Modellbau</option>
+                            <option value="reise-eventservices">Reise &amp; Eventservices</option>
+                            <option value="freizeitaktivitaeten">Freizeitaktivitäten</option>
+                            <option value="troedel-kistenweise">Trödel</option>
+                            <option value="esoterik-spirituelles">Esoterik &amp; Spirituelles</option>
+                            <option value="verloren-gefunden">Verloren &amp; Gefunden</option>
+                        </optgroup>
+                        <optgroup label="Musik, Filme &amp; Bücher">
+                            <option value="buecher-zeitschriften">Bücher &amp; Zeitschriften</option>
+                            <option value="fachbuecher-schule-studium">Fachbücher, Schule &amp; Studium</option>
+                            <option value="film-dvd">Film &amp; DVD</option>
+                            <option value="musik-cds">Musik &amp; CDs</option>
+                            <option value="musikinstrumente">Musikinstrumente</option>
+                            <option value="comics">Comics</option>
+                        </optgroup>
+                        <optgroup label="Eintrittskarten &amp; Tickets">
+                            <option value="konzerte">Konzerte</option>
+                            <option value="klassik-kultur">Theater &amp; Musical</option>
+                            <option value="comedy-kabarett">Comedy &amp; Kabarett</option>
+                            <option value="gutscheine">Gutscheine</option>
+                        </optgroup>
+                        <optgroup label="Verschenken &amp; Tauschen">
+                            <option value="zu-verschenken">Zu verschenken</option>
+                            <option value="zu-verschenken-tauschen">Verschenken &amp; Tauschen</option>
+                            <option value="verleihen">Verleihen</option>
+                        </optgroup>
+                        <optgroup label="Jobs">
+                            <option value="jobs">Jobs (allgemein)</option>
+                            <option value="ausbildung">Ausbildung</option>
+                            <option value="praktika">Praktika</option>
+                            <option value="heimarbeit-mini-nebenjobs">Mini- &amp; Nebenjobs</option>
+                            <option value="bueroarbeit-verwaltung">Büroarbeit &amp; Verwaltung</option>
+                            <option value="gastronomie-tourismus">Gastronomie &amp; Tourismus</option>
+                            <option value="bau-handwerk-produktion">Bau, Handwerk &amp; Produktion</option>
+                            <option value="vertrieb-einkauf-verkauf">Vertrieb, Einkauf &amp; Verkauf</option>
+                        </optgroup>
+                        <optgroup label="Dienstleistungen &amp; Unterricht">
+                            <option value="dienstleistungen">Dienstleistungen (allgemein)</option>
+                            <option value="umzug-transport">Umzug &amp; Transport</option>
+                            <option value="unterricht-kurse">Unterricht &amp; Kurse</option>
+                            <option value="nachhilfe">Nachhilfe</option>
+                            <option value="sprachkurse">Sprachkurse</option>
+                            <option value="nachbarschaftshilfe">Nachbarschaftshilfe</option>
+                        </optgroup>
+                    </select>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-field">
+                        <label for="price_min">Min. Preis (€)</label>
+                        <input type="number" id="price_min" name="price_min" placeholder="0">
+                        </div>
+
+                        <div class="form-field">
+                        <label for="price_max">Max. Preis (€)</label>
+                        <input type="number" id="price_max" name="price_max" placeholder="10000">
+                        </div>
+                    </div>
                   </div>
 
                   <!--
@@ -248,166 +410,6 @@
 
                   <div id="filter-panel" class="filter-panel">
                     <div class="form-grid">
-                        <div class="form-field">
-                        <label for="category">Kategorie</label>
-                        <select id="category" name="category">
-                            <option value="">Alle Kategorien</option>
-                            <optgroup label="Auto, Rad &amp; Boot">
-                                <option value="autos">Autos</option>
-                                <option value="fahrraeder">Fahrräder &amp; Zubehör</option>
-                                <option value="autoteile-reifen">Autoteile &amp; Reifen</option>
-                                <option value="boote-bootszubehoer">Boote &amp; Bootszubehör</option>
-                                <option value="motorraeder-roller">Motorräder &amp; Motorroller</option>
-                                <option value="motorraeder-roller-teile">Motorradteile &amp; Zubehör</option>
-                                <option value="anhaenger-nutzfahrzeuge">Nutzfahrzeuge &amp; Anhänger</option>
-                                <option value="wohnwagen-mobile">Wohnwagen &amp; -mobile</option>
-                            </optgroup>
-                            <optgroup label="Immobilien">
-                                <option value="wohnung-mieten">Mietwohnungen</option>
-                                <option value="wohnung-kaufen">Eigentumswohnungen</option>
-                                <option value="haus-mieten">Häuser zur Miete</option>
-                                <option value="haus-kaufen">Häuser zum Kauf</option>
-                                <option value="auf-zeit-wg">WG-Zimmer &amp; Auf Zeit</option>
-                                <option value="garage-lagerraum">Garagen &amp; Stellplätze</option>
-                                <option value="grundstuecke-garten">Grundstücke &amp; Gärten</option>
-                                <option value="gewerbeimmobilien">Gewerbeimmobilien</option>
-                                <option value="ferienwohnung-ferienhaus">Ferien- &amp; Auslandsimmobilien</option>
-                            </optgroup>
-                            <optgroup label="Haus &amp; Garten">
-                                <option value="kueche-esszimmer">Küche &amp; Esszimmer</option>
-                                <option value="wohnzimmer">Wohnzimmer</option>
-                                <option value="schlafzimmer">Schlafzimmer</option>
-                                <option value="badezimmer">Badezimmer</option>
-                                <option value="bueromoebel">Büro</option>
-                                <option value="dekoration">Dekoration</option>
-                                <option value="garten-pflanzen">Gartenzubehör &amp; Pflanzen</option>
-                                <option value="heimtextilien">Heimtextilien</option>
-                                <option value="heimwerken">Heimwerken</option>
-                                <option value="lampen-licht">Lampen &amp; Licht</option>
-                            </optgroup>
-                            <optgroup label="Mode &amp; Beauty">
-                                <option value="kleidung-damen">Damenbekleidung</option>
-                                <option value="kleidung-herren">Herrenbekleidung</option>
-                                <option value="schuhe-damen">Damenschuhe</option>
-                                <option value="schuhe-herren">Herrenschuhe</option>
-                                <option value="beauty-gesundheit">Beauty &amp; Gesundheit</option>
-                                <option value="accessoires-schmuck">Taschen &amp; Accessoires</option>
-                                <option value="uhren-schmuck">Uhren &amp; Schmuck</option>
-                            </optgroup>
-                            <optgroup label="Elektronik">
-                                <option value="multimedia-elektronik">Elektronik (allgemein)</option>
-                                <option value="handy-telekom">Handy &amp; Telefon</option>
-                                <option value="haushaltsgeraete">Haushaltsgeräte</option>
-                                <option value="audio-hifi">Audio &amp; Hifi</option>
-                                <option value="foto">Foto</option>
-                                <option value="tv-video">TV &amp; Video</option>
-                                <option value="notebooks">Notebooks</option>
-                                <option value="pcs">PCs</option>
-                                <option value="pc-zubehoer-software">PC-Zubehör &amp; Software</option>
-                                <option value="tablets-reader">Tablets &amp; Reader</option>
-                                <option value="konsolen">Konsolen</option>
-                                <option value="pc-videospiele">Videospiele</option>
-                                <option value="wearables">Wearables</option>
-                            </optgroup>
-                            <optgroup label="Familie, Kind &amp; Baby">
-                                <option value="baby-kinderkleidung">Baby- &amp; Kinderkleidung</option>
-                                <option value="baby-kinderschuhe">Baby- &amp; Kinderschuhe</option>
-                                <option value="babyausstattung">Baby-Ausstattung</option>
-                                <option value="babyschalen-kindersitze">Babyschalen &amp; Kindersitze</option>
-                                <option value="kinderwagen-buggys">Kinderwagen &amp; Buggys</option>
-                                <option value="kinderzimmermoebel">Kinderzimmermöbel</option>
-                                <option value="spielzeug">Spielzeug</option>
-                                <option value="babysitter-kinderbetreuung">Babysitter &amp; Kinderbetreuung</option>
-                                <option value="altenpflege">Altenpflege</option>
-                            </optgroup>
-                            <optgroup label="Tiere">
-                                <option value="hunde">Hunde</option>
-                                <option value="katzen">Katzen</option>
-                                <option value="kleintiere">Kleintiere</option>
-                                <option value="voegel">Vögel</option>
-                                <option value="fische">Fische</option>
-                                <option value="pferde">Pferde</option>
-                                <option value="nutztiere">Nutztiere</option>
-                                <option value="tierbetreuung-training">Tierbetreuung &amp; Training</option>
-                                <option value="zubehoer">Tierzubehör</option>
-                            </optgroup>
-                            <optgroup label="Freizeit, Hobby &amp; Nachbarschaft">
-                                <option value="sammeln">Sammeln</option>
-                                <option value="kunst">Kunst &amp; Antiquitäten</option>
-                                <option value="sport-camping">Sport &amp; Camping</option>
-                                <option value="handarbeit-basteln-kunsthandwerk">Handarbeit, Basteln &amp; Kunsthandwerk</option>
-                                <option value="modellbau">Modellbau</option>
-                                <option value="reise-eventservices">Reise &amp; Eventservices</option>
-                                <option value="freizeitaktivitaeten">Freizeitaktivitäten</option>
-                                <option value="troedel-kistenweise">Trödel</option>
-                                <option value="esoterik-spirituelles">Esoterik &amp; Spirituelles</option>
-                                <option value="verloren-gefunden">Verloren &amp; Gefunden</option>
-                            </optgroup>
-                            <optgroup label="Musik, Filme &amp; Bücher">
-                                <option value="buecher-zeitschriften">Bücher &amp; Zeitschriften</option>
-                                <option value="fachbuecher-schule-studium">Fachbücher, Schule &amp; Studium</option>
-                                <option value="film-dvd">Film &amp; DVD</option>
-                                <option value="musik-cds">Musik &amp; CDs</option>
-                                <option value="musikinstrumente">Musikinstrumente</option>
-                                <option value="comics">Comics</option>
-                            </optgroup>
-                            <optgroup label="Eintrittskarten &amp; Tickets">
-                                <option value="konzerte">Konzerte</option>
-                                <option value="klassik-kultur">Theater &amp; Musical</option>
-                                <option value="comedy-kabarett">Comedy &amp; Kabarett</option>
-                                <option value="gutscheine">Gutscheine</option>
-                            </optgroup>
-                            <optgroup label="Verschenken &amp; Tauschen">
-                                <option value="zu-verschenken">Zu verschenken</option>
-                                <option value="zu-verschenken-tauschen">Verschenken &amp; Tauschen</option>
-                                <option value="verleihen">Verleihen</option>
-                            </optgroup>
-                            <optgroup label="Jobs">
-                                <option value="jobs">Jobs (allgemein)</option>
-                                <option value="ausbildung">Ausbildung</option>
-                                <option value="praktika">Praktika</option>
-                                <option value="heimarbeit-mini-nebenjobs">Mini- &amp; Nebenjobs</option>
-                                <option value="bueroarbeit-verwaltung">Büroarbeit &amp; Verwaltung</option>
-                                <option value="gastronomie-tourismus">Gastronomie &amp; Tourismus</option>
-                                <option value="bau-handwerk-produktion">Bau, Handwerk &amp; Produktion</option>
-                                <option value="vertrieb-einkauf-verkauf">Vertrieb, Einkauf &amp; Verkauf</option>
-                            </optgroup>
-                            <optgroup label="Dienstleistungen &amp; Unterricht">
-                                <option value="dienstleistungen">Dienstleistungen (allgemein)</option>
-                                <option value="umzug-transport">Umzug &amp; Transport</option>
-                                <option value="unterricht-kurse">Unterricht &amp; Kurse</option>
-                                <option value="nachhilfe">Nachhilfe</option>
-                                <option value="sprachkurse">Sprachkurse</option>
-                                <option value="nachbarschaftshilfe">Nachbarschaftshilfe</option>
-                            </optgroup>
-                        </select>
-                        </div>
-
-                        <div class="form-field">
-                        <label for="price_min">Min. Preis (€)</label>
-                        <input type="number" id="price_min" name="price_min" placeholder="0">
-                        </div>
-
-                        <div class="form-field">
-                        <label for="price_max">Max. Preis (€)</label>
-                        <input type="number" id="price_max" name="price_max" placeholder="10000">
-                        </div>
-
-                        <div class="form-field">
-                        <label for="radius">Umkreis (km)</label>
-                        <select id="radius" name="radius" disabled>
-                            <option value="">Zuerst Ort auswählen</option>
-                            <option value="5">5 km</option>
-                            <option value="10">10 km</option>
-                            <option value="20">20 km</option>
-                            <option value="30">30 km</option>
-                            <option value="50">50 km</option>
-                            <option value="100">100 km</option>
-                            <option value="150">150 km</option>
-                            <option value="200">200 km</option>
-                        </select>
-                        </div>
-
                         <div class="form-field">
                         <label for="ad_type">Anzeigentyp</label>
                         <select id="ad_type" name="ad_type">
