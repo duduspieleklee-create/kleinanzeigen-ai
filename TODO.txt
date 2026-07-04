@@ -5,9 +5,10 @@
 =============================================================================
 1. SECRETS & ENV VARS  (do these before anything else runs)
 =============================================================================
-- [ ] Set AWS_DEPLOY_ROLE_ARN  output by infra/aws-setup.sh (GitHub OIDC deploy role)
-- [ ] Set AWS_REGION (variable)  eu-north-1
-- [ ] Set AWS_ACCOUNT_ID (variable)  your 12-digit AWS account ID
+- [ ] Set GCP_WORKLOAD_IDENTITY_PROVIDER  output by infra/gcp-setup.sh
+- [ ] Set GCP_SERVICE_ACCOUNT  output by infra/gcp-setup.sh (GitHub Actions deploy identity)
+- [ ] Set GCP_PROJECT_ID (variable)  output by infra/gcp-setup.sh
+- [ ] Set GCP_REGION (variable)  europe-north1
 - [ ] Set GOOGLE_CLIENT_ID  from Google Cloud Console → OAuth 2.0 credentials
 - [ ] Set GOOGLE_CLIENT_SECRET  same place
 - [ ] Set DATABASE_URL  postgresql://user:pass@host:5432/kleinanzeigen_ai
@@ -40,7 +41,7 @@
 =============================================================================
 5. DATABASE
 =============================================================================
-- [ ] Provision Amazon RDS for PostgreSQL (see infra/aws-setup.sh)
+- [ ] Provision Cloud SQL for PostgreSQL (see infra/gcp-setup.sh)
 - [ ] Run migrations against prod: alembic upgrade head
 - [ ] Add unique constraint on ScrapeResult.url per task_id (avoid duplicate rows)
 - [ ] Add asyncpg if/when switching to async SQLAlchemy engine
@@ -59,19 +60,21 @@
 =============================================================================
 7. CI/CD (.github/workflows/build-and-push.yml)
 =============================================================================
-- [ ] Add GitHub secrets/variables: AWS_DEPLOY_ROLE_ARN, AWS_REGION, AWS_ACCOUNT_ID,
-        PUBLIC_APP_URL (see TODO.md Step 3)
-- [ ] Run infra/aws-setup.sh once to provision ECR, RDS, ElastiCache, ECS
-        cluster/services, ALB, and the GitHub OIDC deploy role
+- [ ] Add GitHub secrets/variables: GCP_WORKLOAD_IDENTITY_PROVIDER,
+        GCP_SERVICE_ACCOUNT, GCP_PROJECT_ID, GCP_REGION (see TODO.md Step 3)
+- [ ] Run infra/gcp-setup.sh once to provision Artifact Registry, Cloud SQL,
+        Memorystore, the VPC connector, Secret Manager, and the Workload
+        Identity Federation deploy identity
 - [ ] Pin action versions to SHA for supply-chain security
         e.g. actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4.2.2
 
 =============================================================================
-8. ECS DEPLOY — ROLLBACK
+8. CLOUD RUN DEPLOY — ROLLBACK
 =============================================================================
-- [ ] Document a rollback runbook: re-deploy the previous ECS task definition
-        revision with `aws ecs update-service --task-definition <family>:<prev-revision>`
-- [ ] Consider a Staging ECS cluster/service set before promoting to Prod
+- [ ] Document a rollback runbook: re-deploy the previous Cloud Run revision
+        with `gcloud run services update-traffic <service> --to-revisions=<prev-revision>=100`
+- [ ] Consider a staging Cloud Run environment (separate services/project)
+        before promoting to prod
 
 =============================================================================
 9. CELERY BEAT SCHEDULE

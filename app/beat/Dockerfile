@@ -11,4 +11,6 @@ COPY . .
 RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
 USER appuser
 
-CMD ["celery", "-A", "app.beat.celery_beat", "beat", "--loglevel=info"]
+# Cloud Run requires the container to accept connections on $PORT even for
+# a non-HTTP background service — health_shim opens a no-op listener for it.
+CMD ["sh", "-c", "python -m app.shared.health_shim & exec celery -A app.beat.celery_beat beat --loglevel=info"]
