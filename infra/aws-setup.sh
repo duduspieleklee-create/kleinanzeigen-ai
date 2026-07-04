@@ -28,15 +28,24 @@ SUBNET_CSV=$(echo "$SUBNET_IDS" | tr '\t' ',')
 read -r SUBNET_A SUBNET_B _ <<< "$SUBNET_IDS"
 
 echo "==> Security groups..."
-SG_ALB=$(aws ec2 create-security-group --group-name kleinanzeigen-alb-sg --description "kleinanzeigen ALB" --vpc-id "$VPC_ID" --query GroupId --output text)
-SG_ECS=$(aws ec2 create-security-group --group-name kleinanzeigen-ecs-sg --description "kleinanzeigen ECS tasks" --vpc-id "$VPC_ID" --query GroupId --output text)
-SG_DB=$(aws ec2 create-security-group --group-name kleinanzeigen-db-sg --description "kleinanzeigen RDS" --vpc-id "$VPC_ID" --query GroupId --output text)
-SG_REDIS=$(aws ec2 create-security-group --group-name kleinanzeigen-redis-sg --description "kleinanzeigen ElastiCache" --vpc-id "$VPC_ID" --query GroupId --output text)
+get_or_create_sg() {
+  local NAME="$1" DESC="$2" ID
+  ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=$NAME" "Name=vpc-id,Values=$VPC_ID" \
+        --query "SecurityGroups[0].GroupId" --output text 2>/dev/null)
+  if [[ -z "$ID" || "$ID" == "None" ]]; then
+    ID=$(aws ec2 create-security-group --group-name "$NAME" --description "$DESC" --vpc-id "$VPC_ID" --query GroupId --output text)
+  fi
+  echo "$ID"
+}
+SG_ALB=$(get_or_create_sg kleinanzeigen-alb-sg "kleinanzeigen ALB")
+SG_ECS=$(get_or_create_sg kleinanzeigen-ecs-sg "kleinanzeigen ECS tasks")
+SG_DB=$(get_or_create_sg kleinanzeigen-db-sg "kleinanzeigen RDS")
+SG_REDIS=$(get_or_create_sg kleinanzeigen-redis-sg "kleinanzeigen ElastiCache")
 
-aws ec2 authorize-security-group-ingress --group-id "$SG_ALB" --protocol tcp --port 80 --cidr 0.0.0.0/0 --output none
-aws ec2 authorize-security-group-ingress --group-id "$SG_ECS" --protocol tcp --port 8000 --source-group "$SG_ALB" --output none
-aws ec2 authorize-security-group-ingress --group-id "$SG_DB" --protocol tcp --port 5432 --source-group "$SG_ECS" --output none
-aws ec2 authorize-security-group-ingress --group-id "$SG_REDIS" --protocol tcp --port 6379 --source-group "$SG_ECS" --output none
+aws ec2 authorize-security-group-ingress --group-id "$SG_ALB" --protocol tcp --port 80 --cidr 0.0.0.0/0 --output none 2>/dev/null || true
+aws ec2 authorize-security-group-ingress --group-id "$SG_ECS" --protocol tcp --port 8000 --source-group "$SG_ALB" --output none 2>/dev/null || true
+aws ec2 authorize-security-group-ingress --group-id "$SG_DB" --protocol tcp --port 5432 --source-group "$SG_ECS" --output none 2>/dev/null || true
+aws ec2 authorize-security-group-ingress --group-id "$SG_REDIS" --protocol tcp --port 6379 --source-group "$SG_ECS" --output none 2>/dev/null || true
 
 echo "==> ECR repositories..."
 for REPO in kleinanzeigen-ai-api kleinanzeigen-ai-worker kleinanzeigen-ai-beat; do
@@ -50,19 +59,20 @@ aws rds create-db-subnet-group \
   --db-subnet-group-description "kleinanzeigen RDS subnets" \
   --subnet-ids $SUBNET_IDS --output none 2>/dev/null || true
 
-aws rds create-db-instance \
-  --db-instance-identifier "$PG_INSTANCE" \
-  --db-name "$PG_DB" \
-  --engine postgres --engine-version 15.7 \
-  --db-instance-class db.t4g.micro \
-  --allocated-storage 20 \
-  --master-username "$PG_USER" --master-user-password "$PG_PASS" \
-  --db-subnet-group-name kleinanzeigen-db-subnets \
-  --vpc-security-group-ids "$SG_DB" \
-  --no-publicly-accessible \
-  --no-multi-az \
-  --backup-retention-period 7 \
-  --output none
+aws rds describe-db-instances --db-instance-identifier "$PG_INSTANCE" >/dev/null 2>&1 || \
+  aws rds create-db-instance \
+    --db-instance-identifier "$PG_INSTANCE" \
+    --db-name "$PG_DB" \
+    --engine postgres --engine-version 15.7 \
+    --db-instance-class db.t4g.micro \
+    --allocated-storage 20 \
+    --master-username "$PG_USER" --master-user-password "$PG_PASS" \
+    --db-subnet-group-name kleinanzeigen-db-subnets \
+    --vpc-security-group-ids "$SG_DB" \
+    --no-publicly-accessible \
+    --no-multi-az \
+    --backup-retention-period 7 \
+    --output none
 echo "    waiting for RDS to become available..."
 aws rds wait db-instance-available --db-instance-identifier "$PG_INSTANCE"
 
@@ -72,15 +82,16 @@ aws elasticache create-cache-subnet-group \
   --cache-subnet-group-description "kleinanzeigen Redis subnets" \
   --subnet-ids $SUBNET_IDS --output none 2>/dev/null || true
 
-aws elasticache create-cache-cluster \
-  --cache-cluster-id "$REDIS_ID" \
-  --engine redis --engine-version 7.1 \
-  --cache-node-type cache.t4g.micro \
-  --num-cache-nodes 1 \
-  --cache-subnet-group-name kleinanzeigen-redis-subnets \
-  --security-group-ids "$SG_REDIS" \
-  --transit-encryption-enabled \
-  --output none
+aws elasticache describe-cache-clusters --cache-cluster-id "$REDIS_ID" >/dev/null 2>&1 || \
+  aws elasticache create-cache-cluster \
+    --cache-cluster-id "$REDIS_ID" \
+    --engine redis --engine-version 7.1 \
+    --cache-node-type cache.t4g.micro \
+    --num-cache-nodes 1 \
+    --cache-subnet-group-name kleinanzeigen-redis-subnets \
+    --security-group-ids "$SG_REDIS" \
+    --transit-encryption-enabled \
+    --output none
 echo "    waiting for Redis to become available..."
 aws elasticache wait cache-cluster-available --cache-cluster-id "$REDIS_ID"
 
@@ -117,14 +128,25 @@ echo "==> ECS cluster..."
 aws ecs create-cluster --cluster-name "$CLUSTER" --output none
 
 echo "==> Application Load Balancer (api only)..."
-ALB_ARN=$(aws elbv2 create-load-balancer --name "$ALB_NAME" --subnets $SUBNET_IDS \
-  --security-groups "$SG_ALB" --scheme internet-facing --type application \
-  --query "LoadBalancers[0].LoadBalancerArn" --output text)
-TG_ARN=$(aws elbv2 create-target-group --name kleinanzeigen-api-tg --protocol HTTP --port 8000 \
-  --vpc-id "$VPC_ID" --target-type ip --health-check-path /healthz \
-  --query "TargetGroups[0].TargetGroupArn" --output text)
-aws elbv2 create-listener --load-balancer-arn "$ALB_ARN" --protocol HTTP --port 80 \
-  --default-actions Type=forward,TargetGroupArn="$TG_ARN" --output none
+ALB_ARN=$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null)
+if [[ -z "$ALB_ARN" || "$ALB_ARN" == "None" ]]; then
+  ALB_ARN=$(aws elbv2 create-load-balancer --name "$ALB_NAME" --subnets $SUBNET_IDS \
+    --security-groups "$SG_ALB" --scheme internet-facing --type application \
+    --query "LoadBalancers[0].LoadBalancerArn" --output text)
+fi
+
+TG_ARN=$(aws elbv2 describe-target-groups --names kleinanzeigen-api-tg --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null)
+if [[ -z "$TG_ARN" || "$TG_ARN" == "None" ]]; then
+  TG_ARN=$(aws elbv2 create-target-group --name kleinanzeigen-api-tg --protocol HTTP --port 8000 \
+    --vpc-id "$VPC_ID" --target-type ip --health-check-path /healthz \
+    --query "TargetGroups[0].TargetGroupArn" --output text)
+fi
+
+LISTENER_EXISTS=$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query "length(Listeners)" --output text 2>/dev/null)
+if [[ -z "$LISTENER_EXISTS" || "$LISTENER_EXISTS" == "0" ]]; then
+  aws elbv2 create-listener --load-balancer-arn "$ALB_ARN" --protocol HTTP --port 80 \
+    --default-actions Type=forward,TargetGroupArn="$TG_ARN" --output none
+fi
 
 echo "==> Registering task definitions and creating services..."
 for APP in api worker beat; do
@@ -133,18 +155,28 @@ for APP in api worker beat; do
   aws ecs register-task-definition --cli-input-json "file:///tmp/task-def-$APP.json" --output none
 done
 
-aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-api \
-  --task-definition kleinanzeigen-api --desired-count 1 --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" \
-  --load-balancers "targetGroupArn=$TG_ARN,containerName=api,containerPort=8000" --output none
+service_exists() {
+  local NAME="$1" STATUS
+  STATUS=$(aws ecs describe-services --cluster "$CLUSTER" --services "$NAME" \
+             --query "services[0].status" --output text 2>/dev/null)
+  [[ "$STATUS" == "ACTIVE" ]]
+}
 
-aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-worker \
-  --task-definition kleinanzeigen-worker --desired-count 1 --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" --output none
+service_exists kleinanzeigen-api || \
+  aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-api \
+    --task-definition kleinanzeigen-api --desired-count 1 --launch-type FARGATE \
+    --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" \
+    --load-balancers "targetGroupArn=$TG_ARN,containerName=api,containerPort=8000" --output none
 
-aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-beat \
-  --task-definition kleinanzeigen-beat --desired-count 1 --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" --output none
+service_exists kleinanzeigen-worker || \
+  aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-worker \
+    --task-definition kleinanzeigen-worker --desired-count 1 --launch-type FARGATE \
+    --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" --output none
+
+service_exists kleinanzeigen-beat || \
+  aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-beat \
+    --task-definition kleinanzeigen-beat --desired-count 1 --launch-type FARGATE \
+    --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" --output none
 
 echo "==> GitHub Actions OIDC deploy role..."
 aws iam create-open-id-connect-provider \
