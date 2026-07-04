@@ -22,6 +22,13 @@ export AWS_REGION="$REGION"
 export AWS_DEFAULT_REGION="$REGION"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
+# Every mktemp path created below is appended to TMP_FILES and cleaned up here
+# on exit — including a failing `aws` call under set -e — instead of relying
+# on inline `rm -f` calls that a mid-script failure would skip.
+TMP_FILES=()
+cleanup_tmp_files() { rm -f "${TMP_FILES[@]}"; }
+trap cleanup_tmp_files EXIT
+
 echo "==> Default VPC and subnets..."
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query "Vpcs[0].VpcId" --output text)
 SUBNET_IDS=$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$VPC_ID" --query "Subnets[].SubnetId" --output text)
@@ -119,19 +126,28 @@ for NAME in DATABASE_URL REDIS_URL SECRET_KEY APP_USERNAME APP_PASSWORD ALLOWED_
 done
 
 echo "==> ECS task execution role..."
-cat > /tmp/ecs-trust.json <<'EOF'
+# mktemp (not a fixed /tmp name) so a local attacker can't pre-create or
+# symlink-swap the file between write and the aws CLI reading it.
+ECS_TRUST_FILE="$(mktemp)"
+TMP_FILES+=("${ECS_TRUST_FILE}")
+cat > "$ECS_TRUST_FILE" <<'EOF'
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs-tasks.amazonaws.com"},"Action":"sts:AssumeRole"}]}
 EOF
 aws iam get-role --role-name "$EXEC_ROLE_NAME" >/dev/null 2>&1 || {
-  aws iam create-role --role-name "$EXEC_ROLE_NAME" --assume-role-policy-document file:///tmp/ecs-trust.json >/dev/null
+  aws iam create-role --role-name "$EXEC_ROLE_NAME" --assume-role-policy-document "file://$ECS_TRUST_FILE" >/dev/null
   aws iam attach-role-policy --role-name "$EXEC_ROLE_NAME" \
     --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy >/dev/null
-  cat > /tmp/secrets-policy.json <<EOF
+}
+
+# Re-applied every run (not just on first creation) so a changed $REGION/$ACCOUNT_ID
+# always self-heals the policy instead of leaving a stale one from an earlier run.
+SECRETS_POLICY_FILE="$(mktemp)"
+TMP_FILES+=("${SECRETS_POLICY_FILE}")
+cat > "$SECRETS_POLICY_FILE" <<EOF
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"arn:aws:secretsmanager:$REGION:$ACCOUNT_ID:secret:$SECRET_PREFIX/*"}]}
 EOF
-  aws iam put-role-policy --role-name "$EXEC_ROLE_NAME" --policy-name kleinanzeigen-secrets-read \
-    --policy-document file:///tmp/secrets-policy.json >/dev/null
-}
+aws iam put-role-policy --role-name "$EXEC_ROLE_NAME" --policy-name kleinanzeigen-secrets-read \
+  --policy-document "file://$SECRETS_POLICY_FILE" >/dev/null
 
 echo "==> CloudWatch log groups..."
 for APP in api worker beat; do
@@ -164,9 +180,11 @@ fi
 
 echo "==> Registering task definitions and creating services..."
 for APP in api worker beat; do
+  TASK_DEF_FILE="$(mktemp)"
+  TMP_FILES+=("${TASK_DEF_FILE}")
   sed -e "s/__AWS_ACCOUNT_ID__/$ACCOUNT_ID/g" -e "s/__AWS_REGION__/$REGION/g" \
-    "infra/ecs/task-def-$APP.json" > "/tmp/task-def-$APP.json"
-  aws ecs register-task-definition --cli-input-json "file:///tmp/task-def-$APP.json" >/dev/null
+    "infra/ecs/task-def-$APP.json" > "$TASK_DEF_FILE"
+  aws ecs register-task-definition --cli-input-json "file://$TASK_DEF_FILE" >/dev/null
 done
 
 service_exists() {
@@ -199,13 +217,17 @@ aws iam create-open-id-connect-provider \
   --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 \
   >/dev/null 2>&1 || true
 
-cat > /tmp/gha-trust.json <<EOF
+GHA_TRUST_FILE="$(mktemp)"
+TMP_FILES+=("${GHA_TRUST_FILE}")
+cat > "$GHA_TRUST_FILE" <<EOF
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"arn:aws:iam::$ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"token.actions.githubusercontent.com:aud":"sts.amazonaws.com"},"StringLike":{"token.actions.githubusercontent.com:sub":"repo:$GITHUB_REPO:*"}}}]}
 EOF
 aws iam get-role --role-name "$GHA_ROLE_NAME" >/dev/null 2>&1 || \
-  aws iam create-role --role-name "$GHA_ROLE_NAME" --assume-role-policy-document file:///tmp/gha-trust.json >/dev/null
+  aws iam create-role --role-name "$GHA_ROLE_NAME" --assume-role-policy-document "file://$GHA_TRUST_FILE" >/dev/null
 
-cat > /tmp/gha-policy.json <<EOF
+GHA_POLICY_FILE="$(mktemp)"
+TMP_FILES+=("${GHA_POLICY_FILE}")
+cat > "$GHA_POLICY_FILE" <<EOF
 {"Version":"2012-10-17","Statement":[
   {"Effect":"Allow","Action":["ecr:GetAuthorizationToken"],"Resource":"*"},
   {"Effect":"Allow","Action":["ecr:BatchCheckLayerAvailability","ecr:GetDownloadUrlForLayer","ecr:BatchGetImage","ecr:PutImage","ecr:InitiateLayerUpload","ecr:UploadLayerPart","ecr:CompleteLayerUpload"],"Resource":"arn:aws:ecr:$REGION:$ACCOUNT_ID:repository/kleinanzeigen-ai-*"},
@@ -216,7 +238,7 @@ cat > /tmp/gha-policy.json <<EOF
 ]}
 EOF
 aws iam put-role-policy --role-name "$GHA_ROLE_NAME" --policy-name kleinanzeigen-gha-deploy \
-  --policy-document file:///tmp/gha-policy.json >/dev/null
+  --policy-document "file://$GHA_POLICY_FILE" >/dev/null
 
 # ── Collect output values ──────────────────────────────────────────────────────
 PG_HOST=$(aws rds describe-db-instances --db-instance-identifier "$PG_INSTANCE" --query "DBInstances[0].Endpoint.Address" --output text)
