@@ -110,7 +110,12 @@
                 </div>
             </div>
 
-            {% if credits is defined %}
+            {% if is_admin %}
+            <div class="credit-info">
+                <h3>Wöchentliche Credits</h3>
+                <p class="credit-text">Unbegrenzt (Admin-Konto)</p>
+            </div>
+            {% elif credits is defined and max_credits %}
             <div class="credit-info">
                 <h3>Wöchentliche Credits</h3>
                 <div class="credit-bar">
