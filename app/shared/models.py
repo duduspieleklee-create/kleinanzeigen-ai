@@ -44,6 +44,15 @@ class User(Base):
     verify_token_expires_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Notification preferences, editable on /settings.
+    push_notifications_enabled = Column(Boolean, nullable=False, server_default="true")
+    email_notifications_enabled = Column(Boolean, nullable=False, server_default="false")
+    # Only push the "great deal" highlight, skip plain "N new listings" pushes.
+    deals_only_enabled = Column(Boolean, nullable=False, server_default="false")
+    # "HH:MM" strings; both set means suppress push notifications in that window.
+    quiet_start = Column(String(5))
+    quiet_end = Column(String(5))
+
     # Relationships
     scrape_tasks = relationship("ScrapeTask", back_populates="user")
     push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")

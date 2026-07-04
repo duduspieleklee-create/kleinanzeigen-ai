@@ -87,6 +87,7 @@ def send_test_push(
         highlight="✓ Test notification working!",
         location="Everywhere",
         task_id=0,
+        bypass_preferences=True,
     )
     return {
         "status": "success" if summary["sent"] > 0 else "no_subscriptions",

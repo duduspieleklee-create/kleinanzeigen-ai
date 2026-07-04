@@ -38,16 +38,35 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
         return None
 
 
+def _in_quiet_hours(quiet_start: str | None, quiet_end: str | None) -> bool:
+    """True if the current UTC time falls in the user's quiet-hours window.
+
+    Both bounds are "HH:MM" strings. The window may wrap midnight
+    (e.g. 22:00-08:00), so we can't just compare start < end.
+    """
+    if not quiet_start or not quiet_end:
+        return False
+    now = datetime.now(timezone.utc).strftime("%H:%M")
+    if quiet_start <= quiet_end:
+        return quiet_start <= now < quiet_end
+    return now >= quiet_start or now < quiet_end
+
+
 def _send_push_notifications(
     db, user_id: int, result_count: int, keywords: str, highlight: str = None,
     location: str = None, price_range: str = None, best_price: str = None,
-    image_url: str = None, task_id: int = None
+    image_url: str = None, task_id: int = None, bypass_preferences: bool = False
 ) -> dict:
     """Send a web push to every subscription of a user.
 
     Returns a summary so callers (e.g. the admin test button) can report what
     actually happened instead of failing silently:
     {configured, total, sent, failed, removed, errors}.
+
+    Honors the user's notification preferences (push toggle, deals-only mode,
+    quiet hours) set on /settings, unless bypass_preferences is set — used by
+    the explicit "send test notification" button, which should fire
+    regardless of the current toggle state.
     """
     summary = {
         "configured": True,
@@ -68,6 +87,18 @@ def _send_push_notifications(
         summary["configured"] = False
         summary["errors"].append("pywebpush is not installed.")
         return summary
+
+    if not bypass_preferences:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user and not user.push_notifications_enabled:
+            summary["errors"].append("User has disabled push notifications.")
+            return summary
+        if user and user.deals_only_enabled and not highlight:
+            summary["errors"].append("User only wants deal-highlight notifications.")
+            return summary
+        if user and _in_quiet_hours(user.quiet_start, user.quiet_end):
+            summary["errors"].append("Current time is within the user's quiet hours.")
+            return summary
 
     subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
     summary["total"] = len(subs)
@@ -188,6 +219,7 @@ def run_test_push(db, user_id: int) -> dict:
         result_count=0,
         keywords="",
         highlight="Test notification - push is working!",
+        bypass_preferences=True,
     )
 
 
