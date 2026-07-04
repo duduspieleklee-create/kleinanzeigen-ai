@@ -59,11 +59,16 @@ aws rds create-db-subnet-group \
   --db-subnet-group-description "kleinanzeigen RDS subnets" \
   --subnet-ids $SUBNET_IDS >/dev/null 2>&1 || true
 
+PG_ENGINE_VERSION=$(aws rds describe-db-engine-versions --engine postgres \
+  --query "DBEngineVersions[?starts_with(EngineVersion, '15.')].EngineVersion" --output text \
+  | tr '\t' '\n' | sort -V | tail -1)
+echo "    using PostgreSQL $PG_ENGINE_VERSION"
+
 aws rds describe-db-instances --db-instance-identifier "$PG_INSTANCE" >/dev/null 2>&1 || \
   aws rds create-db-instance \
     --db-instance-identifier "$PG_INSTANCE" \
     --db-name "$PG_DB" \
-    --engine postgres --engine-version 15.7 \
+    --engine postgres --engine-version "$PG_ENGINE_VERSION" \
     --db-instance-class db.t4g.micro \
     --allocated-storage 20 \
     --master-username "$PG_USER" --master-user-password "$PG_PASS" \
@@ -82,10 +87,15 @@ aws elasticache create-cache-subnet-group \
   --cache-subnet-group-description "kleinanzeigen Redis subnets" \
   --subnet-ids $SUBNET_IDS >/dev/null 2>&1 || true
 
+REDIS_ENGINE_VERSION=$(aws elasticache describe-cache-engine-versions --engine redis \
+  --query "CacheEngineVersions[].EngineVersion" --output text \
+  | tr '\t' '\n' | sort -V | tail -1)
+echo "    using Redis $REDIS_ENGINE_VERSION"
+
 aws elasticache describe-cache-clusters --cache-cluster-id "$REDIS_ID" >/dev/null 2>&1 || \
   aws elasticache create-cache-cluster \
     --cache-cluster-id "$REDIS_ID" \
-    --engine redis --engine-version 7.1 \
+    --engine redis --engine-version "$REDIS_ENGINE_VERSION" \
     --cache-node-type cache.t4g.micro \
     --num-cache-nodes 1 \
     --cache-subnet-group-name kleinanzeigen-redis-subnets \
