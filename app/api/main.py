@@ -26,8 +26,10 @@ from app.shared.pricing import deal_badge, median_price
 from app.shared.token_tracking import get_token_usage_stats
 from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
+from app.shared.sentry import init_sentry
 
 logger.info("Starting kleinanzeigen-ai application...")
+init_sentry("api")
 
 app = FastAPI(title="kleinanzeigen-ai")
 

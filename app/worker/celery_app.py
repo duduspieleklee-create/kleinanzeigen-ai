@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from app.shared.sentry import init_sentry
+
+init_sentry("worker")
+
 # Redis connection from environment variable
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 

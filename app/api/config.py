@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     proxy_test_url: str = "https://www.kleinanzeigen.de/"
     proxy_test_timeout: int = 15
 
+    # ── Error tracking (Sentry) ────────────────────────────────────────────────
+    # DSN from https://sentry.io/ (Settings → Projects → <project> → Client Keys).
+    # Leave empty to disable — no-op in dev by default even if set, unless
+    # SENTRY_ENABLE_IN_DEV is also set, to avoid noisy local-dev events.
+    sentry_dsn: str = ""
+    sentry_enable_in_dev: bool = False
+    # Fraction of requests/tasks traced for performance monitoring (0 = errors only).
+    sentry_traces_sample_rate: float = 0.0
+
     @model_validator(mode="after")
     def _reject_insecure_defaults_in_prod(self):
         """Fail fast if the app is started outside dev with built-in secrets.

@@ -43,3 +43,6 @@ slowapi==0.1.9
 
 # Payments — Stripe subscriptions
 stripe==11.4.1
+
+# Error tracking
+sentry-sdk==2.64.0
