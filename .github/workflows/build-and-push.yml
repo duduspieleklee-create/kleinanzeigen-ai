@@ -73,12 +73,15 @@ jobs:
           echo "Smoke test passed"
 
   # ─────────────────────────────────────────────
-  # 3. Build and push Docker images to ACR
+  # 3. Build and push Docker images to ECR
   # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
     needs: [lint, test]
     if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,12 +89,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Azure Container Registry
-        uses: azure/docker-login@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Compute build timestamp
         run: echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
@@ -108,8 +114,8 @@ jobs:
             APP_VERSION=1.0.${{ github.run_number }}
             BUILD_TIME=${{ env.BUILD_TIME }}
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-api:${{ github.sha }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-api:latest
+            ${{ steps.ecr-login.outputs.registry }}/kleinanzeigen-ai-api:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/kleinanzeigen-ai-api:latest
 
       - name: Build and Push Worker
         uses: docker/build-push-action@v5
@@ -118,8 +124,8 @@ jobs:
           file: app/worker/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker:${{ github.sha }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker:latest
+            ${{ steps.ecr-login.outputs.registry }}/kleinanzeigen-ai-worker:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/kleinanzeigen-ai-worker:latest
 
       - name: Build and Push Beat
         uses: docker/build-push-action@v5
@@ -128,8 +134,8 @@ jobs:
           file: app/beat/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-beat:${{ github.sha }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-beat:latest
+            ${{ steps.ecr-login.outputs.registry }}/kleinanzeigen-ai-beat:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/kleinanzeigen-ai-beat:latest
 
   # ─────────────────────────────────────────────
   # 4. Run database migrations
@@ -156,17 +162,17 @@ jobs:
         run: alembic upgrade head
 
   # ─────────────────────────────────────────────
-  # 5. Deploy to Azure Container Apps directly
+  # 5. Deploy to ECS on Fargate
   #
   #    Required GitHub secrets:
-  #      AZURE_CREDENTIALS     — service principal JSON (az ad sp create-for-rbac --sdk-auth)
-  #      ACR_LOGIN_SERVER, ACR_USERNAME, ACR_PASSWORD  — Azure Container Registry
-  #      DATABASE_URL          — also used by the migrate job above
+  #      AWS_DEPLOY_ROLE_ARN   — IAM role ARN assumed via OIDC (see infra/aws-setup.sh)
+  #      DATABASE_URL          — also used by the migrate job above; synced to Secrets Manager
   #      REDIS_URL
   #      SECRET_KEY
   #      APP_USERNAME          — login username (default: admin)
   #      APP_PASSWORD          — login password
   #      ALLOWED_EMAILS        — comma-separated allow-list (empty = allow all)
+  #      ADMIN_EMAILS
   #      SYSTEM_USER_ID        — DB user ID for Beat-scheduled tasks (default 1)
   #      VAPID_PRIVATE_KEY     — Web push (leave empty to disable)
   #      VAPID_PUBLIC_KEY      — Web push (leave empty to disable)
@@ -180,82 +186,117 @@ jobs:
   #      PUBLIC_BASE_URL       — public https origin used for Stripe redirect URLs
   #      RESEND_API_KEY        — Resend API key for verification emails (empty = email disabled)
   #      EMAIL_FROM            — verified sender address for outgoing email
+  #
+  #    Required GitHub variables: AWS_REGION, AWS_ACCOUNT_ID, PUBLIC_APP_URL
+  #    (PUBLIC_APP_URL is the ALB DNS name or custom domain, used by the
+  #    post-deploy-smoke job below, e.g. http://kleinanzeigen-alb-xxxx.eu-central-1.elb.amazonaws.com)
+  #
+  #    Secrets are stored in AWS Secrets Manager under kleinanzeigen/<NAME> and
+  #    referenced by the ECS task definitions (infra/ecs/task-def-*.json) via
+  #    `secrets[].valueFrom` — this step keeps Secrets Manager in sync with the
+  #    GitHub Secrets values before rolling out the new task definition.
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
     needs: migrate
     if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - name: Azure login
-        uses: azure/login@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Update API (image + env vars)
+      - name: Sync app secrets to Secrets Manager
         run: |
-          az containerapp update \
-            --name kleinanzeigen-api \
-            --resource-group kleinanzeigen-ai-rg \
-            --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-api:${{ github.sha }}" \
-            --set-env-vars \
-              "ENVIRONMENT=production" \
-              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-              "REDIS_URL=${{ secrets.REDIS_URL }}" \
-              "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
-              "APP_USERNAME=${{ secrets.APP_USERNAME }}" \
-              "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" \
-              "ALLOWED_EMAILS=${{ secrets.ALLOWED_EMAILS }}" \
-              "ADMIN_EMAILS=${{ secrets.ADMIN_EMAILS }}" \
-              "SYSTEM_USER_ID=${{ secrets.SYSTEM_USER_ID }}" \
-              "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" \
-              "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" \
-              "VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}" \
-              "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
-              "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
-              "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" \
-              "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
-              "STRIPE_PRICE_CORE=${{ secrets.STRIPE_PRICE_CORE }}" \
-              "STRIPE_PRICE_PRO=${{ secrets.STRIPE_PRICE_PRO }}" \
-              "PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}" \
-              "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" \
-              "EMAIL_FROM=${{ secrets.EMAIL_FROM }}"
-          echo "✓ kleinanzeigen-api updated"
+          declare -A SECRETS=(
+            [DATABASE_URL]="${{ secrets.DATABASE_URL }}"
+            [REDIS_URL]="${{ secrets.REDIS_URL }}"
+            [SECRET_KEY]="${{ secrets.SECRET_KEY }}"
+            [APP_USERNAME]="${{ secrets.APP_USERNAME }}"
+            [APP_PASSWORD]="${{ secrets.APP_PASSWORD }}"
+            [ALLOWED_EMAILS]="${{ secrets.ALLOWED_EMAILS }}"
+            [ADMIN_EMAILS]="${{ secrets.ADMIN_EMAILS }}"
+            [SYSTEM_USER_ID]="${{ secrets.SYSTEM_USER_ID }}"
+            [VAPID_PRIVATE_KEY]="${{ secrets.VAPID_PRIVATE_KEY }}"
+            [VAPID_PUBLIC_KEY]="${{ secrets.VAPID_PUBLIC_KEY }}"
+            [VAPID_EMAIL]="${{ secrets.VAPID_EMAIL }}"
+            [GOOGLE_CLIENT_ID]="${{ secrets.GOOGLE_CLIENT_ID }}"
+            [GOOGLE_CLIENT_SECRET]="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            [STRIPE_SECRET_KEY]="${{ secrets.STRIPE_SECRET_KEY }}"
+            [STRIPE_WEBHOOK_SECRET]="${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+            [STRIPE_PRICE_CORE]="${{ secrets.STRIPE_PRICE_CORE }}"
+            [STRIPE_PRICE_PRO]="${{ secrets.STRIPE_PRICE_PRO }}"
+            [PUBLIC_BASE_URL]="${{ secrets.PUBLIC_BASE_URL }}"
+            [RESEND_API_KEY]="${{ secrets.RESEND_API_KEY }}"
+            [EMAIL_FROM]="${{ secrets.EMAIL_FROM }}"
+          )
+          for NAME in "${!SECRETS[@]}"; do
+            aws secretsmanager put-secret-value \
+              --secret-id "kleinanzeigen/$NAME" \
+              --secret-string "${SECRETS[$NAME]}" >/dev/null
+          done
+          echo "✓ secrets synced to Secrets Manager"
 
-      - name: Update Worker image
+      - name: Render and deploy API task definition
         run: |
-          az containerapp update \
-            --name kleinanzeigen-worker \
-            --resource-group kleinanzeigen-ai-rg \
-            --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-worker:${{ github.sha }}" \
-            --min-replicas 1 \
-            --max-replicas 3 \
-            --set-env-vars \
-              "ENVIRONMENT=production" \
-              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-              "REDIS_URL=${{ secrets.REDIS_URL }}" \
-              "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
-              "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" \
-              "SYSTEM_USER_ID=${{ secrets.SYSTEM_USER_ID }}" \
-              "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" \
-              "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" \
-              "VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}"
-          echo "✓ kleinanzeigen-worker updated"
+          sed -e "s/__AWS_ACCOUNT_ID__/${{ vars.AWS_ACCOUNT_ID }}/g" -e "s/__AWS_REGION__/${{ vars.AWS_REGION }}/g" \
+            infra/ecs/task-def-api.json > /tmp/task-def-api.json
+      - name: Deploy API
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: render-api
+        with:
+          task-definition: /tmp/task-def-api.json
+          container-name: api
+          image: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/kleinanzeigen-ai-api:${{ github.sha }}
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-api.outputs.task-definition }}
+          service: kleinanzeigen-api
+          cluster: kleinanzeigen-cluster
+          wait-for-service-stability: true
 
-      - name: Update Beat image
+      - name: Render and deploy Worker task definition
         run: |
-          az containerapp update \
-            --name kleinanzeigen-beat \
-            --resource-group kleinanzeigen-ai-rg \
-            --image "${{ secrets.ACR_LOGIN_SERVER }}/kleinanzeigen-ai-beat:${{ github.sha }}" \
-            --min-replicas 1 \
-            --max-replicas 1 \
-            --set-env-vars \
-              "ENVIRONMENT=production" \
-              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-              "REDIS_URL=${{ secrets.REDIS_URL }}" \
-              "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
-              "APP_PASSWORD=${{ secrets.APP_PASSWORD }}"
-          echo "✓ kleinanzeigen-beat updated"
+          sed -e "s/__AWS_ACCOUNT_ID__/${{ vars.AWS_ACCOUNT_ID }}/g" -e "s/__AWS_REGION__/${{ vars.AWS_REGION }}/g" \
+            infra/ecs/task-def-worker.json > /tmp/task-def-worker.json
+      - name: Deploy Worker
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: render-worker
+        with:
+          task-definition: /tmp/task-def-worker.json
+          container-name: worker
+          image: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/kleinanzeigen-ai-worker:${{ github.sha }}
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-worker.outputs.task-definition }}
+          service: kleinanzeigen-worker
+          cluster: kleinanzeigen-cluster
+          wait-for-service-stability: true
+
+      - name: Render and deploy Beat task definition
+        run: |
+          sed -e "s/__AWS_ACCOUNT_ID__/${{ vars.AWS_ACCOUNT_ID }}/g" -e "s/__AWS_REGION__/${{ vars.AWS_REGION }}/g" \
+            infra/ecs/task-def-beat.json > /tmp/task-def-beat.json
+      - name: Deploy Beat
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: render-beat
+        with:
+          task-definition: /tmp/task-def-beat.json
+          container-name: beat
+          image: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/kleinanzeigen-ai-beat:${{ github.sha }}
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-beat.outputs.task-definition }}
+          service: kleinanzeigen-beat
+          cluster: kleinanzeigen-cluster
+          wait-for-service-stability: true
 
   # ─────────────────────────────────────────────
   # 6. Post-deploy live smoke test
@@ -269,7 +310,7 @@ jobs:
     steps:
       - name: Wait for deployment and verify live version matches this commit
         run: |
-          BASE="https://kleinanzeigen-api.bluepebble-32fde7d3.westeurope.azurecontainerapps.io"
+          BASE="${{ vars.PUBLIC_APP_URL }}"
           EXPECTED="${{ github.sha }}"
           echo "Waiting for live /version to report commit $EXPECTED (up to 10 × 30s = 5 min)..."
           for i in $(seq 1 10); do

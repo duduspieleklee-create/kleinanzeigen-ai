@@ -24,7 +24,7 @@ RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
 USER appuser
 
 # --proxy-headers + --forwarded-allow-ips="*" make uvicorn trust the
-# X-Forwarded-Proto header set by Azure Container Apps' TLS ingress, so
-# generated URLs and redirects use https:// instead of http:// (avoids
-# browser "form is not secure" mixed-content warnings behind the proxy).
+# X-Forwarded-Proto header set by the ALB's TLS listener, so generated
+# URLs and redirects use https:// instead of http:// (avoids browser
+# "form is not secure" mixed-content warnings behind the proxy).
 CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

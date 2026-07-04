@@ -36,21 +36,28 @@ User
 push to main
   │
   ├── lint          ruff check app/
-  ├── build         docker build + push to ACR (api, worker, beat)
+  ├── build         docker build + push to Amazon ECR (api, worker, beat)
   ├── migrate       alembic upgrade head
-  └── deploy        Octopus Deploy → Dev environment
+  └── deploy        sync secrets to AWS Secrets Manager, roll out new ECS task
+                     definitions (api, worker, beat) on Fargate
 ```
 
 ### GitHub Secrets required
 
 | Secret | Description |
 |---|---|
-| `ACR_LOGIN_SERVER` | Azure Container Registry hostname |
-| `ACR_USERNAME` | ACR username |
-| `ACR_PASSWORD` | ACR password |
-| `DATABASE_URL` | PostgreSQL connection string (for migration step) |
-| `OCTOPUS_SERVER_URL` | Octopus Deploy server URL |
-| `OCTOPUS_API_KEY` | Octopus Deploy API key |
+| `AWS_DEPLOY_ROLE_ARN` | IAM role ARN assumed via GitHub OIDC (see `infra/aws-setup.sh`) |
+| `DATABASE_URL` | PostgreSQL connection string (for migration step and Secrets Manager) |
+
+See `.github/workflows/build-and-push.yml` for the full list of app secrets synced to Secrets Manager on deploy.
+
+### GitHub Variables required
+
+| Variable | Description |
+|---|---|
+| `AWS_REGION` | AWS region the infrastructure runs in |
+| `AWS_ACCOUNT_ID` | AWS account ID, used to build ECR image URIs |
+| `PUBLIC_APP_URL` | ALB DNS name or custom domain, used by the post-deploy smoke test |
 
 ## Local Development
 
@@ -58,4 +65,4 @@ Docker Compose brings up PostgreSQL, Redis, the API, worker, and beat together. 
 
 ## Deployment
 
-Releases are managed by Octopus Deploy. The CI pipeline creates a release and deploys it to the `Dev` environment automatically. Promotion to `Staging` and `Prod` is done manually inside Octopus.
+Deployed to Amazon ECS on Fargate. The CI pipeline builds and pushes images to ECR, runs migrations, then registers new ECS task definitions and rolls them out with `aws-actions/amazon-ecs-deploy-task-definition`. See `infra/aws-setup.sh` for one-time infrastructure provisioning (ECR, RDS, ElastiCache, ECS cluster/services, ALB, IAM roles) and `infra/ecs/task-def-*.json` for the task definition templates.

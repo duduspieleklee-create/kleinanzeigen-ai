@@ -1,12 +1,13 @@
 # TODO — Before first deploy
 
-## Step 1 — Provision Azure resources
+## Step 1 — Provision AWS resources
 
-Provision the following manually in the Azure Portal or via Azure CLI:
+Run `infra/aws-setup.sh` (or provision manually via the AWS Console/CLI):
 
-- **Azure Container Registry** — to host Docker images
-- **Azure Database for PostgreSQL Flexible Server** — production database
-- **Azure Cache for Redis** — Celery broker
+- **Amazon ECR** — to host Docker images
+- **Amazon RDS for PostgreSQL** — production database
+- **Amazon ElastiCache for Redis** — Celery broker
+- **ECS cluster + services on Fargate**, an ALB, and the GitHub OIDC deploy role
 
 Note connection strings — you'll need them in Step 3.
 
@@ -22,7 +23,7 @@ https://<your-domain>/auth/google/callback
 
 ---
 
-## Step 3 — Add GitHub Actions secrets
+## Step 3 — Add GitHub Actions secrets and variables
 
 **GitHub → Repository → Settings → Secrets and variables → Actions**
 
@@ -33,27 +34,19 @@ https://<your-domain>/auth/google/callback
 | `SECRET_KEY` | `openssl rand -hex 32` |
 | `GOOGLE_CLIENT_ID` | Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | Google Cloud Console |
-| `ACR_LOGIN_SERVER` | e.g. `myregistry.azurecr.io` |
-| `ACR_USERNAME` | ACR admin username |
-| `ACR_PASSWORD` | ACR admin password |
-| `OCTOPUS_SERVER_URL` | e.g. `https://yourinstance.octopus.app` |
-| `OCTOPUS_API_KEY` | Octopus → Profile → API Keys |
+| `AWS_DEPLOY_ROLE_ARN` | Output by `infra/aws-setup.sh` |
+
+| Variable | Value |
+|---|---|
+| `AWS_REGION` | `eu-north-1` |
+| `AWS_ACCOUNT_ID` | Your 12-digit AWS account ID |
+| `PUBLIC_APP_URL` | ALB DNS name output by `infra/aws-setup.sh`, or your custom domain |
 
 ---
 
-## Step 4 — Set up Octopus Deploy
+## Step 4 — Final checklist
 
-1. Create a project named **`kleinanzeigen-ai`** in Octopus Deploy
-2. Create environments: **Dev**, **Staging**, **Prod**
-3. Configure a deployment process that pulls images from ACR and runs three containers: `api`, `worker`, `beat`
-4. Set project variables: `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` per environment
-
----
-
-## Step 5 — Final checklist
-
-- [ ] Azure resources provisioned (Step 1)
+- [ ] AWS resources provisioned (Step 1)
 - [ ] Google OAuth redirect URI registered (Step 2)
-- [ ] All 10 GitHub Actions secrets added (Step 3)
-- [ ] Octopus project and environments configured (Step 4)
+- [ ] All GitHub Actions secrets and variables added (Step 3)
 - [ ] Push to `main` — CI pipeline runs green end-to-end

@@ -5,17 +5,15 @@
 =============================================================================
 1. SECRETS & ENV VARS  (do these before anything else runs)
 =============================================================================
-- [ ] Set ACR_LOGIN_SERVER  e.g. myregistry.azurecr.io
-- [ ] Set ACR_USERNAME      ACR admin username
-- [ ] Set ACR_PASSWORD      ACR admin password
+- [ ] Set AWS_DEPLOY_ROLE_ARN  output by infra/aws-setup.sh (GitHub OIDC deploy role)
+- [ ] Set AWS_REGION (variable)  eu-north-1
+- [ ] Set AWS_ACCOUNT_ID (variable)  your 12-digit AWS account ID
 - [ ] Set GOOGLE_CLIENT_ID  from Google Cloud Console → OAuth 2.0 credentials
 - [ ] Set GOOGLE_CLIENT_SECRET  same place
 - [ ] Set DATABASE_URL  postgresql://user:pass@host:5432/kleinanzeigen_ai
 - [ ] Set REDIS_URL  redis://... or rediss://... connection string
 - [ ] Set SECRET_KEY  generate with: openssl rand -hex 32
-- [ ] Set ENVIRONMENT  dev | staging | prod per deployment
-- [ ] Set OCTOPUS_SERVER_URL  e.g. https://yourinstance.octopus.app
-- [ ] Set OCTOPUS_API_KEY  from Octopus → Profile → API Keys
+- [ ] Set ENVIRONMENT  dev | prod per deployment
 
 =============================================================================
 2. SECURITY — URGENT
@@ -42,7 +40,7 @@
 =============================================================================
 5. DATABASE
 =============================================================================
-- [ ] Provision Azure Database for PostgreSQL (Flexible Server) in Azure Portal
+- [ ] Provision Amazon RDS for PostgreSQL (see infra/aws-setup.sh)
 - [ ] Run migrations against prod: alembic upgrade head
 - [ ] Add unique constraint on ScrapeResult.url per task_id (avoid duplicate rows)
 - [ ] Add asyncpg if/when switching to async SQLAlchemy engine
@@ -61,21 +59,19 @@
 =============================================================================
 7. CI/CD (.github/workflows/build-and-push.yml)
 =============================================================================
-- [ ] Add GitHub secrets: OCTOPUS_SERVER_URL, OCTOPUS_API_KEY (see TODO.md Step 3)
-- [ ] Configure Octopus project "kleinanzeigen-ai" with environments Dev/Staging/Prod
+- [ ] Add GitHub secrets/variables: AWS_DEPLOY_ROLE_ARN, AWS_REGION, AWS_ACCOUNT_ID,
+        PUBLIC_APP_URL (see TODO.md Step 3)
+- [ ] Run infra/aws-setup.sh once to provision ECR, RDS, ElastiCache, ECS
+        cluster/services, ALB, and the GitHub OIDC deploy role
 - [ ] Pin action versions to SHA for supply-chain security
         e.g. actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4.2.2
 
 =============================================================================
-8. OCTOPUS DEPLOY — PROJECT SETUP
+8. ECS DEPLOY — ROLLBACK
 =============================================================================
-- [ ] Create project "kleinanzeigen-ai" in Octopus Deploy
-- [ ] Create environments: Dev, Staging, Prod
-- [ ] Configure deployment process to run api + worker + beat containers from ACR
-- [ ] Set project variables per environment:
-        DATABASE_URL, REDIS_URL, SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-- [ ] Configure lifecycle: Dev → Staging → Prod (manual promotion after Dev)
-- [ ] Add a rollback step/runbook in Octopus for emergency revert
+- [ ] Document a rollback runbook: re-deploy the previous ECS task definition
+        revision with `aws ecs update-service --task-definition <family>:<prev-revision>`
+- [ ] Consider a Staging ECS cluster/service set before promoting to Prod
 
 =============================================================================
 9. CELERY BEAT SCHEDULE
