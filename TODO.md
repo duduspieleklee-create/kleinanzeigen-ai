@@ -38,7 +38,7 @@ https://<your-domain>/auth/google/callback
 
 | Variable | Value |
 |---|---|
-| `AWS_REGION` | e.g. `eu-central-1` |
+| `AWS_REGION` | `eu-north-1` |
 | `AWS_ACCOUNT_ID` | Your 12-digit AWS account ID |
 | `PUBLIC_APP_URL` | ALB DNS name output by `infra/aws-setup.sh`, or your custom domain |
 

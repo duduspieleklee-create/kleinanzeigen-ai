@@ -6,7 +6,7 @@
 1. SECRETS & ENV VARS  (do these before anything else runs)
 =============================================================================
 - [ ] Set AWS_DEPLOY_ROLE_ARN  output by infra/aws-setup.sh (GitHub OIDC deploy role)
-- [ ] Set AWS_REGION (variable)  e.g. eu-central-1
+- [ ] Set AWS_REGION (variable)  eu-north-1
 - [ ] Set AWS_ACCOUNT_ID (variable)  your 12-digit AWS account ID
 - [ ] Set GOOGLE_CLIENT_ID  from Google Cloud Console → OAuth 2.0 credentials
 - [ ] Set GOOGLE_CLIENT_SECRET  same place

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # ── Config — edit if you need different names/region ──────────────────────────
-REGION="eu-central-1"               # Frankfurt — closest AWS region to the old westeurope setup
+REGION="eu-north-1"                  # Stockholm — matches this project's deployed resources
 CLUSTER="kleinanzeigen-cluster"
 PG_INSTANCE="kleinanzeigen-db"
 PG_USER="kaadmin"
@@ -18,6 +18,7 @@ GITHUB_REPO="duduspieleklee-create/kleinanzeigen-ai"
 SECRET_PREFIX="kleinanzeigen"
 # ──────────────────────────────────────────────────────────────────────────────
 
+export AWS_REGION="$REGION"
 export AWS_DEFAULT_REGION="$REGION"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
