@@ -33,22 +33,22 @@ SG_ECS=$(aws ec2 create-security-group --group-name kleinanzeigen-ecs-sg --descr
 SG_DB=$(aws ec2 create-security-group --group-name kleinanzeigen-db-sg --description "kleinanzeigen RDS" --vpc-id "$VPC_ID" --query GroupId --output text)
 SG_REDIS=$(aws ec2 create-security-group --group-name kleinanzeigen-redis-sg --description "kleinanzeigen ElastiCache" --vpc-id "$VPC_ID" --query GroupId --output text)
 
-aws ec2 authorize-security-group-ingress --group-id "$SG_ALB" --protocol tcp --port 80 --cidr 0.0.0.0/0 -o none
-aws ec2 authorize-security-group-ingress --group-id "$SG_ECS" --protocol tcp --port 8000 --source-group "$SG_ALB" -o none
-aws ec2 authorize-security-group-ingress --group-id "$SG_DB" --protocol tcp --port 5432 --source-group "$SG_ECS" -o none
-aws ec2 authorize-security-group-ingress --group-id "$SG_REDIS" --protocol tcp --port 6379 --source-group "$SG_ECS" -o none
+aws ec2 authorize-security-group-ingress --group-id "$SG_ALB" --protocol tcp --port 80 --cidr 0.0.0.0/0 --output none
+aws ec2 authorize-security-group-ingress --group-id "$SG_ECS" --protocol tcp --port 8000 --source-group "$SG_ALB" --output none
+aws ec2 authorize-security-group-ingress --group-id "$SG_DB" --protocol tcp --port 5432 --source-group "$SG_ECS" --output none
+aws ec2 authorize-security-group-ingress --group-id "$SG_REDIS" --protocol tcp --port 6379 --source-group "$SG_ECS" --output none
 
 echo "==> ECR repositories..."
 for REPO in kleinanzeigen-ai-api kleinanzeigen-ai-worker kleinanzeigen-ai-beat; do
   aws ecr describe-repositories --repository-names "$REPO" >/dev/null 2>&1 \
-    || aws ecr create-repository --repository-name "$REPO" -o none
+    || aws ecr create-repository --repository-name "$REPO" --output none
 done
 
 echo "==> RDS for PostgreSQL (takes ~5-10 min)..."
 aws rds create-db-subnet-group \
   --db-subnet-group-name kleinanzeigen-db-subnets \
   --db-subnet-group-description "kleinanzeigen RDS subnets" \
-  --subnet-ids $SUBNET_IDS -o none 2>/dev/null || true
+  --subnet-ids $SUBNET_IDS --output none 2>/dev/null || true
 
 aws rds create-db-instance \
   --db-instance-identifier "$PG_INSTANCE" \
@@ -62,7 +62,7 @@ aws rds create-db-instance \
   --no-publicly-accessible \
   --no-multi-az \
   --backup-retention-period 7 \
-  -o none
+  --output none
 echo "    waiting for RDS to become available..."
 aws rds wait db-instance-available --db-instance-identifier "$PG_INSTANCE"
 
@@ -70,7 +70,7 @@ echo "==> ElastiCache for Redis (takes ~5-10 min)..."
 aws elasticache create-cache-subnet-group \
   --cache-subnet-group-name kleinanzeigen-redis-subnets \
   --cache-subnet-group-description "kleinanzeigen Redis subnets" \
-  --subnet-ids $SUBNET_IDS -o none 2>/dev/null || true
+  --subnet-ids $SUBNET_IDS --output none 2>/dev/null || true
 
 aws elasticache create-cache-cluster \
   --cache-cluster-id "$REDIS_ID" \
@@ -80,7 +80,7 @@ aws elasticache create-cache-cluster \
   --cache-subnet-group-name kleinanzeigen-redis-subnets \
   --security-group-ids "$SG_REDIS" \
   --transit-encryption-enabled \
-  -o none
+  --output none
 echo "    waiting for Redis to become available..."
 aws elasticache wait cache-cluster-available --cache-cluster-id "$REDIS_ID"
 
@@ -90,7 +90,7 @@ for NAME in DATABASE_URL REDIS_URL SECRET_KEY APP_USERNAME APP_PASSWORD ALLOWED_
             GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
             STRIPE_PRICE_CORE STRIPE_PRICE_PRO PUBLIC_BASE_URL RESEND_API_KEY EMAIL_FROM; do
   aws secretsmanager describe-secret --secret-id "$SECRET_PREFIX/$NAME" >/dev/null 2>&1 \
-    || aws secretsmanager create-secret --name "$SECRET_PREFIX/$NAME" --secret-string "CHANGE_ME" -o none
+    || aws secretsmanager create-secret --name "$SECRET_PREFIX/$NAME" --secret-string "CHANGE_ME" --output none
 done
 
 echo "==> ECS task execution role..."
@@ -98,14 +98,14 @@ cat > /tmp/ecs-trust.json <<'EOF'
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs-tasks.amazonaws.com"},"Action":"sts:AssumeRole"}]}
 EOF
 aws iam get-role --role-name "$EXEC_ROLE_NAME" >/dev/null 2>&1 || {
-  aws iam create-role --role-name "$EXEC_ROLE_NAME" --assume-role-policy-document file:///tmp/ecs-trust.json -o none
+  aws iam create-role --role-name "$EXEC_ROLE_NAME" --assume-role-policy-document file:///tmp/ecs-trust.json --output none
   aws iam attach-role-policy --role-name "$EXEC_ROLE_NAME" \
-    --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy -o none
+    --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy --output none
   cat > /tmp/secrets-policy.json <<EOF
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"arn:aws:secretsmanager:$REGION:$ACCOUNT_ID:secret:$SECRET_PREFIX/*"}]}
 EOF
   aws iam put-role-policy --role-name "$EXEC_ROLE_NAME" --policy-name kleinanzeigen-secrets-read \
-    --policy-document file:///tmp/secrets-policy.json -o none
+    --policy-document file:///tmp/secrets-policy.json --output none
 }
 
 echo "==> CloudWatch log groups..."
@@ -114,7 +114,7 @@ for APP in api worker beat; do
 done
 
 echo "==> ECS cluster..."
-aws ecs create-cluster --cluster-name "$CLUSTER" -o none
+aws ecs create-cluster --cluster-name "$CLUSTER" --output none
 
 echo "==> Application Load Balancer (api only)..."
 ALB_ARN=$(aws elbv2 create-load-balancer --name "$ALB_NAME" --subnets $SUBNET_IDS \
@@ -124,40 +124,40 @@ TG_ARN=$(aws elbv2 create-target-group --name kleinanzeigen-api-tg --protocol HT
   --vpc-id "$VPC_ID" --target-type ip --health-check-path /healthz \
   --query "TargetGroups[0].TargetGroupArn" --output text)
 aws elbv2 create-listener --load-balancer-arn "$ALB_ARN" --protocol HTTP --port 80 \
-  --default-actions Type=forward,TargetGroupArn="$TG_ARN" -o none
+  --default-actions Type=forward,TargetGroupArn="$TG_ARN" --output none
 
 echo "==> Registering task definitions and creating services..."
 for APP in api worker beat; do
   sed -e "s/__AWS_ACCOUNT_ID__/$ACCOUNT_ID/g" -e "s/__AWS_REGION__/$REGION/g" \
     "infra/ecs/task-def-$APP.json" > "/tmp/task-def-$APP.json"
-  aws ecs register-task-definition --cli-input-json "file:///tmp/task-def-$APP.json" -o none
+  aws ecs register-task-definition --cli-input-json "file:///tmp/task-def-$APP.json" --output none
 done
 
 aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-api \
   --task-definition kleinanzeigen-api --desired-count 1 --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" \
-  --load-balancers "targetGroupArn=$TG_ARN,containerName=api,containerPort=8000" -o none
+  --load-balancers "targetGroupArn=$TG_ARN,containerName=api,containerPort=8000" --output none
 
 aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-worker \
   --task-definition kleinanzeigen-worker --desired-count 1 --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" -o none
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" --output none
 
 aws ecs create-service --cluster "$CLUSTER" --service-name kleinanzeigen-beat \
   --task-definition kleinanzeigen-beat --desired-count 1 --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" -o none
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_ECS],assignPublicIp=ENABLED}" --output none
 
 echo "==> GitHub Actions OIDC deploy role..."
 aws iam create-open-id-connect-provider \
   --url https://token.actions.githubusercontent.com \
   --client-id-list sts.amazonaws.com \
   --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 \
-  -o none 2>/dev/null || true
+  --output none 2>/dev/null || true
 
 cat > /tmp/gha-trust.json <<EOF
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"arn:aws:iam::$ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"token.actions.githubusercontent.com:aud":"sts.amazonaws.com"},"StringLike":{"token.actions.githubusercontent.com:sub":"repo:$GITHUB_REPO:*"}}}]}
 EOF
 aws iam get-role --role-name "$GHA_ROLE_NAME" >/dev/null 2>&1 || \
-  aws iam create-role --role-name "$GHA_ROLE_NAME" --assume-role-policy-document file:///tmp/gha-trust.json -o none
+  aws iam create-role --role-name "$GHA_ROLE_NAME" --assume-role-policy-document file:///tmp/gha-trust.json --output none
 
 cat > /tmp/gha-policy.json <<EOF
 {"Version":"2012-10-17","Statement":[
@@ -170,7 +170,7 @@ cat > /tmp/gha-policy.json <<EOF
 ]}
 EOF
 aws iam put-role-policy --role-name "$GHA_ROLE_NAME" --policy-name kleinanzeigen-gha-deploy \
-  --policy-document file:///tmp/gha-policy.json -o none
+  --policy-document file:///tmp/gha-policy.json --output none
 
 # ── Collect output values ──────────────────────────────────────────────────────
 PG_HOST=$(aws rds describe-db-instances --db-instance-identifier "$PG_INSTANCE" --query "DBInstances[0].Endpoint.Address" --output text)
