@@ -2598,6 +2598,106 @@ body.offline-page {
   }
 }
 
+/* ---------- first-login guided tutorial ------------------------------------ */
+/* Reuses .sheet-backdrop for the dimmed background; the modal itself is
+   always a centered dialog (unlike .action-sheet, which is a bottom sheet
+   on mobile) since its content doesn't need to anchor to any one tab. */
+
+.tutorial-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 95;
+  width: 340px;
+  max-width: calc(100vw - 48px);
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 28px 22px 22px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  transform: translate(-50%, -50%) scale(0.96);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.tutorial-modal.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.tutorial-skip {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.tutorial-icon {
+  font-size: 34px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.tutorial-modal h4 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.tutorial-modal p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.tutorial-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 18px 0;
+}
+
+.tutorial-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e2e6ea;
+}
+
+.tutorial-dot.active {
+  background: var(--color-accent);
+}
+
+.tutorial-actions {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 8px;
+}
+
+.tutorial-actions .sheet-btn {
+  width: auto;
+  flex: 1;
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.tutorial-actions .tutorial-next-btn {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.tutorial-actions .tutorial-next-btn:hover {
+  background: var(--color-accent-hover);
+}
+
 /* ---------- swipe gesture feedback ----------------------------------------- */
 /* JS translates the element while the finger moves; these classes give the
    "armed past threshold" signal. */

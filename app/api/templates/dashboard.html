@@ -720,7 +720,113 @@
         </div>
     </div>
 
+    <!-- First-login guided tutorial (see show_tutorial in app/api/main.py) -->
+    <div class="sheet-backdrop" id="tutorial-backdrop"></div>
+    <div class="tutorial-modal" id="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+        <button type="button" class="tutorial-skip" id="tutorial-skip">Überspringen</button>
+        <div class="tutorial-icon" id="tutorial-icon"></div>
+        <h4 id="tutorial-title"></h4>
+        <p id="tutorial-body"></p>
+        <div class="tutorial-dots" id="tutorial-dots"></div>
+        <div class="tutorial-actions">
+            <button type="button" class="sheet-btn sheet-btn-cancel" id="tutorial-back">Zurück</button>
+            <button type="button" class="sheet-btn tutorial-next-btn" id="tutorial-next">Weiter</button>
+        </div>
+    </div>
 
+    <script>
+        // ── First-login guided tutorial ──
+        (function() {
+            var showTutorial = {{ 'true' if show_tutorial else 'false' }};
+            if (!showTutorial) return;
+
+            var steps = [
+                {
+                    icon: '👋',
+                    title: 'Willkommen bei kleinanzeigen-ai!',
+                    body: 'Wir durchsuchen Kleinanzeigen.de automatisch nach neuen Angeboten für dich — rund um die Uhr. Kurzer Rundgang, dauert nur eine Minute.'
+                },
+                {
+                    icon: '🔍',
+                    title: '1. Neue Suche anlegen',
+                    body: 'Im Tab "Neue Suche" gibst du Stichwort, Ort und optional Preis oder Kategorie ein. Wir merken uns die Suche und laufen automatisch im Hintergrund weiter.'
+                },
+                {
+                    icon: '📋',
+                    title: '2. Meine Suchen',
+                    body: 'Hier siehst du alle laufenden und abgeschlossenen Suchen mit Status und Trefferzahl — und kannst sie jederzeit pausieren oder löschen.'
+                },
+                {
+                    icon: '⭐',
+                    title: '3. Meine Ergebnisse',
+                    body: 'Alle gefundenen Angebote landen gesammelt hier. Favorisiere die besten Treffer, damit du sie schnell wiederfindest.'
+                },
+                {
+                    icon: '⚙️',
+                    title: '4. Benachrichtigungen & Einstellungen',
+                    body: 'Über das Zahnrad-Symbol oben rechts aktivierst du Push- oder E-Mail-Benachrichtigungen und verwaltest deinen Plan. Los geht’s!'
+                }
+            ];
+
+            var backdrop = document.getElementById('tutorial-backdrop');
+            var modal = document.getElementById('tutorial-modal');
+            var iconEl = document.getElementById('tutorial-icon');
+            var titleEl = document.getElementById('tutorial-title');
+            var bodyEl = document.getElementById('tutorial-body');
+            var dotsEl = document.getElementById('tutorial-dots');
+            var backBtn = document.getElementById('tutorial-back');
+            var nextBtn = document.getElementById('tutorial-next');
+            var skipBtn = document.getElementById('tutorial-skip');
+            var current = 0;
+
+            steps.forEach(function(_, i) {
+                var dot = document.createElement('span');
+                dot.className = 'tutorial-dot';
+                dotsEl.appendChild(dot);
+            });
+
+            function render() {
+                var step = steps[current];
+                iconEl.textContent = step.icon;
+                titleEl.textContent = step.title;
+                bodyEl.textContent = step.body;
+                Array.prototype.forEach.call(dotsEl.children, function(dot, i) {
+                    dot.classList.toggle('active', i === current);
+                });
+                backBtn.style.visibility = current === 0 ? 'hidden' : 'visible';
+                nextBtn.textContent = current === steps.length - 1 ? 'Los geht’s!' : 'Weiter';
+            }
+
+            function open() {
+                backdrop.classList.add('open');
+                modal.classList.add('open');
+            }
+
+            function close() {
+                backdrop.classList.remove('open');
+                modal.classList.remove('open');
+                fetch('/settings/tutorial-complete', { method: 'POST' }).catch(function() {});
+            }
+
+            nextBtn.addEventListener('click', function() {
+                if (current === steps.length - 1) {
+                    close();
+                    return;
+                }
+                current++;
+                render();
+            });
+            backBtn.addEventListener('click', function() {
+                if (current === 0) return;
+                current--;
+                render();
+            });
+            skipBtn.addEventListener('click', close);
+
+            render();
+            open();
+        })();
+    </script>
     <script>
         // ── Tab Navigation ──
         // CHANGED: now keeps both the top .tab-btn set and the bottom-nav
