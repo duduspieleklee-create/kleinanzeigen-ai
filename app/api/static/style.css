@@ -3292,3 +3292,627 @@ input:checked + .toggle-slider:before {
 .notif-badge #notif-count[style*="display: none"] {
   display: none !important;
 }
+
+/* ==========================================================================
+   "Meine Ergebnisse" tab redesign
+   Scoped entirely under #tab-my-results so it can't leak into results.html
+   or the rest of the dashboard, which keep the shared .card/.grid/.result-card
+   system above. New component classes are prefixed .rc- (Result Card) to
+   avoid any collision with those shared classnames.
+   ========================================================================== */
+
+#tab-my-results {
+  --rc-bg: #f7faf6;
+  --rc-card: #ffffff;
+  --rc-border: #dce8de;
+  --rc-text: #142b22;
+  --rc-muted: #8b9a91;
+  --rc-green: #2fbf71;
+  --rc-green-bg: #eaf8ef;
+  --rc-green-dark: #1f8a52;
+  --rc-tangerine: #ff6a3d;
+  --rc-tangerine-bg: #fff1ea;
+  --rc-amber: #c98a1f;
+  --rc-amber-bg: #fbf2e1;
+  --rc-pro: #7c5cff;
+  --rc-pro-bg: #f1eeff;
+  --rc-pro-dark: #5b3fd9;
+  --rc-font-display: "Space Grotesk", var(--font-sans);
+  --rc-font-body: "Inter", var(--font-sans);
+  --rc-font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+#tab-my-results.tab-pane.active {
+  display: block;
+}
+
+#tab-my-results .card {
+  background: var(--rc-bg);
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+@media (min-width: 561px) {
+  #tab-my-results .card {
+    border-radius: var(--radius-lg);
+    padding: 16px 16px 20px;
+  }
+}
+
+/* ---------- header: title, count, last-scanned ----------------------------- */
+
+.rc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 4px 2px;
+}
+
+.rc-header h3 {
+  margin: 0;
+  font-family: var(--rc-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--rc-text);
+}
+
+.rc-header p {
+  margin: 4px 0 0;
+  font-family: var(--rc-font-body);
+  font-size: 12.5px;
+  color: var(--rc-muted);
+}
+
+.rc-header .rc-count {
+  font-family: var(--rc-font-mono);
+  font-weight: 600;
+  color: var(--rc-text);
+}
+
+.rc-upsell-note {
+  margin: 6px 4px 0;
+  font-family: var(--rc-font-body);
+  font-size: 12.5px;
+  color: var(--rc-muted);
+}
+
+.rc-upsell-note a {
+  color: var(--rc-pro);
+  font-weight: 600;
+}
+
+/* ---------- chip row (reuses .sub-tab-bar / .sub-tab-filter markup) -------- */
+
+#tab-my-results .sub-tab-bar {
+  border-bottom: none;
+  padding: 10px 4px 4px;
+  margin: 0;
+}
+
+#tab-my-results .sub-tab-bar button {
+  font-family: var(--rc-font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 16px;
+  color: var(--rc-text);
+  background: var(--rc-card);
+  border-color: var(--rc-border);
+}
+
+#tab-my-results .sub-tab-bar button:hover {
+  border-color: var(--rc-green-dark);
+  background: var(--rc-card);
+}
+
+#tab-my-results .sub-tab-bar button.active {
+  background: var(--rc-text);
+  border-color: var(--rc-text);
+  color: #fff;
+}
+
+/* ---------- sort + view-toggle row ----------------------------------------- */
+
+.rc-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 4px;
+  margin-top: 2px;
+  border-top: 1px solid var(--rc-border);
+  border-bottom: 1px solid var(--rc-border);
+}
+
+.rc-sort-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--rc-text);
+}
+
+.rc-sort-wrap svg:first-child {
+  flex-shrink: 0;
+}
+
+.rc-sort-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  font-family: var(--rc-font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--rc-text);
+  padding: 4px 16px 4px 0;
+  cursor: pointer;
+  max-width: 150px;
+}
+
+.rc-sort-wrap svg:last-child {
+  position: absolute;
+  right: 0;
+  pointer-events: none;
+  color: var(--rc-muted);
+}
+
+.rc-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--rc-card);
+  border: 1.5px solid var(--rc-border);
+  border-radius: 999px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.rc-view-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--rc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rc-view-btn.active {
+  background: var(--rc-text);
+  color: #fff;
+}
+
+.rc-map-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--rc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rc-map-btn:hover {
+  color: var(--rc-green-dark);
+}
+
+/* ---------- trust-score upsell banner --------------------------------------- */
+
+.rc-upsell-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--rc-pro-bg);
+  border: 1.5px solid #d9d0ff;
+}
+
+.rc-upsell-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--rc-pro);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rc-upsell-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-upsell-banner-text p {
+  margin: 0;
+  font-family: var(--rc-font-body);
+}
+
+.rc-upsell-banner-text .rc-upsell-title {
+  font-family: var(--rc-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rc-pro-dark);
+}
+
+.rc-upsell-banner-text .rc-upsell-desc {
+  font-size: 11.5px;
+  color: var(--rc-pro-dark);
+  opacity: 0.8;
+}
+
+.rc-upsell-cta {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--rc-pro);
+  color: #fff;
+  font-family: var(--rc-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.rc-upsell-cta:hover {
+  background: var(--rc-pro-dark);
+}
+
+/* ---------- result cards ----------------------------------------------------
+   Three densities driven by [data-view] on #results-grid / .rc-grid — cards
+   (default, matches the reference design), compact (single row) and grid
+   (2-column). All three share the same markup; only layout differs. */
+
+.rc-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 4px 4px;
+}
+
+.rc-card-wrapper {
+  position: relative;
+}
+
+.rc-fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--rc-bg);
+  color: var(--rc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rc-fav-btn.favorited {
+  color: #ff6b6b;
+}
+
+.rc-card {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  background: var(--rc-card);
+  border: 1.5px solid var(--rc-border);
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.rc-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 76px;
+  height: 76px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--rc-green-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rc-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rc-thumb .rc-thumb-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--rc-border);
+  opacity: 0.6;
+}
+
+.rc-neu-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-family: var(--rc-font-body);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--rc-tangerine);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.rc-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-right: 30px; /* keep clear of the floating favorite button */
+}
+
+.rc-title {
+  margin: 0;
+  font-family: var(--rc-font-display);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--rc-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rc-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-family: var(--rc-font-body);
+  font-size: 11px;
+  color: var(--rc-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-meta svg {
+  flex-shrink: 0;
+}
+
+.rc-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.rc-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-family: var(--rc-font-mono);
+}
+
+.rc-price-main {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--rc-text);
+}
+
+.rc-search-tag {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--rc-font-body);
+  font-size: 10.5px;
+  color: var(--rc-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- trust badge (unlocked pill / locked pill) ----------------------- */
+
+.rc-trust-pill {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.rc-trust-pill span {
+  font-family: var(--rc-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.rc-trust-high {
+  background: var(--rc-green-bg);
+  color: var(--rc-green-dark);
+}
+
+.rc-trust-medium {
+  background: var(--rc-amber-bg);
+  color: var(--rc-amber);
+}
+
+.rc-trust-low {
+  background: var(--rc-tangerine-bg);
+  color: var(--rc-tangerine);
+}
+
+.rc-trust-locked {
+  background: var(--rc-pro-bg);
+  color: var(--rc-pro);
+  gap: 4px;
+}
+
+.rc-trust-locked .rc-lock-dots {
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+}
+
+.rc-trust-locked .rc-lock-dots span {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--rc-pro);
+}
+
+/* ---------- compact density (single row) ------------------------------------ */
+
+.rc-grid[data-view="compact"] .rc-card {
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.rc-grid[data-view="compact"] .rc-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.rc-grid[data-view="compact"] .rc-body {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rc-grid[data-view="compact"] .rc-body > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-grid[data-view="compact"] .rc-title {
+  -webkit-line-clamp: 1;
+  font-size: 12.5px;
+}
+
+.rc-grid[data-view="compact"] .rc-meta {
+  margin-top: 2px;
+}
+
+.rc-grid[data-view="compact"] .rc-search-tag,
+.rc-grid[data-view="compact"] .card-actions,
+.rc-grid[data-view="compact"] .rc-thumb .rc-neu-badge {
+  display: none;
+}
+
+.rc-grid[data-view="compact"] .rc-footer {
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  margin-top: 0;
+  gap: 4px;
+}
+
+.rc-grid[data-view="compact"] .rc-price {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+/* ---------- grid density (2-column) ------------------------------------------ */
+
+.rc-grid[data-view="grid"] {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 641px) {
+  .rc-grid[data-view="grid"] {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.rc-grid[data-view="grid"] .rc-card {
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.rc-grid[data-view="grid"] .rc-thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px 16px 0 0;
+}
+
+.rc-grid[data-view="grid"] .rc-body {
+  padding: 8px 10px 10px;
+}
+
+.rc-grid[data-view="grid"] .rc-title {
+  min-height: 2.4em;
+}
+
+.rc-grid[data-view="grid"] .rc-meta,
+.rc-grid[data-view="grid"] .rc-search-tag,
+.rc-grid[data-view="grid"] .card-actions {
+  display: none;
+}
+
+.rc-grid[data-view="grid"] .rc-fav-btn {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* ---------- skeleton + empty states ------------------------------------------ */
+
+.rc-skeleton-note {
+  margin: 10px 4px;
+  font-family: var(--rc-font-body);
+  font-size: 13px;
+  color: var(--rc-muted);
+}
+
+.rc-card.rc-skeleton {
+  opacity: 0.55;
+}
+
+.rc-card.rc-skeleton .rc-thumb {
+  background: var(--rc-border);
+}
+
+.rc-empty-state {
+  margin: 14px 4px;
+  padding: 32px 20px;
+  text-align: center;
+  font-family: var(--rc-font-body);
+  font-size: 13.5px;
+  color: var(--rc-muted);
+  background: var(--rc-card);
+  border: 1.5px dashed var(--rc-border);
+  border-radius: var(--radius-lg);
+}
+
+.rc-favorites-heading {
+  margin: 28px 4px 0;
+  font-family: var(--rc-font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rc-text);
+}
