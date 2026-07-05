@@ -59,3 +59,17 @@ def settings_page(
             },
         },
     )
+
+
+@router.post("/settings/tutorial-complete")
+def complete_tutorial(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Called once the first-login dashboard tutorial is finished or skipped,
+    so it never shows again for this user."""
+    db_user = db.query(User).filter(User.id == current_user["id"]).first()
+    if db_user and not db_user.has_completed_tutorial:
+        db_user.has_completed_tutorial = True
+        db.commit()
+    return {"status": "ok"}
