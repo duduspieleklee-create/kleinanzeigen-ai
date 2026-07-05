@@ -11,6 +11,10 @@
     <meta name="apple-mobile-web-app-title" content="KA-AI">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <!-- Fonts for the "Meine Ergebnisse" redesign only (see #tab-my-results in style.css) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
     <!--
         NOTE: All page-specific rules that used to live in an inline <style>
         block here (trust-score badges, favorite button, token stats,
@@ -506,14 +510,73 @@
             </div>
         </div><!-- /tab-new-search -->
 
-        <!-- ── TAB: My Results ── -->
+        <!-- ── TAB: My Results (redesigned — see #tab-my-results in style.css) ── -->
+        {% macro rc_card(r, is_favorite=False) %}
+        <div class="rc-card-wrapper result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords or '' }}" data-location="{{ r.location or '' }}">
+            <button class="favorite-btn rc-fav-btn{% if is_favorite %} favorited{% endif %}" onclick="toggleFavorite({{ r.id }}, this)" title="{% if is_favorite %}Aus Favoriten entfernen{% else %}Zu Favoriten hinzufügen{% endif %}">{% if is_favorite %}♥{% else %}♡{% endif %}</button>
+            <a class="rc-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
+                <div class="rc-thumb">
+                    {% if r.is_new %}<span class="rc-neu-badge">NEU</span>{% endif %}
+                    {% if r.image_url %}
+                    <img src="{{ r.image_url }}" alt="" loading="lazy"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="rc-thumb-placeholder" style="display:none"></div>
+                    {% else %}
+                    <div class="rc-thumb-placeholder"></div>
+                    {% endif %}
+                </div>
+                <div class="rc-body">
+                    <div>
+                        <p class="rc-title">{{ r.title }}</p>
+                        <p class="rc-meta">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                            {{ r.location }}{% if r.relative_time %} · {{ r.relative_time }}{% endif %}
+                        </p>
+                        {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
+                    </div>
+                    <div class="rc-footer">
+                        <div class="rc-price">
+                            <span class="rc-price-main">{{ r.price }}</span>
+                            {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
+                            {% if not is_favorite %}<span class="rc-search-tag">Suche: {{ r.search_keywords }}</span>{% endif %}
+                        </div>
+                        {% if r.trust_score %}
+                        <div class="rc-trust-pill {% if show_trust_scores %}{% if r.trust_score >= 75 %}rc-trust-high{% elif r.trust_score >= 50 %}rc-trust-medium{% else %}rc-trust-low{% endif %}{% else %}rc-trust-locked{% endif %}"
+                             title="{% if show_trust_scores %}Trust Score: {{ r.trust_score }}/100{% else %}Trust Score — mit Core oder Pro sichtbar{% endif %}">
+                            {% if show_trust_scores %}
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <span>{{ r.trust_score }}</span>
+                            {% else %}
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                            <span class="rc-lock-dots"><span></span><span></span><span></span></span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if not is_favorite %}
+                    <span class="card-actions">
+                        <button class="share-btn" data-result-id="{{ r.id }}" data-title="{{ r.title }}" data-url="{{ r.url }}" title="Teilen">📤</button>
+                        <button class="copy-link-btn" data-url="{{ r.url }}" title="Link kopieren">🔗</button>
+                    </span>
+                    {% endif %}
+                </div>
+            </a>
+        </div>
+        {% endmacro %}
         <div id="tab-my-results" class="tab-pane">
             <div class="card">
-                <h3>Meine Ergebnisse</h3>
-                <p style="font-size:14px;color:#666;margin:0 0 14px">
-                    Die neuesten Anzeigen, die deine Suchen gefunden haben.
-                    {% if not show_deals %}Angebots-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">Upgrade</a>, um sie freizuschalten.{% endif %}
-                </p>
+                <div class="rc-header">
+                    <div>
+                        <h3>Meine Ergebnisse</h3>
+                        <p>
+                            {% if recent_results %}<span class="rc-count">{{ recent_results|length }}</span> Treffer{% if recent_results[0].relative_time %} · zuletzt gescannt {{ recent_results[0].relative_time }}{% endif %}
+                            {% else %}Die neuesten Anzeigen, die deine Suchen gefunden haben.{% endif %}
+                        </p>
+                        {% if not show_deals %}
+                        <p class="rc-upsell-note">Angebots-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">Upgrade</a>, um sie freizuschalten.</p>
+                        {% endif %}
+                    </div>
+                </div>
 
                 <!-- Sticky on mobile so filter + sort stay reachable while
                      scrolling a long result list (see .results-toolbar) -->
@@ -530,17 +593,35 @@
                     </div>
                     {% endif %}
 
-                    <!-- Sorting Controls & Map Toggle -->
-                    <div class="sort-controls">
-                        <label for="sort-by">Sortieren nach:</label>
-                        <select id="sort-by" onchange="sortResults(this.value)">
-                            <option value="newest">Neueste zuerst</option>
-                            <option value="oldest">Älteste zuerst</option>
-                            <option value="price-low">Preis: Niedrig → Hoch</option>
-                            <option value="price-high">Preis: Hoch → Niedrig</option>
-                            <option value="trust-high">Trust Score: Hoch → Niedrig</option>
-                        </select>
-                        <button id="map-toggle-btn" class="map-toggle" onclick="toggleMapView()" title="Kartenansicht">🗺️</button>
+                    <!-- Sort, view density toggle & map -->
+                    <div class="rc-controls-row">
+                        <div class="rc-sort-wrap">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                            <select id="sort-by" onchange="sortResults(this.value)">
+                                <option value="newest">Neueste zuerst</option>
+                                <option value="oldest">Älteste zuerst</option>
+                                <option value="price-low">Preis: Niedrig → Hoch</option>
+                                <option value="price-high">Preis: Hoch → Niedrig</option>
+                                <option value="trust-high">Trust Score: Hoch → Niedrig</option>
+                            </select>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <div class="rc-view-toggle" role="group" aria-label="Ansicht">
+                                <button type="button" class="rc-view-btn active" data-view="cards" onclick="setResultsView('cards')" title="Karten">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="15" width="18" height="4" rx="1"/></svg>
+                                </button>
+                                <button type="button" class="rc-view-btn" data-view="compact" onclick="setResultsView('compact')" title="Liste">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                </button>
+                                <button type="button" class="rc-view-btn" data-view="grid" onclick="setResultsView('grid')" title="Raster">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                                </button>
+                            </div>
+                            <button id="map-toggle-btn" class="rc-map-btn" onclick="toggleMapView()" title="Kartenansicht">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -550,56 +631,23 @@
                     <button class="close-map-btn" onclick="toggleMapView()">✕ Schließen</button>
                 </div>
 
-                {% if recent_results %}
-                <div class="grid" id="results-grid">
-                    {% for r in recent_results %}
-                    <div class="result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords }}" data-location="{{ r.location }}">
-                        <div class="result-card-header">
-                            <button class="favorite-btn" onclick="toggleFavorite({{ r.id }}, this)" title="Zu Favoriten hinzufügen">
-                                ♡
-                            </button>
-                            {% if r.trust_score %}
-                            <div class="trust-indicator" title="{% if show_trust_scores %}Trust Score: {{ r.trust_score }}/100{% else %}Upgrade zum Pro-Plan um Trust Scores freizuschalten{% endif %}">
-                                {% if show_trust_scores %}
-                                    {% if r.trust_score >= 80 %}🟢
-                                    {% elif r.trust_score >= 60 %}🟡
-                                    {% elif r.trust_score >= 40 %}🟠
-                                    {% else %}🔴{% endif %}
-                                {% else %}
-                                🔒
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                        </div>
-                        <a class="result-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
-                            {% if r.image_url %}
-                            <img class="thumb" src="{{ r.image_url }}" alt="" loading="lazy"
-                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                            <div class="thumb-placeholder" style="display:none">Kein Bild</div>
-                            {% else %}
-                            <div class="thumb-placeholder">Kein Bild</div>
-                            {% endif %}
-                            <div class="card-body">
-                                <span class="price-row">
-                                    <span class="card-price">{{ r.price }}</span>
-                                    {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
-                                </span>
-                                <span class="card-title">{{ r.title }}</span>
-                                {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
-                                <span class="card-meta">
-                                    <span>{{ r.location }}</span>
-                                    <span>{{ r.created_at.strftime('%d.%m %H:%M') if r.created_at else '' }}</span>
-                                </span>
-                                <span class="card-meta" style="margin-top:2px">
-                                    <span>Suche: {{ r.search_keywords }}</span>
-                                </span>
-                                <span class="card-actions">
-                                    <button class="share-btn" data-result-id="{{ r.id }}" data-title="{{ r.title }}" data-url="{{ r.url }}" title="Teilen">📤</button>
-                                    <button class="copy-link-btn" data-url="{{ r.url }}" title="Link kopieren">🔗</button>
-                                </span>
-                            </div>
-                        </a>
+                {% if not show_trust_scores %}
+                <div class="rc-upsell-banner">
+                    <div class="rc-upsell-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </div>
+                    <div class="rc-upsell-banner-text">
+                        <p class="rc-upsell-title">Trust Score freischalten</p>
+                        <p class="rc-upsell-desc">Sieh Verkäufer-Vertrauenswerte mit Core oder Pro.</p>
+                    </div>
+                    <a href="/billing" class="rc-upsell-cta">Get Core</a>
+                </div>
+                {% endif %}
+
+                {% if recent_results %}
+                <div class="rc-grid" id="results-grid" data-view="cards">
+                    {% for r in recent_results %}
+                    {{ rc_card(r) }}
                     {% endfor %}
                 </div>
 
@@ -612,57 +660,32 @@
                 {% if running_tasks %}
                 <!-- A search is still in flight: show shimmering skeleton
                      cards instead of a bare "no results" message -->
-                <p class="skeleton-note">Deine Suche läuft &mdash; neue Ergebnisse erscheinen hier in Kürze.</p>
-                <div class="grid" aria-hidden="true">
+                <p class="rc-skeleton-note">Deine Suche läuft &mdash; neue Ergebnisse erscheinen hier in Kürze.</p>
+                <div class="rc-grid" data-view="cards" aria-hidden="true">
                     {% for _ in range(3) %}
-                    <div class="result-card skeleton-card">
-                        <div class="thumb-placeholder skeleton"></div>
-                        <div class="card-body">
-                            <span class="skeleton skeleton-line" style="width:35%"></span>
-                            <span class="skeleton skeleton-line" style="width:85%"></span>
-                            <span class="skeleton skeleton-line" style="width:60%"></span>
+                    <div class="rc-card-wrapper">
+                        <div class="rc-card rc-skeleton">
+                            <div class="rc-thumb"></div>
+                            <div class="rc-body">
+                                <span class="skeleton skeleton-line" style="width:85%"></span>
+                                <span class="skeleton skeleton-line" style="width:35%;margin-top:6px"></span>
+                                <span class="skeleton skeleton-line" style="width:60%;margin-top:6px"></span>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="empty-state">Noch keine Ergebnisse &mdash; neue Anzeigen deiner Suchen erscheinen hier.</div>
+                <div class="rc-empty-state">Noch keine Ergebnisse &mdash; neue Anzeigen deiner Suchen erscheinen hier.</div>
                 {% endif %}
                 {% endif %}
 
                 <!-- Favorites Sub-tab -->
                 {% if favorites %}
-                <h4 style="margin-top: 32px;">⭐ Meine Favoriten</h4>
-                <div class="grid">
+                <h4 class="rc-favorites-heading">⭐ Meine Favoriten</h4>
+                <div class="rc-grid" data-view="cards">
                     {% for fav in favorites %}
-                    <div class="result-card-wrapper">
-                        <div class="result-card-header">
-                            <button class="favorite-btn favorited" onclick="toggleFavorite({{ fav.id }}, this)" title="Aus Favoriten entfernen">
-                                ♥
-                            </button>
-                        </div>
-                        <a class="result-card" {% if fav.url %}href="{{ fav.url }}" target="_blank" rel="noopener"{% endif %}>
-                            {% if fav.image_url %}
-                            <img class="thumb" src="{{ fav.image_url }}" alt="" loading="lazy"
-                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                            <div class="thumb-placeholder" style="display:none">Kein Bild</div>
-                            {% else %}
-                            <div class="thumb-placeholder">Kein Bild</div>
-                            {% endif %}
-                            <div class="card-body">
-                                <span class="price-row">
-                                    <span class="card-price">{{ fav.price }}</span>
-                                    {% if fav.deal %}<span class="deal {{ fav.deal.cls }}">{{ fav.deal.label }}</span>{% endif %}
-                                </span>
-                                <span class="card-title">{{ fav.title }}</span>
-                                {% if fav.description %}<span class="card-desc">{{ fav.description }}</span>{% endif %}
-                                <span class="card-meta">
-                                    <span>{{ fav.location }}</span>
-                                    <span>{{ fav.created_at.strftime('%d.%m %H:%M') if fav.created_at else '' }}</span>
-                                </span>
-                            </div>
-                        </a>
-                    </div>
+                    {{ rc_card(fav, is_favorite=True) }}
                     {% endfor %}
                 </div>
                 {% endif %}
@@ -1032,6 +1055,24 @@
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', applyFiltersAndSort);
+
+        // ── Results view density (cards / compact / grid) ──
+        // Only the main #results-grid is switchable; the favorites grid
+        // stays in "cards" density. Persisted so it survives reloads.
+        function setResultsView(view) {
+            var grid = document.getElementById('results-grid');
+            if (grid) grid.dataset.view = view;
+            document.querySelectorAll('.rc-view-btn').forEach(function(b) {
+                b.classList.toggle('active', b.dataset.view === view);
+            });
+            try { localStorage.setItem('resultsView', view); } catch (e) {}
+        }
+
+        (function() {
+            var saved = null;
+            try { saved = localStorage.getItem('resultsView'); } catch (e) {}
+            if (saved) setResultsView(saved);
+        })();
 
         // ── Location autocomplete (PLZ/Ort) & radius gating ──
         // Radius only makes sense once a real location_id is known (the

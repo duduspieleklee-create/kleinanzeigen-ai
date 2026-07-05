@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -30,6 +31,38 @@ from app.shared.sentry import init_sentry
 
 logger.info("Starting kleinanzeigen-ai application...")
 init_sentry("api")
+
+def _relative_time_de(dt) -> str:
+    """German relative-time label for the results feed ("vor 5 Min.", "gestern", ...)."""
+    if dt is None:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    seconds = (datetime.now(timezone.utc) - dt).total_seconds()
+    if seconds < 60:
+        return "gerade eben"
+    minutes = int(seconds // 60)
+    if minutes < 60:
+        return f"vor {minutes} Min."
+    hours = int(minutes // 60)
+    if hours < 24:
+        return f"vor {hours} Std."
+    days = int(hours // 24)
+    if days == 1:
+        return "gestern"
+    if days < 7:
+        return f"vor {days} Tagen"
+    return dt.strftime("%d.%m.%Y")
+
+
+def _is_recent(dt, hours: int = 6) -> bool:
+    """True if dt is within the last `hours` — drives the "NEU" badge."""
+    if dt is None:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - dt < timedelta(hours=hours)
+
 
 app = FastAPI(title="kleinanzeigen-ai")
 
@@ -248,7 +281,18 @@ async def dashboard(
             # Attach extra context to each result for the template
             r.deal = deal_badge(r.price_value, medians.get(t.id)) if show_deals else None
             r.search_keywords = (t.parameters or {}).get("keywords") or f"Search #{t.id}"
+            r.relative_time = _relative_time_de(r.created_at)
+            r.is_new = _is_recent(r.created_at)
             recent_results.append(r)
+
+    favorites = (
+        db.query(ScrapeResult)
+        .join(Favorite)
+        .filter(Favorite.user_id == current_user["id"])
+        .all()
+    )
+    for fav in favorites:
+        fav.relative_time = _relative_time_de(fav.created_at)
 
     response = templates.TemplateResponse(
         "dashboard.html",
@@ -281,12 +325,7 @@ async def dashboard(
             # Token stats for "Meine Suchen" tab
             "token_stats": get_token_usage_stats(db, current_user["id"]),
             # Favorites for "Favoriten" sub-tab
-            "favorites": (
-                db.query(ScrapeResult)
-                .join(Favorite)
-                .filter(Favorite.user_id == current_user["id"])
-                .all()
-            ),
+            "favorites": favorites,
         },
     )
 
