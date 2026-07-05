@@ -9,10 +9,11 @@ from sqlalchemy import or_
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
-from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User, TokenUsage
+from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
 from app.shared.proxy import proxies_for_requests
+from app.shared.token_tracking import log_token_usage
 from app.shared.url_builder import build_kleinanzeigen_url
 from app.worker.celery_app import celery_app
 from app.worker.seller_scraper import extract_seller_info
@@ -461,14 +462,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         # Track token usage for this run
         # Estimate: ~1 token per result (for seller data extraction + processing)
         if task and new_count > 0:
-            token_usage = TokenUsage(
-                user_id=task.user_id,
-                task_id=resolved_task_id,
-                tokens=new_count,
-                date=datetime.now(timezone.utc).date(),
-            )
-            db.add(token_usage)
-            db.commit()
+            log_token_usage(db, user_id=task.user_id, task_id=resolved_task_id, tokens=new_count)
             logger.info(f"Tracked {new_count} tokens for task {resolved_task_id}")
 
         if task:
