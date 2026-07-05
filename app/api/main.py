@@ -276,6 +276,8 @@ async def dashboard(
             # Email verification banner (admins are exempt from verification).
             "email_verified": bool(db_user.email_verified) if db_user else True,
             "user_email": db_user.email if db_user else "",
+            # First-login guided tutorial: shown once until completed/skipped.
+            "show_tutorial": bool(db_user and not db_user.has_completed_tutorial),
             # Token stats for "Meine Suchen" tab
             "token_stats": get_token_usage_stats(db, current_user["id"]),
             # Favorites for "Favoriten" sub-tab

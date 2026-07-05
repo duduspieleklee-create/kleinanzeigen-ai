@@ -42,6 +42,10 @@ class User(Base):
     email_verified = Column(Boolean, nullable=False, server_default="false")
     verify_token = Column(String(64), index=True)
     verify_token_expires_at = Column(DateTime(timezone=True))
+    # True once the user has clicked through (or skipped) the first-login
+    # guided tutorial on the dashboard. Existing users at rollout time were
+    # backfilled true so it only ever appears for genuinely new accounts.
+    has_completed_tutorial = Column(Boolean, nullable=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Notification preferences, editable on /settings.

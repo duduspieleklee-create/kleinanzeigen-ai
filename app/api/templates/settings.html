@@ -26,8 +26,9 @@
                     <small>Sofort-Benachrichtigungen auf diesem Gerät</small>
                 </div>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="push-notifications-toggle"
-                           {% if user_settings.push_notifications_enabled %}checked{% endif %}>
+                    <!-- Initial state is set by refreshPushToggleState() from the
+                         actual browser subscription, not a server-side flag. -->
+                    <input type="checkbox" id="push-notifications-toggle">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -109,7 +110,12 @@
                 </div>
             </div>
 
-            {% if credits is defined %}
+            {% if is_admin %}
+            <div class="credit-info">
+                <h3>Wöchentliche Credits</h3>
+                <p class="credit-text">Unbegrenzt (Admin-Konto)</p>
+            </div>
+            {% elif credits is defined and max_credits %}
             <div class="credit-info">
                 <h3>Wöchentliche Credits</h3>
                 <div class="credit-bar">
@@ -151,10 +157,101 @@
     {% include "_version_footer.html" %}
 
     <script>
+        // ── Push notifications: real browser subscribe/unsubscribe ──
+        // (mirrors the logic in dashboard.html's notification banner)
+        function urlBase64ToUint8Array(b64) {
+            var pad = '='.repeat((4 - b64.length % 4) % 4);
+            var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+            return Uint8Array.from(Array.from(raw).map(function(c) { return c.charCodeAt(0); }));
+        }
+
+        function pushSupported() {
+            return ('Notification' in window) && ('PushManager' in window) && ('serviceWorker' in navigator);
+        }
+
+        var pushToggle = document.getElementById('push-notifications-toggle');
+
+        async function subscribeToPush() {
+            var keyResp = await fetch('/push/vapid-public-key');
+            if (!keyResp.ok) return false;
+            var publicKey = (await keyResp.json()).publicKey;
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                });
+            }
+            var subResp = await fetch('/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub),
+            });
+            return subResp.ok;
+        }
+
+        async function unsubscribeFromPush() {
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            if (!sub) return true;
+            var unsubResp = await fetch('/push/unsubscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub),
+            });
+            await sub.unsubscribe();
+            return unsubResp.ok;
+        }
+
+        async function refreshPushToggleState() {
+            if (!pushSupported()) {
+                pushToggle.checked = false;
+                pushToggle.disabled = true;
+                return;
+            }
+            if (Notification.permission !== 'granted') {
+                pushToggle.checked = false;
+                return;
+            }
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            pushToggle.checked = !!sub;
+        }
+
+        pushToggle.addEventListener('change', async function() {
+            pushToggle.disabled = true;
+            try {
+                if (pushToggle.checked) {
+                    var perm = await Notification.requestPermission();
+                    if (perm !== 'granted') {
+                        pushToggle.checked = false;
+                        return;
+                    }
+                    var ok = await subscribeToPush();
+                    if (!ok) {
+                        pushToggle.checked = false;
+                        alert('Benachrichtigungen konnten nicht aktiviert werden — bitte erneut versuchen.');
+                    }
+                } else {
+                    await unsubscribeFromPush();
+                }
+            } catch (err) {
+                console.error('Push toggle error:', err);
+                pushToggle.checked = !pushToggle.checked;
+            } finally {
+                pushToggle.disabled = false;
+            }
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function() {});
+        }
+        refreshPushToggleState();
+
         // Save notification settings
         function saveNotificationSettings() {
             var settings = {
-                push_enabled: document.getElementById('push-notifications-toggle').checked,
                 deals_only: document.getElementById('deals-only-toggle').checked,
                 email_enabled: document.getElementById('email-notifications-toggle').checked,
                 quiet_start: document.getElementById('quiet-start').value,
@@ -167,7 +264,6 @@
             }).catch(err => console.error('Error saving notification settings:', err));
         }
 
-        document.getElementById('push-notifications-toggle').addEventListener('change', saveNotificationSettings);
         document.getElementById('deals-only-toggle').addEventListener('change', saveNotificationSettings);
         document.getElementById('email-notifications-toggle').addEventListener('change', saveNotificationSettings);
         document.getElementById('quiet-start').addEventListener('change', saveNotificationSettings);

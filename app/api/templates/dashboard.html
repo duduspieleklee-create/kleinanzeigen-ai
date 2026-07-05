@@ -223,10 +223,174 @@
                     </div>
 
                     <div class="form-field">
-                    <label for="location-input">Ort</label>
-                    <input type="text" id="location-input" placeholder="z. B. Berlin" autocomplete="off">
+                    <label for="location-input">Ort oder PLZ</label>
+                    <div class="suggest-wrap">
+                        <input type="text" id="location-input" placeholder="z. B. 10115 oder Berlin" autocomplete="off">
+                        <ul id="location-suggestions" class="suggest-list"></ul>
+                    </div>
                     <input type="hidden" id="location_id" name="location_id">
-                    <ul id="location-suggestions" class="suggest-list"></ul>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="radius">Umkreis (km)</label>
+                    <select id="radius" name="radius" disabled>
+                        <option value="">Zuerst Ort auswählen</option>
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="20">20 km</option>
+                        <option value="30">30 km</option>
+                        <option value="50">50 km</option>
+                        <option value="100">100 km</option>
+                        <option value="150">150 km</option>
+                        <option value="200">200 km</option>
+                    </select>
+                    </div>
+
+                    <div class="form-field">
+                    <label for="category">Kategorie</label>
+                    <select id="category" name="category">
+                        <option value="">Alle Kategorien</option>
+                        <optgroup label="Auto, Rad &amp; Boot">
+                            <option value="autos">Autos</option>
+                            <option value="fahrraeder">Fahrräder &amp; Zubehör</option>
+                            <option value="autoteile-reifen">Autoteile &amp; Reifen</option>
+                            <option value="boote-bootszubehoer">Boote &amp; Bootszubehör</option>
+                            <option value="motorraeder-roller">Motorräder &amp; Motorroller</option>
+                            <option value="motorraeder-roller-teile">Motorradteile &amp; Zubehör</option>
+                            <option value="anhaenger-nutzfahrzeuge">Nutzfahrzeuge &amp; Anhänger</option>
+                            <option value="wohnwagen-mobile">Wohnwagen &amp; -mobile</option>
+                        </optgroup>
+                        <optgroup label="Immobilien">
+                            <option value="wohnung-mieten">Mietwohnungen</option>
+                            <option value="wohnung-kaufen">Eigentumswohnungen</option>
+                            <option value="haus-mieten">Häuser zur Miete</option>
+                            <option value="haus-kaufen">Häuser zum Kauf</option>
+                            <option value="auf-zeit-wg">WG-Zimmer &amp; Auf Zeit</option>
+                            <option value="garage-lagerraum">Garagen &amp; Stellplätze</option>
+                            <option value="grundstuecke-garten">Grundstücke &amp; Gärten</option>
+                            <option value="gewerbeimmobilien">Gewerbeimmobilien</option>
+                            <option value="ferienwohnung-ferienhaus">Ferien- &amp; Auslandsimmobilien</option>
+                        </optgroup>
+                        <optgroup label="Haus &amp; Garten">
+                            <option value="kueche-esszimmer">Küche &amp; Esszimmer</option>
+                            <option value="wohnzimmer">Wohnzimmer</option>
+                            <option value="schlafzimmer">Schlafzimmer</option>
+                            <option value="badezimmer">Badezimmer</option>
+                            <option value="bueromoebel">Büro</option>
+                            <option value="dekoration">Dekoration</option>
+                            <option value="garten-pflanzen">Gartenzubehör &amp; Pflanzen</option>
+                            <option value="heimtextilien">Heimtextilien</option>
+                            <option value="heimwerken">Heimwerken</option>
+                            <option value="lampen-licht">Lampen &amp; Licht</option>
+                        </optgroup>
+                        <optgroup label="Mode &amp; Beauty">
+                            <option value="kleidung-damen">Damenbekleidung</option>
+                            <option value="kleidung-herren">Herrenbekleidung</option>
+                            <option value="schuhe-damen">Damenschuhe</option>
+                            <option value="schuhe-herren">Herrenschuhe</option>
+                            <option value="beauty-gesundheit">Beauty &amp; Gesundheit</option>
+                            <option value="accessoires-schmuck">Taschen &amp; Accessoires</option>
+                            <option value="uhren-schmuck">Uhren &amp; Schmuck</option>
+                        </optgroup>
+                        <optgroup label="Elektronik">
+                            <option value="multimedia-elektronik">Elektronik (allgemein)</option>
+                            <option value="handy-telekom">Handy &amp; Telefon</option>
+                            <option value="haushaltsgeraete">Haushaltsgeräte</option>
+                            <option value="audio-hifi">Audio &amp; Hifi</option>
+                            <option value="foto">Foto</option>
+                            <option value="tv-video">TV &amp; Video</option>
+                            <option value="notebooks">Notebooks</option>
+                            <option value="pcs">PCs</option>
+                            <option value="pc-zubehoer-software">PC-Zubehör &amp; Software</option>
+                            <option value="tablets-reader">Tablets &amp; Reader</option>
+                            <option value="konsolen">Konsolen</option>
+                            <option value="pc-videospiele">Videospiele</option>
+                            <option value="wearables">Wearables</option>
+                        </optgroup>
+                        <optgroup label="Familie, Kind &amp; Baby">
+                            <option value="baby-kinderkleidung">Baby- &amp; Kinderkleidung</option>
+                            <option value="baby-kinderschuhe">Baby- &amp; Kinderschuhe</option>
+                            <option value="babyausstattung">Baby-Ausstattung</option>
+                            <option value="babyschalen-kindersitze">Babyschalen &amp; Kindersitze</option>
+                            <option value="kinderwagen-buggys">Kinderwagen &amp; Buggys</option>
+                            <option value="kinderzimmermoebel">Kinderzimmermöbel</option>
+                            <option value="spielzeug">Spielzeug</option>
+                            <option value="babysitter-kinderbetreuung">Babysitter &amp; Kinderbetreuung</option>
+                            <option value="altenpflege">Altenpflege</option>
+                        </optgroup>
+                        <optgroup label="Tiere">
+                            <option value="hunde">Hunde</option>
+                            <option value="katzen">Katzen</option>
+                            <option value="kleintiere">Kleintiere</option>
+                            <option value="voegel">Vögel</option>
+                            <option value="fische">Fische</option>
+                            <option value="pferde">Pferde</option>
+                            <option value="nutztiere">Nutztiere</option>
+                            <option value="tierbetreuung-training">Tierbetreuung &amp; Training</option>
+                            <option value="zubehoer">Tierzubehör</option>
+                        </optgroup>
+                        <optgroup label="Freizeit, Hobby &amp; Nachbarschaft">
+                            <option value="sammeln">Sammeln</option>
+                            <option value="kunst">Kunst &amp; Antiquitäten</option>
+                            <option value="sport-camping">Sport &amp; Camping</option>
+                            <option value="handarbeit-basteln-kunsthandwerk">Handarbeit, Basteln &amp; Kunsthandwerk</option>
+                            <option value="modellbau">Modellbau</option>
+                            <option value="reise-eventservices">Reise &amp; Eventservices</option>
+                            <option value="freizeitaktivitaeten">Freizeitaktivitäten</option>
+                            <option value="troedel-kistenweise">Trödel</option>
+                            <option value="esoterik-spirituelles">Esoterik &amp; Spirituelles</option>
+                            <option value="verloren-gefunden">Verloren &amp; Gefunden</option>
+                        </optgroup>
+                        <optgroup label="Musik, Filme &amp; Bücher">
+                            <option value="buecher-zeitschriften">Bücher &amp; Zeitschriften</option>
+                            <option value="fachbuecher-schule-studium">Fachbücher, Schule &amp; Studium</option>
+                            <option value="film-dvd">Film &amp; DVD</option>
+                            <option value="musik-cds">Musik &amp; CDs</option>
+                            <option value="musikinstrumente">Musikinstrumente</option>
+                            <option value="comics">Comics</option>
+                        </optgroup>
+                        <optgroup label="Eintrittskarten &amp; Tickets">
+                            <option value="konzerte">Konzerte</option>
+                            <option value="klassik-kultur">Theater &amp; Musical</option>
+                            <option value="comedy-kabarett">Comedy &amp; Kabarett</option>
+                            <option value="gutscheine">Gutscheine</option>
+                        </optgroup>
+                        <optgroup label="Verschenken &amp; Tauschen">
+                            <option value="zu-verschenken">Zu verschenken</option>
+                            <option value="zu-verschenken-tauschen">Verschenken &amp; Tauschen</option>
+                            <option value="verleihen">Verleihen</option>
+                        </optgroup>
+                        <optgroup label="Jobs">
+                            <option value="jobs">Jobs (allgemein)</option>
+                            <option value="ausbildung">Ausbildung</option>
+                            <option value="praktika">Praktika</option>
+                            <option value="heimarbeit-mini-nebenjobs">Mini- &amp; Nebenjobs</option>
+                            <option value="bueroarbeit-verwaltung">Büroarbeit &amp; Verwaltung</option>
+                            <option value="gastronomie-tourismus">Gastronomie &amp; Tourismus</option>
+                            <option value="bau-handwerk-produktion">Bau, Handwerk &amp; Produktion</option>
+                            <option value="vertrieb-einkauf-verkauf">Vertrieb, Einkauf &amp; Verkauf</option>
+                        </optgroup>
+                        <optgroup label="Dienstleistungen &amp; Unterricht">
+                            <option value="dienstleistungen">Dienstleistungen (allgemein)</option>
+                            <option value="umzug-transport">Umzug &amp; Transport</option>
+                            <option value="unterricht-kurse">Unterricht &amp; Kurse</option>
+                            <option value="nachhilfe">Nachhilfe</option>
+                            <option value="sprachkurse">Sprachkurse</option>
+                            <option value="nachbarschaftshilfe">Nachbarschaftshilfe</option>
+                        </optgroup>
+                    </select>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-field">
+                        <label for="price_min">Min. Preis (€)</label>
+                        <input type="number" id="price_min" name="price_min" placeholder="0">
+                        </div>
+
+                        <div class="form-field">
+                        <label for="price_max">Max. Preis (€)</label>
+                        <input type="number" id="price_max" name="price_max" placeholder="10000">
+                        </div>
                     </div>
                   </div>
 
@@ -247,51 +411,11 @@
                   <div id="filter-panel" class="filter-panel">
                     <div class="form-grid">
                         <div class="form-field">
-                        <label for="category">Kategorie</label>
-                        <select id="category" name="category">
-                            <option value="">Alle Kategorien</option>
-                            <optgroup label="Fahrzeuge">
-                                <option value="autos">Autos</option>
-                                <option value="motorraeder-scooter">Motorräder &amp; Scooter</option>
-                                <option value="transporter-lkw">Transporter &amp; LKW</option>
-                                <option value="fahrraeder">Fahrräder</option>
-                                <option value="bootszubehoer">Boote &amp; Zubehör</option>
-                            </optgroup>
-                            <optgroup label="Immobilien">
-                                <option value="wohnungen">Wohnungen</option>
-                                <option value="haeuser">Häuser</option>
-                                <option value="garagen">Garagen</option>
-                                <option value="grundstuecke">Grundstücke</option>
-                            </optgroup>
-                            <optgroup label="Elektronik">
-                                <option value="computer">Computer</option>
-                                <option value="handy-zubehoer">Handy &amp; Zubehör</option>
-                                <option value="foto-video">Foto &amp; Video</option>
-                            </optgroup>
-                        </select>
-                        </div>
-
-                        <div class="form-field">
-                        <label for="price_min">Min. Preis (€)</label>
-                        <input type="number" id="price_min" name="price_min" placeholder="0">
-                        </div>
-
-                        <div class="form-field">
-                        <label for="price_max">Max. Preis (€)</label>
-                        <input type="number" id="price_max" name="price_max" placeholder="10000">
-                        </div>
-
-                        <div class="form-field">
-                        <label for="radius">Umkreis (km)</label>
-                        <input type="number" id="radius" name="radius" placeholder="50">
-                        </div>
-
-                        <div class="form-field">
                         <label for="ad_type">Anzeigentyp</label>
                         <select id="ad_type" name="ad_type">
                             <option value="">Egal</option>
-                            <option value="offer">Angebot</option>
-                            <option value="wanted">Gesucht</option>
+                            <option value="angebote">Angebot</option>
+                            <option value="gesuche">Gesucht</option>
                         </select>
                         </div>
 
@@ -299,8 +423,8 @@
                         <label for="poster_type">Von</label>
                         <select id="poster_type" name="poster_type">
                             <option value="">Egal</option>
-                            <option value="private">Privat</option>
-                            <option value="commercial">Gewerblich</option>
+                            <option value="privat">Privat</option>
+                            <option value="gewerblich">Gewerblich</option>
                         </select>
                         </div>
 
@@ -308,10 +432,12 @@
                         <label for="condition">Zustand</label>
                         <select id="condition" name="condition">
                             <option value="">Egal</option>
+                            <option value="new_with_tag">Neu, mit Etikett</option>
                             <option value="new">Neu</option>
                             <option value="like_new">Wie neu</option>
-                            <option value="good">Gut</option>
-                            <option value="acceptable">Akzeptabel</option>
+                            <option value="ok">Gut</option>
+                            <option value="alright">In Ordnung</option>
+                            <option value="defect">Defekt</option>
                         </select>
                         </div>
 
@@ -594,7 +720,113 @@
         </div>
     </div>
 
+    <!-- First-login guided tutorial (see show_tutorial in app/api/main.py) -->
+    <div class="sheet-backdrop" id="tutorial-backdrop"></div>
+    <div class="tutorial-modal" id="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+        <button type="button" class="tutorial-skip" id="tutorial-skip">Überspringen</button>
+        <div class="tutorial-icon" id="tutorial-icon"></div>
+        <h4 id="tutorial-title"></h4>
+        <p id="tutorial-body"></p>
+        <div class="tutorial-dots" id="tutorial-dots"></div>
+        <div class="tutorial-actions">
+            <button type="button" class="sheet-btn sheet-btn-cancel" id="tutorial-back">Zurück</button>
+            <button type="button" class="sheet-btn tutorial-next-btn" id="tutorial-next">Weiter</button>
+        </div>
+    </div>
 
+    <script>
+        // ── First-login guided tutorial ──
+        (function() {
+            var showTutorial = {{ 'true' if show_tutorial else 'false' }};
+            if (!showTutorial) return;
+
+            var steps = [
+                {
+                    icon: '👋',
+                    title: 'Willkommen bei kleinanzeigen-ai!',
+                    body: 'Wir durchsuchen Kleinanzeigen.de automatisch nach neuen Angeboten für dich — rund um die Uhr. Kurzer Rundgang, dauert nur eine Minute.'
+                },
+                {
+                    icon: '🔍',
+                    title: '1. Neue Suche anlegen',
+                    body: 'Im Tab "Neue Suche" gibst du Stichwort, Ort und optional Preis oder Kategorie ein. Wir merken uns die Suche und laufen automatisch im Hintergrund weiter.'
+                },
+                {
+                    icon: '📋',
+                    title: '2. Meine Suchen',
+                    body: 'Hier siehst du alle laufenden und abgeschlossenen Suchen mit Status und Trefferzahl — und kannst sie jederzeit pausieren oder löschen.'
+                },
+                {
+                    icon: '⭐',
+                    title: '3. Meine Ergebnisse',
+                    body: 'Alle gefundenen Angebote landen gesammelt hier. Favorisiere die besten Treffer, damit du sie schnell wiederfindest.'
+                },
+                {
+                    icon: '⚙️',
+                    title: '4. Benachrichtigungen & Einstellungen',
+                    body: 'Über das Zahnrad-Symbol oben rechts aktivierst du Push- oder E-Mail-Benachrichtigungen und verwaltest deinen Plan. Los geht’s!'
+                }
+            ];
+
+            var backdrop = document.getElementById('tutorial-backdrop');
+            var modal = document.getElementById('tutorial-modal');
+            var iconEl = document.getElementById('tutorial-icon');
+            var titleEl = document.getElementById('tutorial-title');
+            var bodyEl = document.getElementById('tutorial-body');
+            var dotsEl = document.getElementById('tutorial-dots');
+            var backBtn = document.getElementById('tutorial-back');
+            var nextBtn = document.getElementById('tutorial-next');
+            var skipBtn = document.getElementById('tutorial-skip');
+            var current = 0;
+
+            steps.forEach(function(_, i) {
+                var dot = document.createElement('span');
+                dot.className = 'tutorial-dot';
+                dotsEl.appendChild(dot);
+            });
+
+            function render() {
+                var step = steps[current];
+                iconEl.textContent = step.icon;
+                titleEl.textContent = step.title;
+                bodyEl.textContent = step.body;
+                Array.prototype.forEach.call(dotsEl.children, function(dot, i) {
+                    dot.classList.toggle('active', i === current);
+                });
+                backBtn.style.visibility = current === 0 ? 'hidden' : 'visible';
+                nextBtn.textContent = current === steps.length - 1 ? 'Los geht’s!' : 'Weiter';
+            }
+
+            function open() {
+                backdrop.classList.add('open');
+                modal.classList.add('open');
+            }
+
+            function close() {
+                backdrop.classList.remove('open');
+                modal.classList.remove('open');
+                fetch('/settings/tutorial-complete', { method: 'POST' }).catch(function() {});
+            }
+
+            nextBtn.addEventListener('click', function() {
+                if (current === steps.length - 1) {
+                    close();
+                    return;
+                }
+                current++;
+                render();
+            });
+            backBtn.addEventListener('click', function() {
+                if (current === 0) return;
+                current--;
+                render();
+            });
+            skipBtn.addEventListener('click', close);
+
+            render();
+            open();
+        })();
+    </script>
     <script>
         // ── Tab Navigation ──
         // CHANGED: now keeps both the top .tab-btn set and the bottom-nav
@@ -800,6 +1032,107 @@
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', applyFiltersAndSort);
+
+        // ── Location autocomplete (PLZ/Ort) & radius gating ──
+        // Radius only makes sense once a real location_id is known (the
+        // kleinanzeigen.de canonical URL form is k0l{id}r{radius}), so the
+        // radius select stays disabled until a suggestion is picked, and
+        // re-locks the moment the user edits the location text again.
+        (function() {
+            var locInput = document.getElementById('location-input');
+            var locIdField = document.getElementById('location_id');
+            var suggestList = document.getElementById('location-suggestions');
+            var radiusSelect = document.getElementById('radius');
+            if (!locInput || !locIdField || !suggestList || !radiusSelect) return;
+
+            var debounceTimer = null;
+            var activeIndex = -1;
+            var currentItems = [];
+
+            function setRadiusEnabled(enabled) {
+                radiusSelect.disabled = !enabled;
+                if (!enabled) radiusSelect.value = '';
+            }
+
+            function clearSuggestions() {
+                suggestList.innerHTML = '';
+                suggestList.style.display = 'none';
+                currentItems = [];
+                activeIndex = -1;
+            }
+
+            function selectSuggestion(item) {
+                locInput.value = item.label;
+                locIdField.value = item.id;
+                clearSuggestions();
+                setRadiusEnabled(true);
+            }
+
+            function renderSuggestions(items) {
+                currentItems = items || [];
+                suggestList.innerHTML = '';
+                if (!currentItems.length) {
+                    suggestList.style.display = 'none';
+                    return;
+                }
+                currentItems.forEach(function(item) {
+                    var li = document.createElement('li');
+                    li.textContent = item.label;
+                    li.addEventListener('mousedown', function(e) {
+                        e.preventDefault(); // fire before the input's blur hides the list
+                        selectSuggestion(item);
+                    });
+                    suggestList.appendChild(li);
+                });
+                activeIndex = -1;
+                suggestList.style.display = 'block';
+            }
+
+            async function fetchSuggestions(q) {
+                try {
+                    var resp = await fetch('/locations/suggest?q=' + encodeURIComponent(q));
+                    if (!resp.ok) { clearSuggestions(); return; }
+                    renderSuggestions(await resp.json());
+                } catch (err) {
+                    clearSuggestions();
+                }
+            }
+
+            locInput.addEventListener('input', function() {
+                // Any manual edit invalidates a previously picked location.
+                locIdField.value = '';
+                setRadiusEnabled(false);
+                var q = locInput.value.trim();
+                clearTimeout(debounceTimer);
+                if (q.length < 2) { clearSuggestions(); return; }
+                debounceTimer = setTimeout(function() { fetchSuggestions(q); }, 250);
+            });
+
+            locInput.addEventListener('keydown', function(e) {
+                var items = suggestList.querySelectorAll('li');
+                if (!items.length) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = Math.min(activeIndex + 1, items.length - 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = Math.max(activeIndex - 1, 0);
+                } else if (e.key === 'Enter') {
+                    if (activeIndex >= 0 && currentItems[activeIndex]) {
+                        e.preventDefault();
+                        selectSuggestion(currentItems[activeIndex]);
+                    }
+                    return;
+                } else {
+                    return;
+                }
+                items.forEach(function(li, i) { li.classList.toggle('active', i === activeIndex); });
+            });
+
+            locInput.addEventListener('blur', function() {
+                setTimeout(clearSuggestions, 150);
+            });
+        })();
 
         // ── Push Notifications & Wizard (from original) ──
         function urlBase64ToUint8Array(b64) {

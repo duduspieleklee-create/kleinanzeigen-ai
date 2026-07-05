@@ -149,17 +149,13 @@ def _send_push_notifications(
             }
         ]
     })
-    # VAPID private keys come in two shapes and py_vapid picks its parser by
-    # looking for "BEGIN"/newlines in the string:
-    #  - PEM: env vars usually store the newlines escaped as literal "\n".
-    #  - Raw base64url (the web-push standard, paired with the public key the
-    #    browser uses): must have NO newlines, or py_vapid misroutes it into PEM
-    #    parsing and dies with "Could not deserialize key data ... ASN.1 ...".
-    raw_key = (settings.vapid_private_key or "").strip()
-    if "BEGIN" in raw_key:
-        private_key = raw_key.replace("\\n", "\n")
-    else:
-        private_key = "".join(raw_key.split()).replace("\\n", "")
+    # VAPID_PRIVATE_KEY must be the raw base64url-encoded 32-byte EC scalar
+    # (paired with the raw public key the browser uses), not PEM. pywebpush's
+    # webpush() loads string keys via Vapid.from_string(), which only strips
+    # newlines before base64url-decoding — it does not strip PEM's
+    # "-----BEGIN/END-----" armor, so a PEM string corrupts into garbage DER
+    # and fails with "Could not deserialize key data ... ASN.1 ...".
+    private_key = "".join((settings.vapid_private_key or "").split())
 
     # py_vapid requires the "sub" claim to be a mailto:/https: URI. Accept a
     # bare email in VAPID_EMAIL and normalise it, so this common misconfig
