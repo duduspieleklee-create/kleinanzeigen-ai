@@ -1,4 +1,4 @@
-# kleinanzeigen-ai
+# kleinanzeigen-ai v1
 
 Intelligent scraping and analytics platform for kleinanzeigen.de.j
 
