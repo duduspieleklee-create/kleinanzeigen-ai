@@ -216,15 +216,7 @@ Actions**:
 |---|---|
 | `VPS_HOST` | The VPS's hostname or IP |
 | `VPS_USER` | The SSH user that owns `/opt/kleinanzeigen-ai` (must have `docker` group membership — the same user from steps 1-6) |
-| `VPS_SSH_KEY` | A private key whose matching public key is in that user's `~/.ssh/authorized_keys` on the VPS |
-
-Generate a dedicated deploy keypair rather than reusing a personal one:
-
-```bash
-ssh-keygen -t ed25519 -f deploy_key -N ""
-cat deploy_key.pub   # append this to ~/.ssh/authorized_keys on the VPS
-cat deploy_key       # paste this as the VPS_SSH_KEY secret, then delete the local files
-```
+| `VPS_SSH_PASSWORD` | That user's SSH login password |
 
 `VPS_PORT` is an optional secret if SSH doesn't listen on the default `22`.
 
