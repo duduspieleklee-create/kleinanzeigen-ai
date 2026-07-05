@@ -55,7 +55,7 @@ something to check, even though neither is an HTTP service.
 |---|---|
 | `VPS_HOST` | VPS hostname or IP the `deploy` job SSHes into |
 | `VPS_USER` | SSH user (must have `docker` group membership and own `/opt/kleinanzeigen-ai`) |
-| `VPS_SSH_KEY` | Private key matching a public key in that user's `~/.ssh/authorized_keys` |
+| `VPS_SSH_PASSWORD` | That user's SSH login password |
 
 `VPS_PORT` is an optional secret (defaults to `22`) if the VPS uses a non-standard SSH port.
 
