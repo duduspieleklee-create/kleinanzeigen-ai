@@ -2,8 +2,11 @@
 
 How to run kleinanzeigen-ai on your own Ubuntu 22.04 VPS with Docker. This is
 the only supported production deployment path — see `docs/architecture.md`
-for how it fits together with the CI pipeline (`.github/workflows/ci.yml`),
-which only lints and tests; it doesn't build, push, or deploy anything.
+for how it fits together with the CI/CD pipeline
+(`.github/workflows/ci-cd.yml`): `lint` and `test` run on every push and
+pull request, and a `deploy` job SSHes in here to pull, migrate and restart
+on every push to `main`. Steps 1-9 below get the VPS ready for that job to
+target; "Automated deploys via CI" further down covers the job itself.
 
 ## Hostname options
 
@@ -200,9 +203,35 @@ curl https://<your-hostname>/healthz        # through Caddy
 docker compose -f docker-compose.prod.yml logs -f worker beat
 ```
 
+## Automated deploys via CI
+
+Once the VPS is set up (steps 1-9 above), merges to `main` deploy
+automatically: the `deploy` job in `.github/workflows/ci-cd.yml` SSHes in
+and runs the same commands as the "Deploy an update" section below.
+
+Add these to **GitHub → repository → Settings → Secrets and variables →
+Actions**:
+
+| Secret | Value |
+|---|---|
+| `VPS_HOST` | The VPS's hostname or IP |
+| `VPS_USER` | The SSH user that owns `/opt/kleinanzeigen-ai` (must have `docker` group membership — the same user from steps 1-6) |
+| `VPS_SSH_KEY` | A private key whose matching public key is in that user's `~/.ssh/authorized_keys` on the VPS |
+
+Generate a dedicated deploy keypair rather than reusing a personal one:
+
+```bash
+ssh-keygen -t ed25519 -f deploy_key -N ""
+cat deploy_key.pub   # append this to ~/.ssh/authorized_keys on the VPS
+cat deploy_key       # paste this as the VPS_SSH_KEY secret, then delete the local files
+```
+
+`VPS_PORT` is an optional secret if SSH doesn't listen on the default `22`.
+
 ## Day-2 operations
 
-**Deploy an update:**
+**Deploy an update:** happens automatically on every merge to `main` (see
+above). To do it manually — e.g. to test a branch, or if CI is down:
 ```bash
 cd /opt/kleinanzeigen-ai
 git pull

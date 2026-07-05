@@ -30,20 +30,34 @@ User
       └── ScrapeResult (one row per listing)
 ```
 
-## CI Pipeline
+## CI/CD Pipeline
 
 ```
 push to main / pull request
   │
   ├── lint          ruff check app/
-  └── test          import check (api, worker, beat) + /healthz smoke test
+  ├── test          import check (api, worker, beat) + /healthz smoke test
+  └── deploy        (main branch only, after lint+test pass)
+                     SSH into the VPS: git pull, alembic upgrade head,
+                     docker compose up -d --build
 ```
 
-See `.github/workflows/ci.yml`.
+See `.github/workflows/ci-cd.yml`. `deploy` uses `appleboy/ssh-action` and
+runs only on a direct push to `main` (never on pull requests).
 
 `app/shared/health_shim.py` opens a no-op socket alongside `worker` and
 `beat` (see their Dockerfiles) so a container platform's startup probe has
 something to check, even though neither is an HTTP service.
+
+### GitHub Secrets required
+
+| Secret | Description |
+|---|---|
+| `VPS_HOST` | VPS hostname or IP the `deploy` job SSHes into |
+| `VPS_USER` | SSH user (must have `docker` group membership and own `/opt/kleinanzeigen-ai`) |
+| `VPS_SSH_KEY` | Private key matching a public key in that user's `~/.ssh/authorized_keys` |
+
+`VPS_PORT` is an optional secret (defaults to `22`) if the VPS uses a non-standard SSH port.
 
 ## Local Development
 
@@ -52,5 +66,6 @@ Docker Compose brings up PostgreSQL, Redis, the API, worker, and beat together. 
 ## Deployment
 
 Self-managed: a VPS running the `docker-compose.prod.yml` stack behind
-Caddy. See `docs/vps-deployment.md` for the full setup and day-2
-operations (deploying updates, backups, restores).
+Caddy, auto-deployed by the `deploy` CI job on every merge to `main`. See
+`docs/vps-deployment.md` for the full setup, manual deploy steps, and
+day-2 operations (backups, restores).

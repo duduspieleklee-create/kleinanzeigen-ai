@@ -15,7 +15,7 @@ A multi-service Python application that scrapes, stores, and surfaces classified
 | Scheduler | Celery Beat |
 | Database | PostgreSQL + SQLAlchemy + Alembic |
 | Auth | Google OAuth 2.0 (Authlib) |
-| CI | GitHub Actions (lint + test) |
+| CI/CD | GitHub Actions (lint + test + SSH deploy) |
 | Local dev | Docker Compose |
 
 ## Services
@@ -58,17 +58,21 @@ alembic upgrade head
 alembic revision --autogenerate -m "describe change"
 ```
 
-## CI
+## CI/CD
 
 On every push to `main` and every pull request:
 1. **lint** — ruff lints `app/`
 2. **test** — import check for all three services + a `/healthz` smoke test
 
-See `.github/workflows/ci.yml` and `docs/architecture.md` for details.
+On a push to `main` only, once lint + test pass:
+
+3. **deploy** — SSHes into the VPS and runs `git pull` + `alembic upgrade head` + `docker compose up -d --build`
+
+See `.github/workflows/ci-cd.yml` and `docs/architecture.md` for details.
 
 ## Deployment
 
-Self-managed VPS via Docker Compose + Caddy — see `docs/vps-deployment.md`.
+Self-managed VPS via Docker Compose + Caddy, auto-deployed on every merge to `main` — see `docs/vps-deployment.md`.
 
 ## Repository Structure
 

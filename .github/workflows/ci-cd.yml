@@ -1,4 +1,4 @@
-name: Lint and Test
+name: CI & Deploy
 
 on:
   push:
@@ -71,3 +71,27 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/healthz)
           if [ "$STATUS" != "200" ]; then echo "FAIL: /healthz returned $STATUS"; exit 1; fi
           echo "Smoke test passed"
+
+  # ─────────────────────────────────────────────
+  # 3. Deploy — SSH into the VPS, pull, migrate, restart.
+  #    Only on a push to main (never on PRs); requires VPS_HOST,
+  #    VPS_USER and VPS_SSH_KEY secrets (see docs/vps-deployment.md).
+  # ─────────────────────────────────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/kleinanzeigen-ai
+            git pull
+            docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
+            docker compose -f docker-compose.prod.yml up -d --build
