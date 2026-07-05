@@ -1,10 +1,9 @@
 # VPS Deployment Guide
 
-How to run kleinanzeigen-ai on your own Ubuntu 22.04 VPS with Docker.
-
-This is a separate path from the Cloud Run deployment described in
-`docs/architecture.md` and `.github/workflows/build-and-push.yml` — nothing
-here touches that pipeline.
+How to run kleinanzeigen-ai on your own Ubuntu 22.04 VPS with Docker. This is
+the only supported production deployment path — see `docs/architecture.md`
+for how it fits together with the CI pipeline (`.github/workflows/ci.yml`),
+which only lints and tests; it doesn't build, push, or deploy anything.
 
 ## Hostname options
 

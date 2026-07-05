@@ -1,6 +1,6 @@
-"""No-op TCP listener on $PORT so Cloud Run's startup probe succeeds for
-background services (Celery worker/beat) that don't otherwise serve HTTP.
-Run alongside the real process: `python -m app.shared.health_shim &`.
+"""No-op TCP listener on $PORT so a container platform's startup probe
+succeeds for background services (Celery worker/beat) that don't otherwise
+serve HTTP. Run alongside the real process: `python -m app.shared.health_shim &`.
 """
 import http.server
 import os

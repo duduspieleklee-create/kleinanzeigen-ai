@@ -30,42 +30,20 @@ User
       └── ScrapeResult (one row per listing)
 ```
 
-## CI/CD Pipeline
+## CI Pipeline
 
 ```
-push to main
+push to main / pull request
   │
   ├── lint          ruff check app/
-  ├── build         docker build + push to Artifact Registry (api, worker, beat)
-  ├── migrate       alembic upgrade head, run as a Cloud Run Job
-  └── deploy        sync secrets to Secret Manager, deploy new Cloud Run
-                     revisions (api, worker, beat)
+  └── test          import check (api, worker, beat) + /healthz smoke test
 ```
 
-Cloud Run only reaches Cloud SQL and Memorystore (both private-IP-only) via
-a Serverless VPC Access connector, so every service/job attaches
-`--vpc-connector=kleinanzeigen-connector`. `worker` and `beat` aren't HTTP
-services, but Cloud Run still requires a listener on `$PORT` for its startup
-probe — `app/shared/health_shim.py` opens a no-op socket for that, and
-`--no-cpu-throttling --min-instances=1 --max-instances=1` keeps exactly one
-instance of each always running (no request-driven scale-to-zero).
+See `.github/workflows/ci.yml`.
 
-### GitHub Secrets required
-
-| Secret | Description |
-|---|---|
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full WIF provider resource name (see `infra/gcp-setup.sh`) |
-| `GCP_SERVICE_ACCOUNT` | Deploy service account email (see `infra/gcp-setup.sh`) |
-| `DATABASE_URL` | PostgreSQL connection string (for the migrate job and Secret Manager) |
-
-See `.github/workflows/build-and-push.yml` for the full list of app secrets synced to Secret Manager on deploy.
-
-### GitHub Variables required
-
-| Variable | Description |
-|---|---|
-| `GCP_PROJECT_ID` | GCP project ID the infrastructure runs in |
-| `GCP_REGION` | GCP region, used to build Artifact Registry image URIs and for `--region` on every `gcloud run` call |
+`app/shared/health_shim.py` opens a no-op socket alongside `worker` and
+`beat` (see their Dockerfiles) so a container platform's startup probe has
+something to check, even though neither is an HTTP service.
 
 ## Local Development
 
@@ -73,4 +51,6 @@ Docker Compose brings up PostgreSQL, Redis, the API, worker, and beat together. 
 
 ## Deployment
 
-Deployed to Cloud Run. The CI pipeline builds and pushes images to Artifact Registry, runs migrations via a Cloud Run Job, then deploys new revisions of the `kleinanzeigen-api`, `kleinanzeigen-worker`, and `kleinanzeigen-beat` Cloud Run services with `gcloud run deploy`. See `infra/gcp-setup.sh` for one-time infrastructure provisioning (VPC, VPC connector, Cloud SQL, Memorystore, Artifact Registry, Secret Manager, service accounts, Workload Identity Federation for GitHub Actions).
+Self-managed: a VPS running the `docker-compose.prod.yml` stack behind
+Caddy. See `docs/vps-deployment.md` for the full setup and day-2
+operations (deploying updates, backups, restores).
