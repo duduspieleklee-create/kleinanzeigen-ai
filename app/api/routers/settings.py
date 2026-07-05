@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, Request
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -12,6 +15,16 @@ from app.shared.plans import plan_config
 router = APIRouter(prefix="", tags=["Settings"])
 templates = Jinja2Templates(directory="app/api/templates")
 register_globals(templates)
+
+_TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+class NotificationSettingsPayload(BaseModel):
+    push_enabled: bool = True
+    deals_only: bool = False
+    email_enabled: bool = False
+    quiet_start: str | None = None
+    quiet_end: str | None = None
 
 
 @router.get("/settings")
@@ -51,25 +64,34 @@ def settings_page(
             "max_credits": cfg.get("credits_per_week", 0) if cfg else 0,
             "credits": getattr(db_user, 'credits', 0),
             "user_settings": {
-                "push_notifications_enabled": getattr(db_user, 'push_notifications_enabled', True),
-                "email_notifications_enabled": getattr(db_user, 'email_notifications_enabled', False),
-                "deals_only_enabled": getattr(db_user, 'deals_only_enabled', False),
-                "quiet_start": getattr(db_user, 'quiet_start', "22:00"),
-                "quiet_end": getattr(db_user, 'quiet_end', "08:00"),
+                "push_notifications_enabled": db_user.push_notifications_enabled,
+                "email_notifications_enabled": db_user.email_notifications_enabled,
+                "deals_only_enabled": db_user.deals_only_enabled,
+                "quiet_start": db_user.quiet_start,
+                "quiet_end": db_user.quiet_end,
             },
         },
     )
 
 
-@router.post("/settings/tutorial-complete")
-def complete_tutorial(
+@router.post("/api/settings/notifications")
+def update_notification_settings(
+    payload: NotificationSettingsPayload,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """Called once the first-login dashboard tutorial is finished or skipped,
-    so it never shows again for this user."""
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
-    if db_user and not db_user.has_completed_tutorial:
-        db_user.has_completed_tutorial = True
-        db.commit()
-    return {"status": "ok"}
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    for value in (payload.quiet_start, payload.quiet_end):
+        if value and not _TIME_RE.match(value):
+            raise HTTPException(status_code=422, detail="quiet_start/quiet_end must be HH:MM")
+
+    db_user.push_notifications_enabled = payload.push_enabled
+    db_user.deals_only_enabled = payload.deals_only
+    db_user.email_notifications_enabled = payload.email_enabled
+    db_user.quiet_start = payload.quiet_start or None
+    db_user.quiet_end = payload.quiet_end or None
+    db.commit()
+    return {"status": "saved"}
