@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app.shared.sentry import init_sentry
+from app.shared.sentry import init_sentry  # noqa: E402 — must follow load_dotenv()
 
 init_sentry("worker")
 
