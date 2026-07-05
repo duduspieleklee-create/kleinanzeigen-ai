@@ -1,0 +1,73 @@
+name: Lint and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. Lint & basic checks
+  # ─────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dev dependencies
+        run: pip install ruff
+
+      - name: Run ruff linter
+        run: ruff check app/
+
+  # ─────────────────────────────────────────────
+  # 2. Smoke-test: import all services + start API
+  #    Runs on PRs too — blocks build if app is broken.
+  # ─────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Import check — all three services
+        env:
+          DATABASE_URL: "postgresql://ci:ci@localhost/ci"
+          SECRET_KEY: "ci-test-secret"
+          REDIS_URL: "redis://localhost:6379/0"
+        run: |
+          python -c "from app.api.main import app; print('API OK')"
+          python -c "from app.worker.celery_app import celery_app; print('Worker OK')"
+          python -c "from app.beat.celery_beat import celery_app; print('Beat OK')"
+
+      - name: Start API and verify /healthz responds 200
+        env:
+          DATABASE_URL: "postgresql://ci:ci@localhost/ci"
+          SECRET_KEY: "ci-test-secret"
+          REDIS_URL: "redis://localhost:6379/0"
+        run: |
+          uvicorn app.api.main:app --host 127.0.0.1 --port 8000 &
+          for i in $(seq 1 15); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/healthz || echo "000")
+            [ "$STATUS" = "200" ] && echo "API started (attempt $i)" && break
+            sleep 1
+          done
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/healthz)
+          if [ "$STATUS" != "200" ]; then echo "FAIL: /healthz returned $STATUS"; exit 1; fi
+          echo "Smoke test passed"

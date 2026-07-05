@@ -15,8 +15,7 @@ A multi-service Python application that scrapes, stores, and surfaces classified
 | Scheduler | Celery Beat |
 | Database | PostgreSQL + SQLAlchemy + Alembic |
 | Auth | Google OAuth 2.0 (Authlib) |
-| Container registry | Artifact Registry |
-| CI/CD | GitHub Actions → Cloud Run |
+| CI | GitHub Actions (lint + test) |
 | Local dev | Docker Compose |
 
 ## Services
@@ -59,15 +58,17 @@ alembic upgrade head
 alembic revision --autogenerate -m "describe change"
 ```
 
-## CI/CD
+## CI
 
-On every push to `main`:
+On every push to `main` and every pull request:
 1. **lint** — ruff lints `app/`
-2. **build** — builds and pushes Docker images to Artifact Registry
-3. **migrate** — runs `alembic upgrade head` via a Cloud Run Job
-4. **deploy** — syncs secrets to Secret Manager and deploys new Cloud Run revisions
+2. **test** — import check for all three services + a `/healthz` smoke test
 
-See `.github/workflows/build-and-push.yml` and `docs/architecture.md` for details.
+See `.github/workflows/ci.yml` and `docs/architecture.md` for details.
+
+## Deployment
+
+Self-managed VPS via Docker Compose + Caddy — see `docs/vps-deployment.md`.
 
 ## Repository Structure
 
@@ -88,5 +89,4 @@ requirements.txt
 ## Environments
 
 - `dev` — local Docker Compose
-- `prod` — Google Cloud (Cloud Run, Cloud SQL for PostgreSQL, Memorystore for Redis) via GitHub Actions
-- self-managed VPS — Docker Compose on your own Ubuntu server, see `docs/vps-deployment.md`
+- `prod` — self-managed VPS (Docker Compose + Caddy), see `docs/vps-deployment.md`
