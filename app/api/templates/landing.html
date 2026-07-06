@@ -3,112 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>kleinanzeigen-ai — Automatische Suchüberwachung für kleinanzeigen.de</title>
-    <meta name="description" content="kleinanzeigen-ai durchsucht deine gespeicherten Suchen automatisch, benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.">
+    <title>Kleinanzeigen.de Helfer – Automatische Überwachung für Kleinanzeigen-Suchen</title>
+    <meta name="description" content="Kleinanzeigen.de Helfer durchsucht deine gespeicherten Kleinanzeigen-Suchen automatisch, benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.">
+    <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://kleinanzeigen-ai.de/">
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#2FBF71">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://kleinanzeigen-ai.de/">
-    <meta property="og:title" content="kleinanzeigen-ai — Automatische Suchüberwachung für kleinanzeigen.de">
-    <meta property="og:description" content="kleinanzeigen-ai durchsucht deine gespeicherten Suchen automatisch, benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.">
+    <meta property="og:title" content="Kleinanzeigen.de Helfer – Automatische Überwachung für Kleinanzeigen-Suchen">
+    <meta property="og:description" content="Nie wieder ein gutes Angebot verpassen. KI überwacht deine Kleinanzeigen-Suchen rund um die Uhr und meldet sich sofort bei neuen Treffern.">
     <meta property="og:image" content="https://kleinanzeigen-ai.de/static/icons/icon-512.png">
+    <meta property="og:locale" content="de_DE">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://kleinanzeigen-ai.de/">
-    <meta property="twitter:title" content="kleinanzeigen-ai — Automatische Suchüberwachung für kleinanzeigen.de">
-    <meta property="twitter:description" content="kleinanzeigen-ai durchsucht deine gespeicherten Suchen automatisch, benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.">
+    <meta property="twitter:title" content="Kleinanzeigen.de Helfer – Automatische Überwachung für Kleinanzeigen-Suchen">
+    <meta property="twitter:description" content="Nie wieder ein gutes Angebot verpassen. KI überwacht deine Kleinanzeigen-Suchen automatisch.">
     <meta property="twitter:image" content="https://kleinanzeigen-ai.de/static/icons/icon-512.png">
 
     <!-- JSON-LD Structured Data -->
+    {% set plan_prices = {'basic': '0.00', 'core': '4.99', 'pro': '14.99'} %}
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "kleinanzeigen-ai",
+      "@type": "SoftwareApplication",
+      "name": "Kleinanzeigen.de Helfer",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web, Android, iOS",
       "url": "https://kleinanzeigen-ai.de/",
-      "description": "Automatische Suchüberwachung für kleinanzeigen.de mit sofortigen Push-Benachrichtigungen und Preisanalysen.",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "All",
-      "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "EUR",
-        "lowPrice": "0.00",
-        "offers": [
-          {
-            "@type": "Offer",
-            "name": "Basic",
-            "price": "0.00",
-            "priceCurrency": "EUR"
-          },
-          {
-            "@type": "Offer",
-            "name": "Core",
-            "price": "4.99",
-            "priceCurrency": "EUR"
-          },
-          {
-            "@type": "Offer",
-            "name": "Pro",
-            "price": "14.99",
-            "priceCurrency": "EUR"
-          }
-        ]
-      }
+      "description": "Automatische KI-Überwachung für gespeicherte Kleinanzeigen-Suchen mit Sofort-Benachrichtigungen und Preis-Fairness-Check.",
+      "offers": [
+        {% for key, cfg in plans.items() %}
+        {
+          "@type": "Offer",
+          "name": "{{ cfg.label }}",
+          "price": "{{ plan_prices.get(key, '0.00') }}",
+          "priceCurrency": "EUR",
+          "description": "{{ cfg.credits_per_week }} Credits/Woche, bis zu {{ cfg.max_active_searches }} laufende Suchen, {% if cfg.min_interval_seconds <= 60 %}Sofort-Benachrichtigungen{% else %}Intervalle ab {{ cfg.min_interval_seconds // 60 }} Minuten{% endif %}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
     }
     </script>
 </head>
-<body class="dashboard-page landing-page">
-    <nav class="landing-nav">
-        <span class="landing-wordmark">kleinanzeigen-ai</span>
-        <div class="landing-nav-actions">
-            <a href="/login" class="landing-nav-link">Anmelden</a>
-            <a href="/auth/register" class="landing-nav-cta">Kostenlos starten</a>
+<body class="landing-page">
+    <div class="lp-shell">
+        <div class="lp-card">
+            <nav class="lp-nav">
+                <span class="lp-wordmark">Kleinanzeigen.de Helfer</span>
+                <div class="lp-nav-actions">
+                    <a href="/login" class="lp-nav-link">Anmelden</a>
+                    <a href="/auth/register" class="lp-nav-cta">Gratis Probeabo</a>
+                </div>
+            </nav>
+
+            <header class="lp-hero">
+                <div class="lp-radar" aria-hidden="true">
+                    <span class="lp-radar-ring lp-radar-ring-1"></span>
+                    <span class="lp-radar-ring lp-radar-ring-2"></span>
+                    <span class="lp-radar-ring lp-radar-ring-3"></span>
+                    <span class="lp-radar-sweep"></span>
+                    <span class="lp-radar-dot"></span>
+                </div>
+                <h1>Nie wieder ein gutes Angebot verpassen</h1>
+                <p class="lp-hero-sub">
+                    Kleinanzeigen.de Helfer überwacht deine gespeicherten Kleinanzeigen-Suchen automatisch —
+                    rund um die Uhr, mit Sofort-Benachrichtigungen und einem fairen Preis-Check.
+                </p>
+                <div class="lp-hero-actions">
+                    <a href="/auth/register" class="lp-hero-cta">
+                        Kostenlos starten
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </a>
+                    <a href="/billing" class="lp-hero-secondary">Preise ansehen</a>
+                </div>
+            </header>
+
+            <section class="lp-benefits">
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    </div>
+                    <div>
+                        <h3>Automatische Suche</h3>
+                        <p>Deine Suchen laufen 24/7 im Hintergrund.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    </div>
+                    <div>
+                        <h3>Sofort benachrichtigt</h3>
+                        <p>Push, sobald ein neuer Treffer reinkommt.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-tangerine">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </div>
+                    <div>
+                        <h3>Fairer Preis-Check</h3>
+                        <p>Die KI zeigt dir, ob ein Angebot fair ist.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-navy">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                    </div>
+                    <div>
+                        <h3>Vertrauenswürdige Verkäufer</h3>
+                        <p>Ein Trust Score hilft dir, unseriöse Angebote zu meiden.</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="lp-card-footer">
+                Ab 0€ · <a href="/billing">Preise ansehen</a>
+            </div>
         </div>
-    </nav>
 
-    <div class="container">
-        <section class="hero">
-            <h1>Verpasse nie wieder ein gutes Angebot</h1>
-            <p class="hero-sub">
-                kleinanzeigen-ai durchsucht deine gespeicherten Suchen auf kleinanzeigen.de automatisch,
-                benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.
-            </p>
-            <div class="hero-actions">
-                <a href="/auth/register" class="hero-cta-primary">Kostenlos starten</a>
-                <a href="/billing" class="hero-cta-secondary">Preise ansehen</a>
-            </div>
-        </section>
-
-        <section class="feature-grid">
-            <div class="card feature-card">
-                <h3>🔍 Automatische Suche</h3>
-                <p>Deine Suchbegriffe werden laufend geprüft — von stündlich bis alle 60 Sekunden, je nach Plan.</p>
-            </div>
-            <div class="card feature-card">
-                <h3>🔔 Sofort benachrichtigt</h3>
-                <p>Push-Benachrichtigungen aufs Handy oder den Desktop, sobald ein neues Angebot erscheint.</p>
-            </div>
-            <div class="card feature-card">
-                <h3>💰 Faire Preise erkennen</h3>
-                <p>Deal-Badges zeigen dir auf einen Blick, ob ein Angebot unter, über oder im Marktdurchschnitt liegt.</p>
-            </div>
-            <div class="card feature-card">
-                <h3>🛡️ Vertrauenswürdige Verkäufer</h3>
-                <p>Ein Trust Score aus Bewertung, Kontoalter und Anzahl aktiver Anzeigen hilft dir, unseriöse Angebote zu meiden.</p>
-            </div>
-        </section>
-
-        <section>
-            <h2 class="landing-section-title">Für jeden Bedarf der passende Plan</h2>
-            <div class="pricing-grid">
+        <section class="lp-pricing">
+            <h2 class="lp-section-title">Für jeden Bedarf der passende Plan</h2>
+            <div class="lp-pricing-grid">
                 {% for key, cfg in plans.items() %}
-                <div class="plan-card{% if key == 'core' %} plan-featured{% endif %}">
-                    {% if key == 'core' %}<div class="plan-ribbon">Beliebt</div>{% endif %}
+                <div class="plan-card{% if key == 'core' %} lp-plan-featured{% endif %}">
+                    {% if key == 'core' %}<div class="plan-ribbon lp-plan-ribbon">Beliebt</div>{% endif %}
                     <h3>{{ cfg.label }}</h3>
                     <ul class="plan-features">
                         <li><strong>{{ cfg.credits_per_week }}</strong> Credits / Woche</li>
@@ -121,11 +148,11 @@
                             {% endif %}
                         </li>
                     </ul>
-                    <a href="/auth/register" class="plan-btn landing-plan-btn">Loslegen</a>
+                    <a href="/auth/register" class="plan-btn lp-plan-btn">Loslegen</a>
                 </div>
                 {% endfor %}
             </div>
-            <p class="landing-pricing-link"><a href="/billing">Alle Preise &amp; Details ansehen →</a></p>
+            <p class="lp-pricing-link"><a href="/billing">Alle Preise &amp; Details ansehen →</a></p>
         </section>
     </div>
 
