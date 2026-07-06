@@ -35,6 +35,11 @@ services:
     build:
       context: .
       dockerfile: app/api/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+        BUILD_NUMBER: ${BUILD_NUMBER:-0}
+        APP_VERSION: ${APP_VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"

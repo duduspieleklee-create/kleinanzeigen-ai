@@ -187,46 +187,35 @@ button[type="submit"]:hover {
 
 /* ---------- auth pages (login / register) -------------------------------- */
 
-/* Mobile-first: full-screen modal on small phones */
 body.auth-page {
+  --color-accent: #2fbf71;
+  --color-accent-hover: #1f8a52;
+  --color-accent-soft: #eaf8ef;
+  --color-accent-soft-border: #cdeeda;
+
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   min-height: 100vh;
-  padding: 0;
+  padding: 20px 16px;
 }
 
 .login-container,
 .register-container {
   background: var(--color-surface);
-  width: 100%;
-  min-height: 100vh;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  padding: 40px 22px 32px;
+  width: 380px;
+  max-width: 100%;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  padding: 36px 24px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 
 @media (min-width: 421px) {
-  body.auth-page {
-    align-items: center;
-    padding: 24px;
-  }
-
   .login-container,
   .register-container {
-    width: 380px;
-    max-width: 100%;
-    min-height: auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-md);
     padding: 44px 38px;
-    display: block;
   }
 }
 
@@ -2789,19 +2778,6 @@ body.offline-page {
 @keyframes ptr-rotate {
   to {
     transform: rotate(360deg);
-  }
-}
-
-/* ---------- version stamp -------------------------------------------------- */
-/* Keep the build stamp above the fixed bottom nav on the dashboard */
-
-body.dashboard-page .version-stamp {
-  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 4px) !important;
-}
-
-@media (min-width: 561px) {
-  body.dashboard-page .version-stamp {
-    bottom: 4px !important;
   }
 }
 
