@@ -19,7 +19,7 @@ from app.api.routers import (
 )
 from app.api.dependencies import get_current_user
 from app.api.security import limiter
-from app.api.version import BUILD_INFO
+from app.api.version import BUILD_INFO, register_globals
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User, Favorite
 from app.shared.plans import PLANS, ensure_weekly_credits, plan_config
@@ -132,6 +132,7 @@ if os.path.isdir(_static_dir):
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 templates = Jinja2Templates(directory="app/api/templates")
+register_globals(templates)
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
