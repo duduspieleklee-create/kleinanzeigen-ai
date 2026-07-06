@@ -7,7 +7,6 @@ from typing import Optional
 import requests
 from bs4 import BeautifulSoup
 from sqlalchemy import or_, func
-from sqlalchemy.exc import IntegrityError
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
