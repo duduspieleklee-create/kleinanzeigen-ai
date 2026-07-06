@@ -1,88 +1,108 @@
 # TODO — kleinanzeigen-ai
-# Last updated: 2026-06-29
+# Last updated: 2026-07-06
 # Items without a checkbox are section headers.
+# The app is live in production (self-managed VPS, Docker Compose + Caddy,
+# auto-deployed on push to main — see docs/vps-deployment.md). Sections 1, 7,
+# and 8 below predate that decision and describe an abandoned GCP/Cloud Run
+# path; kept for history, not as live instructions.
 
 =============================================================================
-1. SECRETS & ENV VARS  (do these before anything else runs)
+1. SECRETS & ENV VARS  — SUPERSEDED (see .env.example + docs/vps-deployment.md)
 =============================================================================
-- [ ] Set GCP_WORKLOAD_IDENTITY_PROVIDER  output by infra/gcp-setup.sh
-- [ ] Set GCP_SERVICE_ACCOUNT  output by infra/gcp-setup.sh (GitHub Actions deploy identity)
-- [ ] Set GCP_PROJECT_ID (variable)  output by infra/gcp-setup.sh
-- [ ] Set GCP_REGION (variable)  europe-north1
-- [ ] Set GOOGLE_CLIENT_ID  from Google Cloud Console → OAuth 2.0 credentials
-- [ ] Set GOOGLE_CLIENT_SECRET  same place
-- [ ] Set DATABASE_URL  postgresql://user:pass@host:5432/kleinanzeigen_ai
-- [ ] Set REDIS_URL  redis://... or rediss://... connection string
-- [ ] Set SECRET_KEY  generate with: openssl rand -hex 32
-- [ ] Set ENVIRONMENT  dev | prod per deployment
+- [~] GCP_WORKLOAD_IDENTITY_PROVIDER / GCP_SERVICE_ACCOUNT / GCP_PROJECT_ID /
+      GCP_REGION — obsolete, no GCP deploy path exists (infra/gcp-setup.sh
+      referenced here was never added to this repo)
+- [x] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET — set, Google login is live
+- [x] DATABASE_URL / REDIS_URL / SECRET_KEY / ENVIRONMENT — set for prod
+- [ ] The real first-deploy checklist now lives in .env.example — keep that
+      file current instead of duplicating variable names here
 
 =============================================================================
 2. SECURITY — URGENT
 =============================================================================
-- [ ] Set cookie secure=True in app/api/routers/auth.py when ENVIRONMENT != dev
-- [ ] Restrict CORS allow_origins from ["*"] to your frontend domain(s) in production
+- [x] Cookie secure=True in app/api/routers/auth.py when ENVIRONMENT != dev
+- [x] Restrict CORS allow_origins from ["*"] to dev only (app/api/main.py)
 
 =============================================================================
 3. AUTHENTICATION
 =============================================================================
-- [ ] Look up user from DB in get_current_user() — currently returns a plain dict
-      without verifying the user exists; add db.query(User).filter(User.id == user_id).first()
-- [ ] Raise HTTP 401 if user is not found or is inactive
-- [ ] Register Google OAuth redirect URI in Google Cloud Console:
-        https://yourdomain.com/auth/google/callback
-- [ ] Test the full Google OAuth flow end-to-end in dev
+- [x] get_current_user() looks the user up in the DB and checks is_active
+      (app/api/dependencies.py)
+- [x] Raises HTTP 401 if the user is not found or inactive
+- [x] Google OAuth redirect URI registered; Google sign-in is live in prod
+- [x] Bootstrap admin login (username/password fallback on /auth/login) is
+      now gated behind BOOTSTRAP_ADMIN_ENABLED, and app/api/config.py
+      refuses to start outside dev unless APP_PASSWORD is non-default and
+      ≥12 characters (2026-07-06)
 
 =============================================================================
 4. API — MISSING ENDPOINTS
 =============================================================================
-- [ ] Add 422 response with clear message if required scrape parameters are missing
-- [ ] Add /dashboard auth guard — currently anyone can hit /dashboard without a token
+- [ ] Add a proper 422 with a clear message if required scrape parameters
+      are missing (currently: soft validation + flash-redirect to
+      /dashboard, which is arguably fine as UX but isn't a JSON API contract)
+- [x] /dashboard auth guard — redirects to / if the session is invalid
 
 =============================================================================
 5. DATABASE
 =============================================================================
-- [ ] Provision Cloud SQL for PostgreSQL (see infra/gcp-setup.sh)
-- [ ] Run migrations against prod: alembic upgrade head
-- [ ] Add unique constraint on ScrapeResult.url per task_id (avoid duplicate rows)
-- [ ] Add asyncpg if/when switching to async SQLAlchemy engine
+- [~] Provision Cloud SQL — superseded, Postgres runs as a container via
+      docker-compose.prod.yml on the VPS, not Cloud SQL
+- [x] Migrations run against prod automatically on every deploy
+      (`alembic upgrade head` in .github/workflows/ci-cd.yml)
+- [ ] Add unique constraint on ScrapeResult.url per task_id (avoid duplicate
+      rows) — still open, dedup is currently done in application code
+      (app/worker/tasks.py) rather than enforced by the schema
+- [~] asyncpg — rejected; CLAUDE.md now documents "Synchronous SQLAlchemy
+      only" as a firm constraint, not a TODO
 
 =============================================================================
 6. REQUIREMENTS & DOCKERFILES
 =============================================================================
-- [ ] Consolidate pyproject.toml vs requirements.txt — pick one and use it everywhere
-        Currently: api+worker+beat Dockerfiles all use requirements.txt; pyproject.toml
-        is present but only partially complete. Recommended: use requirements.txt only.
+- [ ] Consolidate pyproject.toml vs requirements.txt — pick one and use it
+      everywhere. Currently: api+worker+beat Dockerfiles all use
+      requirements.txt; pyproject.toml is present but only partially
+      complete. Recommended: use requirements.txt only.
 - [ ] Create requirements-dev.txt for dev/test deps (pytest, ruff, mypy, httpx)
 - [ ] Pin base images to a specific digest for reproducibility:
         e.g. python:3.11-slim@sha256:<digest>
 - [ ] Consider multi-stage Docker builds to reduce final image size
 
 =============================================================================
-7. CI/CD (.github/workflows/build-and-push.yml)
+7. CI/CD (.github/workflows/build-and-push.yml)  — SUPERSEDED
 =============================================================================
-- [ ] Add GitHub secrets/variables: GCP_WORKLOAD_IDENTITY_PROVIDER,
-        GCP_SERVICE_ACCOUNT, GCP_PROJECT_ID, GCP_REGION (see TODO.md Step 3)
-- [ ] Run infra/gcp-setup.sh once to provision Artifact Registry, Cloud SQL,
-        Memorystore, the VPC connector, Secret Manager, and the Workload
-        Identity Federation deploy identity
-- [ ] Pin action versions to SHA for supply-chain security
-        e.g. actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4.2.2
+- [~] This whole section described a GCP Artifact Registry / Workload
+      Identity Federation / Octopus Deploy pipeline that was never built.
+      The actual pipeline is .github/workflows/ci-cd.yml: lint + test on
+      every push/PR, then SSH deploy to the VPS on push to main. See
+      README.md's CI/CD section.
+- [ ] Pin GitHub Action versions to SHA for supply-chain security
+      e.g. actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4.2.2
+      (still a valid open item against the real workflow file)
 
 =============================================================================
-8. CLOUD RUN DEPLOY — ROLLBACK
+8. CLOUD RUN DEPLOY — ROLLBACK  — SUPERSEDED
 =============================================================================
-- [ ] Document a rollback runbook: re-deploy the previous Cloud Run revision
-        with `gcloud run services update-traffic <service> --to-revisions=<prev-revision>=100`
-- [ ] Consider a staging Cloud Run environment (separate services/project)
-        before promoting to prod
+- [~] No Cloud Run deployment exists. Rollback on the VPS today means:
+      `git revert` the bad commit and push to main (redeploys via CI/CD),
+      or SSH in and `git checkout <previous-sha> && docker compose -f
+      docker-compose.prod.yml up -d --build`.
+- [ ] Write that rollback runbook down properly in docs/vps-deployment.md
+      instead of leaving it here
 
 =============================================================================
 9. CELERY BEAT SCHEDULE
 =============================================================================
-- [ ] Review and adjust scrape schedule (currently every 30 min, hardcoded category)
+- [x] Beat's schedule now also runs the data-retention purge daily
+      (archival.cleanup_old_results at 03:00, archival.cleanup_old_token_usage
+      at 03:15 Europe/Berlin) — both tasks existed in app/worker/archival_task.py
+      but were never actually scheduled until 2026-07-06
+- [ ] Review and adjust the admin-search dispatch interval (currently
+      dispatched every 60s, each AdminSearch's own interval_minutes controls
+      its effective cadence, default 30 min, hardcoded category)
 - [ ] Add schedules for additional categories as needed
-- [ ] Consider storing schedules in PostgreSQL via django-celery-beat or similar
-        for runtime editing without a redeploy
+- [ ] Consider storing schedules in PostgreSQL via django-celery-beat or
+      similar for runtime editing without a redeploy
 
 =============================================================================
 10. SCRAPING — REMAINING WORK
@@ -96,11 +116,14 @@
 =============================================================================
 11. PRODUCTION READINESS
 =============================================================================
-- [ ] Add rate limiting middleware before exposing the API publicly
+- [~] Rate limiting exists per-route on auth endpoints (slowapi — login,
+      register, verify) but there's no general API-wide rate limiting
+      middleware; still worth adding before wider public exposure
 - [ ] Add startup/shutdown lifespan handlers for DB connection pool warm-up
 - [ ] Update docs/architecture.md with final infra diagram and data flow
 - [ ] Add CONTRIBUTING.md with branching strategy and PR guidelines
-- [ ] Add unit tests (pytest) for API routes and Celery tasks
+- [ ] Add unit tests (pytest) for API routes and Celery tasks — still true,
+      there are no automated tests in this repo yet
 
 25. BUG FIXES — CANCEL RACE / PRICE SELECTOR / KEYWORD URL (2026-07-02)
 - [x] Fix cancel race: added cancelled guard in scrape_kleinanzeigen() before
@@ -174,3 +197,33 @@
       a language toggle if the app needs to support both audiences
 - [ ] Consider translating email templates / push notification copy to
       German as well for full consistency now that the dashboard is German
+
+30. COMMERCIAL-READINESS AUDIT FIXES (2026-07-06)
+- [x] Onboarding tutorial's "done" button posted to a /settings/tutorial-
+      complete route that never existed — added it, has_completed_tutorial
+      now actually persists
+- [x] Email notifications were fully dead: the sender called a nonexistent
+      Resend client API and read its key independently of app config. Now
+      uses the same Resend HTTP call as verification emails, fires at the
+      same point as push, and the settings copy matches the real behavior
+      (per-result email, not the "weekly summary" it used to claim)
+- [x] Scheduled the existing 14-day result / 90-day token-usage retention
+      purge tasks in Celery Beat — implemented for a while, never invoked
+- [x] Gated the hardcoded bootstrap-admin login behind BOOTSTRAP_ADMIN_ENABLED
+      and a ≥12-character password requirement outside dev
+- [x] Added account deletion (POST /settings/delete-account) and a JSON data
+      export (GET /settings/export) — GDPR Art. 17 / 20
+- [x] Made /billing viewable without a session and added a public landing
+      page at / (previously pricing was hidden behind the login wall and
+      "/" only ever showed the bare login form or bounced to /dashboard)
+- [x] Restored the admin dashboard UI (background searches, proxy
+      management) — it had been trimmed down to a single test button even
+      though the backend and full markup already existed in an unrouted
+      dashboard-backup.html. Deleted that file and another dead one,
+      dashboard-phase4.html.
+- [x] Added per-device push subscription management on /settings — a lost
+      or old device's subscription can now be revoked from the server side,
+      not just from the browser that created it
+- [ ] Remaining from that audit: /locations/suggest has no auth or
+      route-level rate limit (open, unauthenticated proxy to kleinanzeigen.de's
+      own suggestion API)

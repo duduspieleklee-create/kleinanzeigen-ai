@@ -36,20 +36,22 @@ Als Datenbank kommt **PostgreSQL** zum Einsatz. Das Schema wird strikt über **A
 
 Das Projekt enthält eine beachtliche Menge an Features, die über ein reines Scraping-Skript hinausgehen und eher in Richtung eines SaaS-Produkts (Software as a Service) deuten:
 
-* **Authentifizierung**: Google OAuth 2.0 Integration.
-* **Abonnement-System (Stripe)**: Integration mit Stripe Webhooks. Es gibt verschiedene Pläne (Basic, Core, Pro), die sich in der Anzahl der aktiven Suchen, den wöchentlichen Credits und dem minimalen Suchintervall (bis zu 60 Sekunden im Pro-Plan) unterscheiden. Die Logik behandelt auch Downgrades sauber (z.B. Drosselung oder Stornierung überzähliger Suchen).
-* **Markt-Intelligenz**: Die Datei `pricing.py` analysiert die Preise der gefundenen Anzeigen, berechnet den Median und versieht die Ergebnisse mit "Deal Badges" (z.B. "15% below market" oder "Fair price").
-* **Push-Benachrichtigungen**: Nutzer können sich über neue, relevante Anzeigen direkt im Browser benachrichtigen lassen (Web Push via `pywebpush`).
-* **CI/CD & Deployment**: Ein vollständiger GitHub Actions Workflow (`build-and-push.yml`) baut die Docker-Images, pusht sie in eine Azure Container Registry (ACR) und bereitet das Deployment via Octopus Deploy vor.
+* **Authentifizierung**: E-Mail/Passwort (mit Verifizierungs-Mail über Resend) und Google OAuth 2.0, beide münden im selben JWT-Cookie. Ein Settings-basierter Bootstrap-Admin-Login existiert zusätzlich, um das allererste Admin-Konto anzulegen, ist aber hinter `BOOTSTRAP_ADMIN_ENABLED` und einer Mindestpasswortlänge außerhalb von `dev` abgesichert.
+* **Abonnement-System (Stripe)**: Integration mit Stripe Webhooks. Es gibt verschiedene Pläne (Basic, Core, Pro), die sich in der Anzahl der aktiven Suchen, den wöchentlichen Credits und dem minimalen Suchintervall (bis zu 60 Sekunden im Pro-Plan) unterscheiden. Die Logik behandelt auch Downgrades sauber (z.B. Drosselung oder Stornierung überzähliger Suchen). Die Preisseite (`/billing`) und eine neue öffentliche Landingpage (`/`) sind jetzt auch ohne Login einsehbar.
+* **Markt-Intelligenz**: Die Datei `pricing.py` analysiert die Preise der gefundenen Anzeigen, berechnet den Median und versieht die Ergebnisse mit "Deal Badges" (z.B. "15% below market" oder "Fair price") sowie einem Trust Score pro Verkäufer.
+* **Benachrichtigungen**: Web Push (via `pywebpush`, inkl. Ruhezeiten und Geräteverwaltung unter `/settings`) und optional E-Mail über Resend — beide feuern am selben Punkt (neue, nicht-Baseline-Treffer) und respektieren dieselben Nutzereinstellungen.
+* **Konto & Datenschutz**: Nutzer können ihre Daten als JSON exportieren und ihr Konto vollständig löschen (`/settings/export`, `/settings/delete-account`) — DSGVO Art. 15/17/20. Eine tägliche Aufräum-Aufgabe (Celery Beat) löscht Suchergebnisse nach 14 Tagen und Token-Nutzungsdaten nach 90 Tagen.
+* **Admin-Oberfläche**: Verwaltung globaler Hintergrundsuchen (`AdminSearch`) und eines rotierenden Proxy-Pools (mit SSRF-Schutz) direkt im Dashboard (`#tab-admin`).
+* **CI/CD & Deployment**: GitHub Actions (`.github/workflows/ci-cd.yml`) lintet und testet jeden Push/PR und deployed bei jedem Push auf `main` per SSH auf einen selbstverwalteten VPS (Docker Compose + Caddy) — kein GCP/Cloud Run, kein Azure Container Registry mehr im Einsatz.
 
 ## Aktueller Entwicklungsstand
 
-Das Repository ist sehr aktiv. Es gibt 367 Commits, und die letzten Commits (Merge von Pull Request #36) deuten auf einen starken Fokus auf die Benutzeroberfläche (Dashboard) hin. Zuletzt wurden unter anderem folgende Verbesserungen vorgenommen:
+Das Repository ist sehr aktiv (über 460 Commits, Stand 2026-07-06). Ein Code-Audit auf Kommerzialisierungsreife deckte im Juli 2026 mehrere Lücken zwischen Anspruch und tatsächlichem Verhalten auf — unter anderem eine defekte Onboarding-Tutorial-Route, komplett wirkungslose E-Mail-Benachrichtigungen, eine nie eingeplante Datenlöschroutine, eine fehlende Konto-Löschfunktion und eine unerreichbare Admin-Oberfläche. Alle wurden im selben Zug behoben (siehe `TODO.txt`, Eintrag 30). Davor lag der Fokus auf:
 * Deutsche Übersetzung der Oberfläche.
 * Ein "Smart Enhancements" Wizard für die Sucherstellung.
 * Verbesserungen auf der Ergebnisseite (Pagination, Location-Tabs, "NEW"-Badges basierend auf dem letzten Besuch).
-* Die Alembic-Migrationen (aktuell Version `0014`) zeigen, dass das Datenmodell kontinuierlich um Features wie Trial-Tracking und Basis-Scrapes erweitert wird.
+* Die Alembic-Migrationen (aktuell Version `0019`) zeigen, dass das Datenmodell kontinuierlich erweitert wird (u.a. Trial-Tracking, Tutorial-Flag, Benachrichtigungseinstellungen).
 
 ## Fazit
 
-Das Repository `kleinanzeigen-ai` ist eine sehr gut strukturierte, professionell aufgebaute SaaS-Anwendung. Die Trennung in API, Worker und Scheduler mittels FastAPI und Celery ist eine bewährte und skalierbare Architektur für Scraping-Workloads. Besonders hervorzuheben sind die integrierte Geschäftslogik (Stripe-Billing, Plan-Enforcement) und die analytischen Funktionen (Deal-Scoring), die dem Nutzer einen echten Mehrwert gegenüber der normalen Plattform bieten.
+Das Repository `kleinanzeigen-ai` ist eine sehr gut strukturierte, professionell aufgebaute SaaS-Anwendung, die inzwischen produktiv läuft. Die Trennung in API, Worker und Scheduler mittels FastAPI und Celery ist eine bewährte und skalierbare Architektur für Scraping-Workloads. Besonders hervorzuheben sind die integrierte Geschäftslogik (Stripe-Billing, Plan-Enforcement) und die analytischen Funktionen (Deal-Scoring, Trust Score), die dem Nutzer einen echten Mehrwert gegenüber der normalen Plattform bieten. Die im Juli-Audit gefundenen Lücken betrafen durchgehend die Schicht *um* das Produkt herum — Onboarding, Compliance, Admin-Bedienbarkeit — nicht die Kernarchitektur, und sind inzwischen geschlossen.

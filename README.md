@@ -1,20 +1,22 @@
 # kleinanzeigen-ai v1
 
-Intelligent scraping and analytics platform for kleinanzeigen.de.j
+Intelligent scraping and analytics platform for kleinanzeigen.de.
 
 ## Overview
 
-A multi-service Python application that scrapes, stores, and surfaces classified ad data from kleinanzeigen.de with Google OAuth authentication.
+A multi-service Python application that scrapes, stores, and surfaces classified ad data from kleinanzeigen.de. Users sign up with a username/password or Google OAuth, set up recurring searches metered by a Stripe-billed plan (Basic/Core/Pro), and get web push and (optionally) email alerts when a search finds new listings, with deal-price and seller-trust scoring on Core/Pro.
 
 ## Tech Stack
 
-| Layer | Technologykl|
+| Layer | Technology |
 |---|---|
 | API | FastAPI + Uvicorn |
 | Task queue | Celery + Redis |
 | Scheduler | Celery Beat |
 | Database | PostgreSQL + SQLAlchemy + Alembic |
-| Auth | Google OAuth 2.0 (Authlib) |
+| Auth | Username/password + Google OAuth 2.0 (Authlib) |
+| Billing | Stripe Checkout, Billing Portal, and webhooks |
+| Notifications | Web Push (pywebpush) + email (Resend) |
 | CI/CD | GitHub Actions (lint + test + SSH deploy) |
 | Local dev | Docker Compose |
 
@@ -39,14 +41,21 @@ App available at `http://localhost:8000`.
 
 ## Environment Variables
 
+Full list with comments in `.env.example`. The essentials:
+
 | Variable | Required | Description |
 |---|---|---|
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
 | `REDIS_URL` | ✅ | Redis connection string |
 | `SECRET_KEY` | ✅ | Session/JWT signing key — generate with `openssl rand -hex 32` |
-| `GOOGLE_CLIENT_ID` | ✅ | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | ✅ | Google OAuth client secret |
 | `ENVIRONMENT` | | `dev` / `staging` / `prod` (default: `dev`) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | Google OAuth login — leave empty to disable the Google button |
+| `BOOTSTRAP_ADMIN_ENABLED` / `APP_USERNAME` / `APP_PASSWORD` | | Fallback admin login for creating the first admin account; ≥12-char password required outside dev |
+| `ADMIN_EMAILS` | | Comma-separated Google emails auto-promoted to admin on login |
+| `RESEND_API_KEY` / `EMAIL_FROM` | | Verification and new-results emails; leave empty to disable email sending |
+| `VAPID_PRIVATE_KEY` / `VAPID_PUBLIC_KEY` / `VAPID_EMAIL` | | Web push notifications; leave empty to disable |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_CORE` / `STRIPE_PRICE_PRO` | | Paid plans via Stripe; leave empty to keep everyone on the free Basic plan |
+| `PUBLIC_BASE_URL` | | Public origin for OAuth/Stripe redirect URLs and email links |
 
 ## Database Migrations
 
