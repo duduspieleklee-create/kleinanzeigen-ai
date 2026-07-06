@@ -25,6 +25,140 @@
     -->
 </head>
 <body class="dashboard-page">
+    {# Shared category <option> list — used by both the user search wizard and
+       the admin reference-search form, so the ~100 kleinanzeigen.de category
+       slugs only need to be maintained in one place. #}
+    {% macro category_options(selected='') %}
+        <option value="" {% if not selected %}selected{% endif %}>Alle Kategorien</option>
+        <optgroup label="Auto, Rad &amp; Boot">
+            <option value="autos" {% if selected=='autos' %}selected{% endif %}>Autos</option>
+            <option value="fahrraeder" {% if selected=='fahrraeder' %}selected{% endif %}>Fahrräder &amp; Zubehör</option>
+            <option value="autoteile-reifen" {% if selected=='autoteile-reifen' %}selected{% endif %}>Autoteile &amp; Reifen</option>
+            <option value="boote-bootszubehoer" {% if selected=='boote-bootszubehoer' %}selected{% endif %}>Boote &amp; Bootszubehör</option>
+            <option value="motorraeder-roller" {% if selected=='motorraeder-roller' %}selected{% endif %}>Motorräder &amp; Motorroller</option>
+            <option value="motorraeder-roller-teile" {% if selected=='motorraeder-roller-teile' %}selected{% endif %}>Motorradteile &amp; Zubehör</option>
+            <option value="anhaenger-nutzfahrzeuge" {% if selected=='anhaenger-nutzfahrzeuge' %}selected{% endif %}>Nutzfahrzeuge &amp; Anhänger</option>
+            <option value="wohnwagen-mobile" {% if selected=='wohnwagen-mobile' %}selected{% endif %}>Wohnwagen &amp; -mobile</option>
+        </optgroup>
+        <optgroup label="Immobilien">
+            <option value="wohnung-mieten" {% if selected=='wohnung-mieten' %}selected{% endif %}>Mietwohnungen</option>
+            <option value="wohnung-kaufen" {% if selected=='wohnung-kaufen' %}selected{% endif %}>Eigentumswohnungen</option>
+            <option value="haus-mieten" {% if selected=='haus-mieten' %}selected{% endif %}>Häuser zur Miete</option>
+            <option value="haus-kaufen" {% if selected=='haus-kaufen' %}selected{% endif %}>Häuser zum Kauf</option>
+            <option value="auf-zeit-wg" {% if selected=='auf-zeit-wg' %}selected{% endif %}>WG-Zimmer &amp; Auf Zeit</option>
+            <option value="garage-lagerraum" {% if selected=='garage-lagerraum' %}selected{% endif %}>Garagen &amp; Stellplätze</option>
+            <option value="grundstuecke-garten" {% if selected=='grundstuecke-garten' %}selected{% endif %}>Grundstücke &amp; Gärten</option>
+            <option value="gewerbeimmobilien" {% if selected=='gewerbeimmobilien' %}selected{% endif %}>Gewerbeimmobilien</option>
+            <option value="ferienwohnung-ferienhaus" {% if selected=='ferienwohnung-ferienhaus' %}selected{% endif %}>Ferien- &amp; Auslandsimmobilien</option>
+        </optgroup>
+        <optgroup label="Haus &amp; Garten">
+            <option value="kueche-esszimmer" {% if selected=='kueche-esszimmer' %}selected{% endif %}>Küche &amp; Esszimmer</option>
+            <option value="wohnzimmer" {% if selected=='wohnzimmer' %}selected{% endif %}>Wohnzimmer</option>
+            <option value="schlafzimmer" {% if selected=='schlafzimmer' %}selected{% endif %}>Schlafzimmer</option>
+            <option value="badezimmer" {% if selected=='badezimmer' %}selected{% endif %}>Badezimmer</option>
+            <option value="bueromoebel" {% if selected=='bueromoebel' %}selected{% endif %}>Büro</option>
+            <option value="dekoration" {% if selected=='dekoration' %}selected{% endif %}>Dekoration</option>
+            <option value="garten-pflanzen" {% if selected=='garten-pflanzen' %}selected{% endif %}>Gartenzubehör &amp; Pflanzen</option>
+            <option value="heimtextilien" {% if selected=='heimtextilien' %}selected{% endif %}>Heimtextilien</option>
+            <option value="heimwerken" {% if selected=='heimwerken' %}selected{% endif %}>Heimwerken</option>
+            <option value="lampen-licht" {% if selected=='lampen-licht' %}selected{% endif %}>Lampen &amp; Licht</option>
+        </optgroup>
+        <optgroup label="Mode &amp; Beauty">
+            <option value="kleidung-damen" {% if selected=='kleidung-damen' %}selected{% endif %}>Damenbekleidung</option>
+            <option value="kleidung-herren" {% if selected=='kleidung-herren' %}selected{% endif %}>Herrenbekleidung</option>
+            <option value="schuhe-damen" {% if selected=='schuhe-damen' %}selected{% endif %}>Damenschuhe</option>
+            <option value="schuhe-herren" {% if selected=='schuhe-herren' %}selected{% endif %}>Herrenschuhe</option>
+            <option value="beauty-gesundheit" {% if selected=='beauty-gesundheit' %}selected{% endif %}>Beauty &amp; Gesundheit</option>
+            <option value="accessoires-schmuck" {% if selected=='accessoires-schmuck' %}selected{% endif %}>Taschen &amp; Accessoires</option>
+            <option value="uhren-schmuck" {% if selected=='uhren-schmuck' %}selected{% endif %}>Uhren &amp; Schmuck</option>
+        </optgroup>
+        <optgroup label="Elektronik">
+            <option value="multimedia-elektronik" {% if selected=='multimedia-elektronik' %}selected{% endif %}>Elektronik (allgemein)</option>
+            <option value="handy-telekom" {% if selected=='handy-telekom' %}selected{% endif %}>Handy &amp; Telefon</option>
+            <option value="haushaltsgeraete" {% if selected=='haushaltsgeraete' %}selected{% endif %}>Haushaltsgeräte</option>
+            <option value="audio-hifi" {% if selected=='audio-hifi' %}selected{% endif %}>Audio &amp; Hifi</option>
+            <option value="foto" {% if selected=='foto' %}selected{% endif %}>Foto</option>
+            <option value="tv-video" {% if selected=='tv-video' %}selected{% endif %}>TV &amp; Video</option>
+            <option value="notebooks" {% if selected=='notebooks' %}selected{% endif %}>Notebooks</option>
+            <option value="pcs" {% if selected=='pcs' %}selected{% endif %}>PCs</option>
+            <option value="pc-zubehoer-software" {% if selected=='pc-zubehoer-software' %}selected{% endif %}>PC-Zubehör &amp; Software</option>
+            <option value="tablets-reader" {% if selected=='tablets-reader' %}selected{% endif %}>Tablets &amp; Reader</option>
+            <option value="konsolen" {% if selected=='konsolen' %}selected{% endif %}>Konsolen</option>
+            <option value="pc-videospiele" {% if selected=='pc-videospiele' %}selected{% endif %}>Videospiele</option>
+            <option value="wearables" {% if selected=='wearables' %}selected{% endif %}>Wearables</option>
+        </optgroup>
+        <optgroup label="Familie, Kind &amp; Baby">
+            <option value="baby-kinderkleidung" {% if selected=='baby-kinderkleidung' %}selected{% endif %}>Baby- &amp; Kinderkleidung</option>
+            <option value="baby-kinderschuhe" {% if selected=='baby-kinderschuhe' %}selected{% endif %}>Baby- &amp; Kinderschuhe</option>
+            <option value="babyausstattung" {% if selected=='babyausstattung' %}selected{% endif %}>Baby-Ausstattung</option>
+            <option value="babyschalen-kindersitze" {% if selected=='babyschalen-kindersitze' %}selected{% endif %}>Babyschalen &amp; Kindersitze</option>
+            <option value="kinderwagen-buggys" {% if selected=='kinderwagen-buggys' %}selected{% endif %}>Kinderwagen &amp; Buggys</option>
+            <option value="kinderzimmermoebel" {% if selected=='kinderzimmermoebel' %}selected{% endif %}>Kinderzimmermöbel</option>
+            <option value="spielzeug" {% if selected=='spielzeug' %}selected{% endif %}>Spielzeug</option>
+            <option value="babysitter-kinderbetreuung" {% if selected=='babysitter-kinderbetreuung' %}selected{% endif %}>Babysitter &amp; Kinderbetreuung</option>
+            <option value="altenpflege" {% if selected=='altenpflege' %}selected{% endif %}>Altenpflege</option>
+        </optgroup>
+        <optgroup label="Tiere">
+            <option value="hunde" {% if selected=='hunde' %}selected{% endif %}>Hunde</option>
+            <option value="katzen" {% if selected=='katzen' %}selected{% endif %}>Katzen</option>
+            <option value="kleintiere" {% if selected=='kleintiere' %}selected{% endif %}>Kleintiere</option>
+            <option value="voegel" {% if selected=='voegel' %}selected{% endif %}>Vögel</option>
+            <option value="fische" {% if selected=='fische' %}selected{% endif %}>Fische</option>
+            <option value="pferde" {% if selected=='pferde' %}selected{% endif %}>Pferde</option>
+            <option value="nutztiere" {% if selected=='nutztiere' %}selected{% endif %}>Nutztiere</option>
+            <option value="tierbetreuung-training" {% if selected=='tierbetreuung-training' %}selected{% endif %}>Tierbetreuung &amp; Training</option>
+            <option value="zubehoer" {% if selected=='zubehoer' %}selected{% endif %}>Tierzubehör</option>
+        </optgroup>
+        <optgroup label="Freizeit, Hobby &amp; Nachbarschaft">
+            <option value="sammeln" {% if selected=='sammeln' %}selected{% endif %}>Sammeln</option>
+            <option value="kunst" {% if selected=='kunst' %}selected{% endif %}>Kunst &amp; Antiquitäten</option>
+            <option value="sport-camping" {% if selected=='sport-camping' %}selected{% endif %}>Sport &amp; Camping</option>
+            <option value="handarbeit-basteln-kunsthandwerk" {% if selected=='handarbeit-basteln-kunsthandwerk' %}selected{% endif %}>Handarbeit, Basteln &amp; Kunsthandwerk</option>
+            <option value="modellbau" {% if selected=='modellbau' %}selected{% endif %}>Modellbau</option>
+            <option value="reise-eventservices" {% if selected=='reise-eventservices' %}selected{% endif %}>Reise &amp; Eventservices</option>
+            <option value="freizeitaktivitaeten" {% if selected=='freizeitaktivitaeten' %}selected{% endif %}>Freizeitaktivitäten</option>
+            <option value="troedel-kistenweise" {% if selected=='troedel-kistenweise' %}selected{% endif %}>Trödel</option>
+            <option value="esoterik-spirituelles" {% if selected=='esoterik-spirituelles' %}selected{% endif %}>Esoterik &amp; Spirituelles</option>
+            <option value="verloren-gefunden" {% if selected=='verloren-gefunden' %}selected{% endif %}>Verloren &amp; Gefunden</option>
+        </optgroup>
+        <optgroup label="Musik, Filme &amp; Bücher">
+            <option value="buecher-zeitschriften" {% if selected=='buecher-zeitschriften' %}selected{% endif %}>Bücher &amp; Zeitschriften</option>
+            <option value="fachbuecher-schule-studium" {% if selected=='fachbuecher-schule-studium' %}selected{% endif %}>Fachbücher, Schule &amp; Studium</option>
+            <option value="film-dvd" {% if selected=='film-dvd' %}selected{% endif %}>Film &amp; DVD</option>
+            <option value="musik-cds" {% if selected=='musik-cds' %}selected{% endif %}>Musik &amp; CDs</option>
+            <option value="musikinstrumente" {% if selected=='musikinstrumente' %}selected{% endif %}>Musikinstrumente</option>
+            <option value="comics" {% if selected=='comics' %}selected{% endif %}>Comics</option>
+        </optgroup>
+        <optgroup label="Eintrittskarten &amp; Tickets">
+            <option value="konzerte" {% if selected=='konzerte' %}selected{% endif %}>Konzerte</option>
+            <option value="klassik-kultur" {% if selected=='klassik-kultur' %}selected{% endif %}>Theater &amp; Musical</option>
+            <option value="comedy-kabarett" {% if selected=='comedy-kabarett' %}selected{% endif %}>Comedy &amp; Kabarett</option>
+            <option value="gutscheine" {% if selected=='gutscheine' %}selected{% endif %}>Gutscheine</option>
+        </optgroup>
+        <optgroup label="Verschenken &amp; Tauschen">
+            <option value="zu-verschenken" {% if selected=='zu-verschenken' %}selected{% endif %}>Zu verschenken</option>
+            <option value="zu-verschenken-tauschen" {% if selected=='zu-verschenken-tauschen' %}selected{% endif %}>Verschenken &amp; Tauschen</option>
+            <option value="verleihen" {% if selected=='verleihen' %}selected{% endif %}>Verleihen</option>
+        </optgroup>
+        <optgroup label="Jobs">
+            <option value="jobs" {% if selected=='jobs' %}selected{% endif %}>Jobs (allgemein)</option>
+            <option value="ausbildung" {% if selected=='ausbildung' %}selected{% endif %}>Ausbildung</option>
+            <option value="praktika" {% if selected=='praktika' %}selected{% endif %}>Praktika</option>
+            <option value="heimarbeit-mini-nebenjobs" {% if selected=='heimarbeit-mini-nebenjobs' %}selected{% endif %}>Mini- &amp; Nebenjobs</option>
+            <option value="bueroarbeit-verwaltung" {% if selected=='bueroarbeit-verwaltung' %}selected{% endif %}>Büroarbeit &amp; Verwaltung</option>
+            <option value="gastronomie-tourismus" {% if selected=='gastronomie-tourismus' %}selected{% endif %}>Gastronomie &amp; Tourismus</option>
+            <option value="bau-handwerk-produktion" {% if selected=='bau-handwerk-produktion' %}selected{% endif %}>Bau, Handwerk &amp; Produktion</option>
+            <option value="vertrieb-einkauf-verkauf" {% if selected=='vertrieb-einkauf-verkauf' %}selected{% endif %}>Vertrieb, Einkauf &amp; Verkauf</option>
+        </optgroup>
+        <optgroup label="Dienstleistungen &amp; Unterricht">
+            <option value="dienstleistungen" {% if selected=='dienstleistungen' %}selected{% endif %}>Dienstleistungen (allgemein)</option>
+            <option value="umzug-transport" {% if selected=='umzug-transport' %}selected{% endif %}>Umzug &amp; Transport</option>
+            <option value="unterricht-kurse" {% if selected=='unterricht-kurse' %}selected{% endif %}>Unterricht &amp; Kurse</option>
+            <option value="nachhilfe" {% if selected=='nachhilfe' %}selected{% endif %}>Nachhilfe</option>
+            <option value="sprachkurse" {% if selected=='sprachkurse' %}selected{% endif %}>Sprachkurse</option>
+            <option value="nachbarschaftshilfe" {% if selected=='nachbarschaftshilfe' %}selected{% endif %}>Nachbarschaftshilfe</option>
+        </optgroup>
+    {% endmacro %}
     <div class="container">
         <div class="header-row">
             <h2 style="margin:0">kleinanzeigen-ai</h2>
@@ -146,8 +280,18 @@
                                 {% elif iv == 3600 %}60 Min.
                                 {% else %}einmalig{% endif %}
                             </td>
-                            <td data-label="Status"><span class="badge badge-{{ task.status }}">{{ task.status }}</span></td>
-                            <td data-label="Ergebnisse"><a href="/scrapes/{{ task.id }}/results" title="Alle gelieferten Ergebnisse anzeigen">{{ task.result_count }}</a></td>
+                            <td data-label="Status">
+                                <span class="badge badge-{{ task.status }}">{{ task.status }}</span>
+                                {% if task.status == 'failed' and task.error_message %}
+                                <div class="task-error-detail">{{ task.error_message }}</div>
+                                {% endif %}
+                            </td>
+                            <td data-label="Ergebnisse">
+                                <a href="/scrapes/{{ task.id }}/results" title="Alle gelieferten Ergebnisse anzeigen">{{ task.result_count }}</a>
+                                {% if task.last_summary %}
+                                <div class="task-smart-summary" title="Smart Alert der letzten Ausführung">✨ {{ task.last_summary }}</div>
+                                {% endif %}
+                            </td>
                             <td data-label="Token (24h)" style="font-size:12px">
                                 {% set task_tokens = token_stats.by_task | selectattr('task_id', 'equalto', task.id) | first %}
                                 {{ task_tokens.total_tokens if task_tokens else 0 }}
@@ -253,135 +397,7 @@
                     <div class="form-field">
                     <label for="category">Kategorie</label>
                     <select id="category" name="category">
-                        <option value="">Alle Kategorien</option>
-                        <optgroup label="Auto, Rad &amp; Boot">
-                            <option value="autos">Autos</option>
-                            <option value="fahrraeder">Fahrräder &amp; Zubehör</option>
-                            <option value="autoteile-reifen">Autoteile &amp; Reifen</option>
-                            <option value="boote-bootszubehoer">Boote &amp; Bootszubehör</option>
-                            <option value="motorraeder-roller">Motorräder &amp; Motorroller</option>
-                            <option value="motorraeder-roller-teile">Motorradteile &amp; Zubehör</option>
-                            <option value="anhaenger-nutzfahrzeuge">Nutzfahrzeuge &amp; Anhänger</option>
-                            <option value="wohnwagen-mobile">Wohnwagen &amp; -mobile</option>
-                        </optgroup>
-                        <optgroup label="Immobilien">
-                            <option value="wohnung-mieten">Mietwohnungen</option>
-                            <option value="wohnung-kaufen">Eigentumswohnungen</option>
-                            <option value="haus-mieten">Häuser zur Miete</option>
-                            <option value="haus-kaufen">Häuser zum Kauf</option>
-                            <option value="auf-zeit-wg">WG-Zimmer &amp; Auf Zeit</option>
-                            <option value="garage-lagerraum">Garagen &amp; Stellplätze</option>
-                            <option value="grundstuecke-garten">Grundstücke &amp; Gärten</option>
-                            <option value="gewerbeimmobilien">Gewerbeimmobilien</option>
-                            <option value="ferienwohnung-ferienhaus">Ferien- &amp; Auslandsimmobilien</option>
-                        </optgroup>
-                        <optgroup label="Haus &amp; Garten">
-                            <option value="kueche-esszimmer">Küche &amp; Esszimmer</option>
-                            <option value="wohnzimmer">Wohnzimmer</option>
-                            <option value="schlafzimmer">Schlafzimmer</option>
-                            <option value="badezimmer">Badezimmer</option>
-                            <option value="bueromoebel">Büro</option>
-                            <option value="dekoration">Dekoration</option>
-                            <option value="garten-pflanzen">Gartenzubehör &amp; Pflanzen</option>
-                            <option value="heimtextilien">Heimtextilien</option>
-                            <option value="heimwerken">Heimwerken</option>
-                            <option value="lampen-licht">Lampen &amp; Licht</option>
-                        </optgroup>
-                        <optgroup label="Mode &amp; Beauty">
-                            <option value="kleidung-damen">Damenbekleidung</option>
-                            <option value="kleidung-herren">Herrenbekleidung</option>
-                            <option value="schuhe-damen">Damenschuhe</option>
-                            <option value="schuhe-herren">Herrenschuhe</option>
-                            <option value="beauty-gesundheit">Beauty &amp; Gesundheit</option>
-                            <option value="accessoires-schmuck">Taschen &amp; Accessoires</option>
-                            <option value="uhren-schmuck">Uhren &amp; Schmuck</option>
-                        </optgroup>
-                        <optgroup label="Elektronik">
-                            <option value="multimedia-elektronik">Elektronik (allgemein)</option>
-                            <option value="handy-telekom">Handy &amp; Telefon</option>
-                            <option value="haushaltsgeraete">Haushaltsgeräte</option>
-                            <option value="audio-hifi">Audio &amp; Hifi</option>
-                            <option value="foto">Foto</option>
-                            <option value="tv-video">TV &amp; Video</option>
-                            <option value="notebooks">Notebooks</option>
-                            <option value="pcs">PCs</option>
-                            <option value="pc-zubehoer-software">PC-Zubehör &amp; Software</option>
-                            <option value="tablets-reader">Tablets &amp; Reader</option>
-                            <option value="konsolen">Konsolen</option>
-                            <option value="pc-videospiele">Videospiele</option>
-                            <option value="wearables">Wearables</option>
-                        </optgroup>
-                        <optgroup label="Familie, Kind &amp; Baby">
-                            <option value="baby-kinderkleidung">Baby- &amp; Kinderkleidung</option>
-                            <option value="baby-kinderschuhe">Baby- &amp; Kinderschuhe</option>
-                            <option value="babyausstattung">Baby-Ausstattung</option>
-                            <option value="babyschalen-kindersitze">Babyschalen &amp; Kindersitze</option>
-                            <option value="kinderwagen-buggys">Kinderwagen &amp; Buggys</option>
-                            <option value="kinderzimmermoebel">Kinderzimmermöbel</option>
-                            <option value="spielzeug">Spielzeug</option>
-                            <option value="babysitter-kinderbetreuung">Babysitter &amp; Kinderbetreuung</option>
-                            <option value="altenpflege">Altenpflege</option>
-                        </optgroup>
-                        <optgroup label="Tiere">
-                            <option value="hunde">Hunde</option>
-                            <option value="katzen">Katzen</option>
-                            <option value="kleintiere">Kleintiere</option>
-                            <option value="voegel">Vögel</option>
-                            <option value="fische">Fische</option>
-                            <option value="pferde">Pferde</option>
-                            <option value="nutztiere">Nutztiere</option>
-                            <option value="tierbetreuung-training">Tierbetreuung &amp; Training</option>
-                            <option value="zubehoer">Tierzubehör</option>
-                        </optgroup>
-                        <optgroup label="Freizeit, Hobby &amp; Nachbarschaft">
-                            <option value="sammeln">Sammeln</option>
-                            <option value="kunst">Kunst &amp; Antiquitäten</option>
-                            <option value="sport-camping">Sport &amp; Camping</option>
-                            <option value="handarbeit-basteln-kunsthandwerk">Handarbeit, Basteln &amp; Kunsthandwerk</option>
-                            <option value="modellbau">Modellbau</option>
-                            <option value="reise-eventservices">Reise &amp; Eventservices</option>
-                            <option value="freizeitaktivitaeten">Freizeitaktivitäten</option>
-                            <option value="troedel-kistenweise">Trödel</option>
-                            <option value="esoterik-spirituelles">Esoterik &amp; Spirituelles</option>
-                            <option value="verloren-gefunden">Verloren &amp; Gefunden</option>
-                        </optgroup>
-                        <optgroup label="Musik, Filme &amp; Bücher">
-                            <option value="buecher-zeitschriften">Bücher &amp; Zeitschriften</option>
-                            <option value="fachbuecher-schule-studium">Fachbücher, Schule &amp; Studium</option>
-                            <option value="film-dvd">Film &amp; DVD</option>
-                            <option value="musik-cds">Musik &amp; CDs</option>
-                            <option value="musikinstrumente">Musikinstrumente</option>
-                            <option value="comics">Comics</option>
-                        </optgroup>
-                        <optgroup label="Eintrittskarten &amp; Tickets">
-                            <option value="konzerte">Konzerte</option>
-                            <option value="klassik-kultur">Theater &amp; Musical</option>
-                            <option value="comedy-kabarett">Comedy &amp; Kabarett</option>
-                            <option value="gutscheine">Gutscheine</option>
-                        </optgroup>
-                        <optgroup label="Verschenken &amp; Tauschen">
-                            <option value="zu-verschenken">Zu verschenken</option>
-                            <option value="zu-verschenken-tauschen">Verschenken &amp; Tauschen</option>
-                            <option value="verleihen">Verleihen</option>
-                        </optgroup>
-                        <optgroup label="Jobs">
-                            <option value="jobs">Jobs (allgemein)</option>
-                            <option value="ausbildung">Ausbildung</option>
-                            <option value="praktika">Praktika</option>
-                            <option value="heimarbeit-mini-nebenjobs">Mini- &amp; Nebenjobs</option>
-                            <option value="bueroarbeit-verwaltung">Büroarbeit &amp; Verwaltung</option>
-                            <option value="gastronomie-tourismus">Gastronomie &amp; Tourismus</option>
-                            <option value="bau-handwerk-produktion">Bau, Handwerk &amp; Produktion</option>
-                            <option value="vertrieb-einkauf-verkauf">Vertrieb, Einkauf &amp; Verkauf</option>
-                        </optgroup>
-                        <optgroup label="Dienstleistungen &amp; Unterricht">
-                            <option value="dienstleistungen">Dienstleistungen (allgemein)</option>
-                            <option value="umzug-transport">Umzug &amp; Transport</option>
-                            <option value="unterricht-kurse">Unterricht &amp; Kurse</option>
-                            <option value="nachhilfe">Nachhilfe</option>
-                            <option value="sprachkurse">Sprachkurse</option>
-                            <option value="nachbarschaftshilfe">Nachbarschaftshilfe</option>
-                        </optgroup>
+                        {{ category_options() }}
                     </select>
                     </div>
 
@@ -496,9 +512,9 @@
                     <details class="promo-box">
                         <summary>
                             <span class="promo-icon">&#10024;</span>
-                            <strong>Smart Alerts &mdash; demnächst verfügbar</strong>
+                            <strong>Smart Alerts &mdash; jetzt aktiv</strong>
                         </summary>
-                        <p>KI-gestützte Angebotsbewertung, Preissenkungs-Prognosen und sofortige Treffer-Zusammenfassungen kommen hier als Nächstes hinzu.</p>
+                        <p>Angebotsbewertung gegen den Marktpreis und automatische Treffer-Zusammenfassungen sind bereits aktiv (Angebotsbewertung mit Core/Pro). Preissenkungs-Verfolgung für bereits gesehene Inserate ist als Nächstes geplant.</p>
                     </details>
 
                     <div class="wizard-actions">
@@ -711,10 +727,15 @@
             <div class="card">
                 <h3>Hintergrundsuche hinzufügen</h3>
                 <form action="/admin/searches" method="post">
-                    <label for="adm-keywords">Stichwörter</label>
-                    <input type="text" id="adm-keywords" name="keywords" placeholder="z. B. werkzeug" required>
+                    <label for="adm-keywords">Stichwörter (optional bei gesetzter Kategorie)</label>
+                    <input type="text" id="adm-keywords" name="keywords" placeholder="z. B. werkzeug">
 
-                    <label for="adm-location">Ort</label>
+                    <label for="adm-category">Kategorie</label>
+                    <select id="adm-category" name="category">
+                        {{ category_options() }}
+                    </select>
+
+                    <label for="adm-location">Ort (leer = deutschlandweit)</label>
                     <input type="text" id="adm-location" name="location" placeholder="z. B. Berlin">
 
                     <div style="display:flex;gap:12px">
@@ -725,6 +746,45 @@
                         <div style="flex:1">
                             <label for="adm-price_max">Max. Preis (€)</label>
                             <input type="number" id="adm-price_max" name="price_max" placeholder="500">
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <div style="flex:1;min-width:140px">
+                            <label for="adm-ad_type">Anzeigentyp</label>
+                            <select id="adm-ad_type" name="ad_type">
+                                <option value="">Egal</option>
+                                <option value="angebote">Angebot</option>
+                                <option value="gesuche">Gesucht</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;min-width:140px">
+                            <label for="adm-poster_type">Von</label>
+                            <select id="adm-poster_type" name="poster_type">
+                                <option value="">Egal</option>
+                                <option value="privat">Privat</option>
+                                <option value="gewerblich">Gewerblich</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;min-width:140px">
+                            <label for="adm-condition">Zustand</label>
+                            <select id="adm-condition" name="condition">
+                                <option value="">Egal</option>
+                                <option value="new_with_tag">Neu, mit Etikett</option>
+                                <option value="new">Neu</option>
+                                <option value="like_new">Wie neu</option>
+                                <option value="ok">Gut</option>
+                                <option value="alright">In Ordnung</option>
+                                <option value="defect">Defekt</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;min-width:140px">
+                            <label for="adm-shipping">Versand</label>
+                            <select id="adm-shipping" name="shipping">
+                                <option value="">Egal</option>
+                                <option value="ja">Versand möglich</option>
+                                <option value="nein">Nur Abholung</option>
+                            </select>
                         </div>
                     </div>
 
@@ -758,6 +818,7 @@
                         <tr>
                             <th>#</th>
                             <th>Stichwörter</th>
+                            <th>Kategorie</th>
                             <th>Ort</th>
                             <th>Preis</th>
                             <th>Intervall</th>
@@ -769,9 +830,10 @@
                     <tbody>
                         {% for s in admin_searches %}
                         <tr>
-                            <td>{{ s.id }}</td>
-                            <td>{{ s.keywords }}</td>
-                            <td>{{ s.location or '&mdash;' }}</td>
+                            <td>{{ s.id }}{% if s.is_rotation_managed %} <span title="Automatische Kategorie-Rotation" style="font-size:11px;color:#888">🔄</span>{% endif %}</td>
+                            <td>{{ s.keywords or '&mdash;' }}</td>
+                            <td>{{ s.category or '&mdash;' }}</td>
+                            <td>{{ s.location or 'deutschlandweit' }}</td>
                             <td style="font-size:12px;color:#666">
                                 {% if s.price_min or s.price_max %}
                                     {{ s.price_min or '0' }}–{{ s.price_max or '∞' }} €

@@ -75,6 +75,13 @@ class ScrapeTask(Base):
     url = Column(Text, nullable=False)
     status = Column(String(20), default="pending")  # pending, running, completed, failed
     parameters = Column(JSON)                       # Stores search parameters as JSON
+    # Short, user-facing explanation set when status == "failed" (e.g. "kleinanzeigen.de
+    # timed out"). Cleared on the next successful run. Full tracebacks go to Sentry, not here.
+    error_message = Column(Text)
+    # Smart Alerts: deterministic one-line summary of the most recent run that found
+    # new (non-baseline) results — see app/shared/smart_alerts.py. Not cleared between
+    # runs; simply overwritten by the next notifying run.
+    last_summary = Column(Text)
     # False until the first successful run saved its baseline results. The
     # baseline run is free — every listing is "new" then, so no credits are
     # charged and no push is sent (see app/worker/tasks.py).
@@ -191,15 +198,27 @@ class AdminSearch(Base):
     __tablename__ = "admin_searches"
 
     id = Column(Integer, primary_key=True, index=True)
-    keywords = Column(String(255), nullable=False)
+    # Nullable: category-only reference searches (e.g. the rotation task) have
+    # no keyword restriction — mirrors url_builder's category-only URL shape.
+    keywords = Column(String(255))
     category = Column(String(100))
     location = Column(String(255))
     location_id = Column(Integer)
     price_min = Column(Integer)
     price_max = Column(Integer)
     radius = Column(Integer)
+    # Same filter set as the regular user search form (POST /scrapes/) — see
+    # app/shared/url_builder.py for valid values.
+    ad_type = Column(String(20))
+    poster_type = Column(String(20))
+    condition = Column(String(20))
+    shipping = Column(String(10))
     interval_minutes = Column(Integer, nullable=False, default=30)
     is_active = Column(Boolean, nullable=False, default=True)
+    # True for rows owned/replaced by app/worker/category_rotation_task.py —
+    # lets the rotation task safely delete-and-recreate its own rows without
+    # touching searches an admin added manually via the form.
+    is_rotation_managed = Column(Boolean, nullable=False, default=False, server_default="false")
     last_run_at = Column(DateTime(timezone=True))
     next_run_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())

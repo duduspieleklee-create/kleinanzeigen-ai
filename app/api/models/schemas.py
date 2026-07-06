@@ -14,3 +14,4 @@ class ScrapeResponse(BaseModel):
     task_id: int
     status: str
     message: str
+    error_message: Optional[str] = None

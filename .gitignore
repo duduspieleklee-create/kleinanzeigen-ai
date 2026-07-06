@@ -44,6 +44,9 @@ logs/
 # Local database backups (deploy/backup.sh)
 /backups/
 
+# Claude Code: machine-local permission settings, not shared project config
+.claude/settings.local.json
+
 # Replit
 .replit
 .replit-artifact/

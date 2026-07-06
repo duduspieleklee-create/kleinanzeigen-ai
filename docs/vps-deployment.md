@@ -260,17 +260,39 @@ owns the deployment (the one with `docker` group membership):
 crontab -e
 ```
 
-Add a line running it at, e.g., 03:00 every day, logging output so cron
-failures are visible:
+Add a line running it nightly before the archival purges (`03:00`/`03:15` in
+`app/beat/celery_beat.py`), logging output so cron failures are visible:
 
 ```
-0 3 * * * /opt/kleinanzeigen-ai/deploy/backup.sh >> /opt/kleinanzeigen-ai/backups/backup.log 2>&1
+30 2 * * * /opt/kleinanzeigen-ai/deploy/backup.sh >> /opt/kleinanzeigen-ai/backups/backup.log 2>&1
 ```
 
 Backups land in `/opt/kleinanzeigen-ai/backups/` (gitignored — this directory
 lives only on the VPS). Since it's local-disk-only, a lost or wiped VPS loses
 the backups too; copy the directory off-box periodically (e.g. `scp` or
 `rsync` to another machine) if you need protection against that.
+
+This VPS's crontab already has this job installed (`crontab -l` to confirm).
+
+## Disk-usage alerts
+
+`app/shared/disk_check.py` compares `shutil.disk_usage("/")` against a
+threshold and, if exceeded, sends a Sentry `warning`-level message via the
+same `init_sentry()` used by the api/worker/beat processes (routes through
+whatever alert rules/channels are configured on the Sentry project — email,
+Slack, etc.). It's run inside the `api` container rather than directly on the
+host because the container's overlay root and the `postgres_data` volume
+share the host's underlying filesystem, so the numbers match `df /` on the
+host — and it lets the check reuse the already-configured SDK/DSN instead of
+re-implementing Sentry's ingestion protocol in shell.
+
+Cron entry (hourly, alerts at ≥85% used — adjust the threshold arg as needed):
+
+```
+0 * * * * /usr/bin/docker compose -f /opt/kleinanzeigen-ai/docker-compose.prod.yml exec -T api python -m app.shared.disk_check 85 / >> /opt/kleinanzeigen-ai/backups/disk_check.log 2>&1
+```
+
+Also already installed in this VPS's crontab.
 
 ## Adding a domain + HTTPS + Google OAuth later
 

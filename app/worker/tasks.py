@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import requests
+import sentry_sdk
+import sentry_sdk.metrics as sentry_metrics
 from bs4 import BeautifulSoup
 from sqlalchemy import or_, func
 
@@ -15,7 +17,9 @@ from app.shared.email_notifications import (
     email_configured,
     send_email_notification,
 )
+from app.shared.metrics import track_job
 from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
+from app.shared.smart_alerts import build_smart_summary
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
 from app.shared.proxy import proxies_for_requests
@@ -43,6 +47,30 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
     except Exception as e:
         logger.debug(f"Failed to extract seller info from {url}: {e}")
         return None
+
+
+def _describe_scrape_error(exc: Exception) -> str:
+    """Translate a scrape exception into a short, user-facing explanation.
+
+    Full tracebacks and exception details go to Sentry (see the except block
+    in scrape_kleinanzeigen); this is only what a non-technical user sees
+    next to their search on the dashboard.
+    """
+    if isinstance(exc, requests.exceptions.Timeout):
+        return "kleinanzeigen.de did not respond in time. This usually clears up on the next scheduled run."
+    if isinstance(exc, requests.exceptions.ConnectionError):
+        return "Could not connect to kleinanzeigen.de (network or proxy issue)."
+    if isinstance(exc, requests.exceptions.HTTPError):
+        code = exc.response.status_code if exc.response is not None else None
+        if code in (403, 429):
+            return f"kleinanzeigen.de temporarily blocked this request (HTTP {code}), likely rate-limiting."
+        if code and code >= 500:
+            return f"kleinanzeigen.de's server had an error (HTTP {code})."
+        return f"kleinanzeigen.de returned an unexpected response (HTTP {code})." if code else \
+            "kleinanzeigen.de returned an unexpected response."
+    if isinstance(exc, requests.exceptions.RequestException):
+        return "A network error occurred while reaching kleinanzeigen.de."
+    return "An unexpected error occurred while running this search. Our team has been notified."
 
 
 def _in_quiet_hours(quiet_start: str | None, quiet_end: str | None) -> bool:
@@ -206,6 +234,11 @@ def _send_push_notifications(
         db.query(PushSubscription).filter(PushSubscription.id.in_(stale)).delete(synchronize_session=False)
         db.commit()
 
+    if summary["sent"]:
+        sentry_metrics.count("notifications.push_sent", summary["sent"])
+    if summary["failed"]:
+        sentry_metrics.count("notifications.push_failed", summary["failed"])
+
     return summary
 
 
@@ -264,8 +297,11 @@ def _send_email_notifications(
         highlight=highlight,
     )
     summary["sent"] = send_email_notification(notification)
-    if not summary["sent"]:
+    if summary["sent"]:
+        sentry_metrics.count("notifications.email_sent", 1)
+    else:
         summary["errors"].append("Email send failed; see server logs.")
+        sentry_metrics.count("notifications.email_failed", 1)
     return summary
 
 
@@ -325,6 +361,8 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     db = SessionLocal()
     resolved_task_id = None
     task = None
+    job_start = time.monotonic()
+    sentry_metrics.count("job.started", 1, attributes={"job": "scrape.kleinanzeigen"})
     try:
         resolved_task_id, task = _ensure_task(db, task_id, parameters)
 
@@ -565,6 +603,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             if task:
                 if task.status != "cancelled":
                     task.status = "completed"
+                    task.error_message = None
                 # A successful run consumed the free baseline (a failed run
                 # keeps it — nothing was charged, so the retry is still free).
                 task.baseline_done = True
@@ -582,6 +621,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             highlight = None
             best_price_str = None
             best_image_url = None
+            best_title = None
             if owner and (owner.is_admin or plan_config(owner.plan).get("deal_badges")):
                 all_values = [
                     v for (v,) in db.query(ScrapeResult.price_value)
@@ -598,6 +638,18 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     highlight = f"🔥 {best[2]}: {best[1]}"
                     best_price_str = f"€{best[0]}"
                     best_image_url = best[3]
+                    best_title = best[1]
+
+            # Smart Alerts: one deterministic sentence for the dashboard, reusing
+            # the deal data computed above (so it's plan-gated for free — Basic
+            # owners never had a best_title/best_price_str set).
+            task.last_summary = build_smart_summary(
+                new_count,
+                parameters.get("keywords", ""),
+                deal_title=best_title,
+                best_price_str=best_price_str,
+            )
+            db.commit()
 
             location = parameters.get("location", "All locations")
             price_min = parameters.get("price_min")
@@ -662,6 +714,15 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 )
         # ───────────────────────────────────────────────────────────────────
 
+        sentry_metrics.count("job.completed", 1, attributes={"job": "scrape.kleinanzeigen"})
+        sentry_metrics.distribution(
+            "job.duration_ms",
+            (time.monotonic() - job_start) * 1000,
+            unit="millisecond",
+            attributes={"job": "scrape.kleinanzeigen"},
+        )
+        sentry_metrics.count("scrape.listings_found", new_count, attributes={"baseline": is_baseline})
+
         return {
             "status": "success",
             "results_saved": new_count,
@@ -669,17 +730,46 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         }
 
     except Exception as exc:
-        logger.error(f"Scraping failed: {str(exc)}")
+        # resolved_task_id covers both API-triggered and Beat-triggered paths;
+        # fall back to task_id only if _ensure_task itself raised before setting it.
+        update_id = resolved_task_id if resolved_task_id is not None else task_id
+        attempt = self.request.retries + 1
+        error_detail = _describe_scrape_error(exc)
+
+        logger.error(
+            f"Scraping failed (task_id={update_id}, attempt={attempt}): {exc}",
+            exc_info=True,
+        )
         db.rollback()
 
+        # Full context for debugging, independent of the short message shown to users.
+        sentry_sdk.capture_exception(
+            exc,
+            tags={"task_id": str(update_id), "attempt": str(attempt)},
+            contexts={
+                "scrape": {
+                    "task_id": update_id,
+                    "attempt": attempt,
+                    "keywords": parameters.get("keywords"),
+                    "location": parameters.get("location"),
+                    "url": locals().get("url"),
+                }
+            },
+        )
+        sentry_metrics.count("job.failed", 1, attributes={"job": "scrape.kleinanzeigen"})
+        sentry_metrics.distribution(
+            "job.duration_ms",
+            (time.monotonic() - job_start) * 1000,
+            unit="millisecond",
+            attributes={"job": "scrape.kleinanzeigen"},
+        )
+
         try:
-            # resolved_task_id covers both API-triggered and Beat-triggered paths;
-            # fall back to task_id only if _ensure_task itself raised before setting it.
-            update_id = resolved_task_id if resolved_task_id is not None else task_id
             if update_id is not None:
                 failed_task = db.query(ScrapeTask).filter(ScrapeTask.id == update_id).first()
                 if failed_task:
                     failed_task.status = "failed"
+                    failed_task.error_message = error_detail
                     db.commit()
         except Exception:
             pass
@@ -698,31 +788,37 @@ def dispatch_admin_searches():
     """Dispatches scrape tasks for all due admin-configured searches."""
     db = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
-        searches = (
-            db.query(AdminSearch)
-            .filter(
-                AdminSearch.is_active.is_(True),
-                or_(AdminSearch.next_run_at.is_(None), AdminSearch.next_run_at <= now),
+        with track_job("scrape.dispatch_admin_searches"):
+            now = datetime.now(timezone.utc)
+            searches = (
+                db.query(AdminSearch)
+                .filter(
+                    AdminSearch.is_active.is_(True),
+                    or_(AdminSearch.next_run_at.is_(None), AdminSearch.next_run_at <= now),
+                )
+                .all()
             )
-            .all()
-        )
-        for search in searches:
-            parameters = {k: v for k, v in {
-                "keywords": search.keywords,
-                "category": search.category,
-                "location": search.location,
-                "location_id": search.location_id,
-                "price_min": search.price_min,
-                "price_max": search.price_max,
-                "radius": search.radius,
-            }.items() if v is not None}
-            scrape_kleinanzeigen.apply_async(args=[parameters])
-            search.last_run_at = now
-            search.next_run_at = now + timedelta(minutes=search.interval_minutes)
-            logger.info(f"Dispatched admin search id={search.id} keywords={search.keywords}")
-        if searches:
-            db.commit()
+            for search in searches:
+                parameters = {k: v for k, v in {
+                    "keywords": search.keywords,
+                    "category": search.category,
+                    "location": search.location,
+                    "location_id": search.location_id,
+                    "price_min": search.price_min,
+                    "price_max": search.price_max,
+                    "radius": search.radius,
+                    "ad_type": search.ad_type,
+                    "poster_type": search.poster_type,
+                    "condition": search.condition,
+                    "shipping": search.shipping,
+                }.items() if v is not None}
+                scrape_kleinanzeigen.apply_async(args=[parameters])
+                search.last_run_at = now
+                search.next_run_at = now + timedelta(minutes=search.interval_minutes)
+                logger.info(f"Dispatched admin search id={search.id} keywords={search.keywords}")
+            if searches:
+                db.commit()
+            sentry_metrics.count("admin_search.dispatched", len(searches))
     except Exception as e:
         logger.error(f"dispatch_admin_searches failed: {e}")
         db.rollback()

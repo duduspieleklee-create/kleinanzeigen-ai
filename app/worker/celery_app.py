@@ -25,6 +25,7 @@ celery_app = Celery(
     include=[
         "app.worker.tasks",
         "app.worker.archival_task",
+        "app.worker.category_rotation_task",
     ],
 )
 

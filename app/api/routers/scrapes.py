@@ -232,6 +232,7 @@ async def stream_task_updates(
                     "result_count": count,
                     "parameters": t.parameters or {},
                     "url": t.url,
+                    "error_message": t.error_message if t.status == "failed" else None,
                 }
                 for t, count in rows
             ]
@@ -393,6 +394,7 @@ async def get_scrape_status(
         task_id=task.id,
         status=task.status,
         message=f"{result_count} result(s) saved",
+        error_message=task.error_message if task.status == "failed" else None,
     )
 
 

@@ -27,6 +27,13 @@ celery_app.conf.beat_schedule = {
         "task": "archival.cleanup_old_token_usage",
         "schedule": crontab(hour=3, minute=15),
     },
+    # Admin-search category rotation (app/worker/category_rotation_task.py) —
+    # checked every 6h; the task itself only acts once ROTATION_INTERVAL_DAYS
+    # (3.5 days) has elapsed since the current batch started.
+    "rotate-admin-search-categories": {
+        "task": "admin_search.rotate_categories",
+        "schedule": crontab(minute=5, hour="*/6"),
+    },
 }
 
 celery_app.conf.timezone = "Europe/Berlin"

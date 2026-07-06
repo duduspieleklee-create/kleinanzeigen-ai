@@ -71,31 +71,50 @@ def send_test_notification(
 
 @router.post("/searches")
 def create_admin_search(
-    keywords: str = Form(...),
+    keywords: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     location: Optional[str] = Form(None),
     location_id: Optional[int] = Form(None),
     price_min: Optional[int] = Form(None),
     price_max: Optional[int] = Form(None),
     radius: Optional[int] = Form(None),
+    ad_type: Optional[str] = Form(None),
+    poster_type: Optional[str] = Form(None),
+    condition: Optional[str] = Form(None),
+    shipping: Optional[str] = Form(None),
     interval_minutes: int = Form(30),
     db: Session = Depends(get_db),
     _: dict = Depends(require_admin),
 ):
+    keywords = keywords or None
+    category = category or None
+    if not keywords and not category:
+        response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+        response.set_cookie(
+            "flash_error", "Bitte Stichwörter oder Kategorie angeben", max_age=10
+        )
+        return response
+
     search = AdminSearch(
         keywords=keywords,
-        category=category or None,
+        category=category,
         location=location or None,
         location_id=location_id,
         price_min=price_min,
         price_max=price_max,
         radius=radius,
+        ad_type=ad_type or None,
+        poster_type=poster_type or None,
+        condition=condition or None,
+        shipping=shipping or None,
         interval_minutes=interval_minutes,
     )
     db.add(search)
     db.commit()
     response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
-    response.set_cookie("flash_success", f"Admin search '{keywords}' created", max_age=10)
+    response.set_cookie(
+        "flash_success", f"Admin search '{keywords or category}' created", max_age=10
+    )
     return response
 
 

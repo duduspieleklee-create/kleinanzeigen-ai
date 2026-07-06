@@ -1356,6 +1356,20 @@ tbody tr:hover td {
   color: #b3261e;
 }
 
+.task-error-detail {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #b3261e;
+  max-width: 220px;
+}
+
+.task-smart-summary {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b6b76;
+  max-width: 220px;
+}
+
 .badge-cancelled {
   background: #f1f1f5;
   color: #6b6b76;
