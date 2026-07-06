@@ -59,6 +59,8 @@ something to check, even though neither is an HTTP service.
 
 `VPS_PORT` is an optional secret (defaults to `22`) if the VPS uses a non-standard SSH port.
 
+Optional secrets the `deploy` job injects into the server's `.env` when set: `RESEND_API_KEY`, `EMAIL_FROM`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` (Cloudflare Turnstile bot protection on the login/register forms — see [turnstile.md](turnstile.md)).
+
 ## Local Development
 
 Docker Compose brings up PostgreSQL, Redis, the API, worker, and beat together. See `docker-compose.yml` and `.env.example`.
