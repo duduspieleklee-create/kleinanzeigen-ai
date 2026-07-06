@@ -4,7 +4,8 @@ Values come from settings, which read them from environment variables baked
 into the Docker image at build time (see app/api/Dockerfile and the CI build
 job). Import BUILD_INFO wherever the version needs to be displayed, and call
 register_globals() on any Jinja2Templates instance whose templates render
-the {{ build_info }} footer (currently only the settings page).
+the {{ build_info }} footer, or reference build_info.commit_short for
+cache-busting static asset URLs (e.g. /static/style.css?v=...).
 """
 from app.api.config import settings
 
