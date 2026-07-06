@@ -9,6 +9,6 @@
 #
 # See the "Hostname options" section of docs/vps-deployment.md if you
 # only have a bare IP and no hostname at all.
-your-domain-or-xip-hostname {
+kleeblatt.space, www.kleeblatt.space {
 	reverse_proxy 127.0.0.1:8000
 }

@@ -76,6 +76,7 @@ jobs:
   # 3. Deploy — SSH into the VPS, pull, migrate, restart.
   #    Only on a push to main (never on PRs); requires VPS_HOST,
   #    VPS_USER and VPS_SSH_PASSWORD secrets (see docs/vps-deployment.md).
+  #    Also injects RESEND_API_KEY and EMAIL_FROM into /opt/kleinanzeigen-ai/.env
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -93,6 +94,20 @@ jobs:
             set -e
             cd /opt/kleinanzeigen-ai
             git pull
+            if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
+              if grep -q '^RESEND_API_KEY=' .env; then
+                sed -i "s/^RESEND_API_KEY=.*/RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}/" .env
+              else
+                printf '\nRESEND_API_KEY=%s\n' "${{ secrets.RESEND_API_KEY }}" >> .env
+              fi
+            fi
+            if [ -n "${{ secrets.EMAIL_FROM }}" ]; then
+              if grep -q '^EMAIL_FROM=' .env; then
+                sed -i "s|^EMAIL_FROM=.*|EMAIL_FROM=${{ secrets.EMAIL_FROM }}|" .env
+              else
+                printf '\nEMAIL_FROM=%s\n' "${{ secrets.EMAIL_FROM }}" >> .env
+              fi
+            fi
             docker compose -f docker-compose.prod.yml build api
             docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
             docker compose -f docker-compose.prod.yml up -d --build
