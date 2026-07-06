@@ -4061,7 +4061,7 @@ body.landing-page {
 }
 
 .lp-shell {
-  max-width: 720px;
+  max-width: 460px;
   margin: 0 auto;
   padding: 20px 12px 48px;
 }
@@ -4104,18 +4104,6 @@ body.landing-page {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-}
-
-.lp-nav-link {
-  color: var(--lp-muted);
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.lp-nav-link:hover {
-  color: var(--lp-navy);
 }
 
 .lp-nav-cta {
@@ -4166,8 +4154,7 @@ body.landing-page {
   align-items: center;
 }
 
-.lp-hero-cta,
-.lp-hero-secondary {
+.lp-hero-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4180,9 +4167,6 @@ body.landing-page {
   width: 100%;
   max-width: 320px;
   box-sizing: border-box;
-}
-
-.lp-hero-cta {
   background: var(--lp-green);
   color: #fff;
 }
@@ -4190,16 +4174,6 @@ body.landing-page {
 .lp-hero-cta:hover {
   background: var(--lp-green-dark);
   color: #fff;
-}
-
-.lp-hero-secondary {
-  background: transparent;
-  color: var(--lp-navy);
-  border: 1px solid var(--lp-border);
-}
-
-.lp-hero-secondary:hover {
-  border-color: var(--lp-subtle);
 }
 
 @media (min-width: 561px) {
@@ -4211,13 +4185,7 @@ body.landing-page {
     font-size: 36px;
   }
 
-  .lp-hero-actions {
-    flex-direction: row;
-    justify-content: center;
-  }
-
-  .lp-hero-cta,
-  .lp-hero-secondary {
+  .lp-hero-cta {
     width: auto;
   }
 }
@@ -4290,8 +4258,6 @@ body.landing-page {
 
 @media (min-width: 561px) {
   .lp-benefits {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
     padding: 4px 28px 28px;
     gap: 14px;
   }
@@ -4337,11 +4303,6 @@ body.landing-page {
   color: var(--lp-tangerine);
 }
 
-.lp-benefit-icon-navy {
-  background: rgba(20, 43, 34, 0.08);
-  color: var(--lp-navy);
-}
-
 .lp-benefit-card h3 {
   font-family: var(--lp-font-display);
   font-size: 14px;
@@ -4366,77 +4327,5 @@ body.landing-page {
 
 .lp-card-footer a {
   color: var(--lp-muted);
-  text-decoration: underline;
-}
-
-/* ---------- pricing section -------------------------------------------------- */
-
-.lp-pricing {
-  padding: 40px 4px 0;
-}
-
-.lp-section-title {
-  text-align: center;
-  font-family: var(--lp-font-display);
-  font-size: 21px;
-  font-weight: 700;
-  color: var(--lp-navy);
-  margin: 0 0 4px;
-}
-
-.lp-pricing-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-  margin-top: 20px;
-}
-
-@media (min-width: 561px) {
-  .lp-pricing-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 18px;
-  }
-}
-
-.lp-pricing .plan-card {
-  border-color: var(--lp-border);
-}
-
-.lp-pricing .plan-featured,
-.lp-pricing .lp-plan-featured {
-  border-color: var(--lp-green);
-  box-shadow: 0 4px 14px rgba(47, 191, 113, 0.16);
-}
-
-.lp-pricing .lp-plan-ribbon {
-  background: var(--lp-green);
-}
-
-.lp-plan-btn {
-  display: block;
-  text-align: center;
-  text-decoration: none;
-  box-sizing: border-box;
-  background: var(--lp-green);
-  color: #fff;
-}
-
-.lp-plan-btn:hover {
-  background: var(--lp-green-dark);
-  color: #fff;
-}
-
-.lp-pricing-link {
-  text-align: center;
-  margin: 18px 0 8px;
-}
-
-.lp-pricing-link a {
-  color: var(--lp-green-dark);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.lp-pricing-link a:hover {
   text-decoration: underline;
 }

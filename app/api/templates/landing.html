@@ -58,10 +58,7 @@
         <div class="lp-card">
             <nav class="lp-nav">
                 <span class="lp-wordmark">Kleinanzeigen.de Helfer</span>
-                <div class="lp-nav-actions">
-                    <a href="/login" class="lp-nav-link">Anmelden</a>
-                    <a href="/auth/register" class="lp-nav-cta">Gratis Probeabo</a>
-                </div>
+                <a href="/auth/register" class="lp-nav-cta">Gratis Probeabo</a>
             </nav>
 
             <header class="lp-hero">
@@ -74,15 +71,13 @@
                 </div>
                 <h1>Nie wieder ein gutes Angebot verpassen</h1>
                 <p class="lp-hero-sub">
-                    Kleinanzeigen.de Helfer überwacht deine gespeicherten Kleinanzeigen-Suchen automatisch —
-                    rund um die Uhr, mit Sofort-Benachrichtigungen und einem fairen Preis-Check.
+                    KI überwacht deine Kleinanzeigen-Suchen automatisch — rund um die Uhr.
                 </p>
                 <div class="lp-hero-actions">
                     <a href="/auth/register" class="lp-hero-cta">
                         Kostenlos starten
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </a>
-                    <a href="/billing" class="lp-hero-secondary">Preise ansehen</a>
                 </div>
             </header>
 
@@ -114,46 +109,12 @@
                         <p>Die KI zeigt dir, ob ein Angebot fair ist.</p>
                     </div>
                 </div>
-                <div class="lp-benefit-card">
-                    <div class="lp-benefit-icon lp-benefit-icon-navy">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-                    </div>
-                    <div>
-                        <h3>Vertrauenswürdige Verkäufer</h3>
-                        <p>Ein Trust Score hilft dir, unseriöse Angebote zu meiden.</p>
-                    </div>
-                </div>
             </section>
 
             <div class="lp-card-footer">
                 Ab 0€ · <a href="/billing">Preise ansehen</a>
             </div>
         </div>
-
-        <section class="lp-pricing">
-            <h2 class="lp-section-title">Für jeden Bedarf der passende Plan</h2>
-            <div class="lp-pricing-grid">
-                {% for key, cfg in plans.items() %}
-                <div class="plan-card{% if key == 'core' %} lp-plan-featured{% endif %}">
-                    {% if key == 'core' %}<div class="plan-ribbon lp-plan-ribbon">Beliebt</div>{% endif %}
-                    <h3>{{ cfg.label }}</h3>
-                    <ul class="plan-features">
-                        <li><strong>{{ cfg.credits_per_week }}</strong> Credits / Woche</li>
-                        <li>Bis zu <strong>{{ cfg.max_active_searches }}</strong> laufende Suchen</li>
-                        <li>
-                            {% if cfg.min_interval_seconds <= 60 %}
-                                <strong>Sofort-Benachrichtigungen</strong>
-                            {% else %}
-                                Intervalle ab {{ cfg.min_interval_seconds // 60 }} Minuten
-                            {% endif %}
-                        </li>
-                    </ul>
-                    <a href="/auth/register" class="plan-btn lp-plan-btn">Loslegen</a>
-                </div>
-                {% endfor %}
-            </div>
-            <p class="lp-pricing-link"><a href="/billing">Alle Preise &amp; Details ansehen →</a></p>
-        </section>
     </div>
 
     {% include "_version_footer.html" %}
