@@ -106,6 +106,13 @@ async def login(
     user = db.query(User).filter(User.username == username).first()
 
     if user:
+        if not user.is_active:
+            return templates.TemplateResponse(
+                "login.html",
+                {"request": request, "error": "Invalid username or password",
+                 "google_enabled": bool(settings.google_client_id)},
+                status_code=401,
+            )
         if not _verify(password, user.hashed_password):
             return templates.TemplateResponse(
                 "login.html",
@@ -118,8 +125,10 @@ async def login(
         and username == settings.app_username
         and password == settings.app_password
     ):
-        # Settings-based bootstrap admin — find or create in DB so FK
-        # constraints hold, and make sure the row is flagged as admin.
+        # Settings-based bootstrap admin — create only if missing.
+        # If the row already exists but is not admin, reject instead of
+        # silently escalating it; otherwise this shared credential becomes
+        # an unintended privilege-escalation path.
         user = db.query(User).filter(User.username == settings.app_username).first()
         if not user:
             user = User(
@@ -134,10 +143,9 @@ async def login(
             db.add(user)
             db.commit()
             db.refresh(user)
-        elif not user.is_admin:
-            user.is_admin = True
-            db.commit()
-            db.refresh(user)
+            return _issue_cookie(user.id, user.username)
+        if user.is_admin:
+            return _issue_cookie(user.id, user.username)
     else:
         return templates.TemplateResponse(
             "login.html",

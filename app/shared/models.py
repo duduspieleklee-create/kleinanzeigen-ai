@@ -101,7 +101,7 @@ class ScrapeResult(Base):
     price = Column(String(50))
     price_value = Column(Integer)                   # parsed euros (0=free, null=unknown)
     location = Column(String(100))
-    url = Column(Text)
+    url = Column(Text)  # unique per task enforced by DB index scrape_results_task_id_url_idx
     image_url = Column(Text)                        # listing thumbnail
     description = Column(Text)
     raw_data = Column(JSON)                         # Optional: store full raw data
