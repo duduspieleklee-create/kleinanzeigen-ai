@@ -226,10 +226,14 @@ Actions**:
 above). To do it manually — e.g. to test a branch, or if CI is down:
 ```bash
 cd /opt/kleinanzeigen-ai
-git pull
-docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
-docker compose -f docker-compose.prod.yml up -d --build
+./deploy/deploy.sh
 ```
+This pulls, rebuilds the `api` image with the real `GIT_SHA`/`APP_VERSION`/
+`BUILD_TIME` (so the version stamp in the UI footer matches what's actually
+deployed, the same as the CI job does for `main`), runs migrations, then
+restarts all services. Running the raw `docker compose build` command
+yourself instead skips that and falls back to the Dockerfile's placeholder
+values ("local"/"dev"/"unknown").
 
 **View logs:**
 ```bash
