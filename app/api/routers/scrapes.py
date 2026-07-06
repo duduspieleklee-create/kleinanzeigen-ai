@@ -15,9 +15,11 @@ from app.shared.pricing import deal_badge, median_price
 from app.shared.plans import plan_config, ensure_weekly_credits
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
+from app.api.version import register_globals
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
+register_globals(templates)
 
 MIN_INTERVAL_PROD = 60  # 1 minute — enforced in non-dev environments (Pro's floor)
 

@@ -16,11 +16,13 @@ from app.api.dependencies import (
 )
 from app.api.emailer import email_configured, send_verification_email
 from app.api.security import limiter
+from app.api.version import register_globals
 from app.shared.database import get_db
 from app.shared.models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
+register_globals(templates)
 
 
 def _pw_bytes(plain: str) -> bytes:
