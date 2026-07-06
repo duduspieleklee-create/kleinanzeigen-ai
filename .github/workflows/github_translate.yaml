@@ -18,6 +18,5 @@ jobs:
               uses: Lin-jun-xiang/action-translate-readme@v2 # Based on the tag
               with:
                 token: ${{ secrets.AUTO_TRANSLATE }} # Based on step2 name
-                zhipuai: ${{ secrets.zhipuai_api_key }} # Optional: Based on step3
-                openai: ${{ secrets.openai_api_key }}  # Optional: Based on step3
+                tional: Based on step3
                 langs: "en,zh-TW,zh-CN,French,Arabic" # You can define any langs
