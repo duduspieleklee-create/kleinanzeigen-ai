@@ -161,7 +161,10 @@ async def login(
 
 @router.get("/register")
 async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(
+        "register.html",
+        {"request": request, "google_enabled": bool(settings.google_client_id)},
+    )
 
 
 @router.post("/register")
@@ -177,26 +180,48 @@ async def register(
     if password != confirm_password:
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": "Passwords do not match", "username": username, "email": email},
+            {
+                "request": request,
+                "error": "Passwords do not match",
+                "username": username,
+                "email": email,
+                "google_enabled": bool(settings.google_client_id),
+            },
             status_code=400,
         )
     if len(password) < 8:
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": "Password must be at least 8 characters", "username": username, "email": email},
+            {
+                "request": request,
+                "error": "Password must be at least 8 characters",
+                "username": username,
+                "email": email,
+                "google_enabled": bool(settings.google_client_id),
+            },
             status_code=400,
         )
     email = email.strip().lower()
     if db.query(User).filter(User.username == username).first():
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": "Username already taken", "email": email},
+            {
+                "request": request,
+                "error": "Username already taken",
+                "email": email,
+                "google_enabled": bool(settings.google_client_id),
+            },
             status_code=400,
         )
     if db.query(User).filter(User.email == email).first():
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": "Email already registered", "username": username},
+            {
+                "request": request,
+                "error": "Email already registered",
+                "username": username,
+                "google_enabled": bool(settings.google_client_id),
+            },
             status_code=400,
         )
 
