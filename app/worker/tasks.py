@@ -1,11 +1,13 @@
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
-from sqlalchemy import or_
+from sqlalchemy import or_, func
+from sqlalchemy.exc import IntegrityError
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
@@ -36,7 +38,7 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=6)
         response.raise_for_status()
         return extract_seller_info(response.text)
     except Exception as e:
@@ -359,8 +361,17 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         if proxies:
             logger.info(f"Using rotating proxy for scrape (task_id={resolved_task_id})")
 
-        response = requests.get(url, headers=headers, timeout=20, proxies=proxies)
-        response.raise_for_status()
+        response = None
+        for attempt in range(3):
+            try:
+                response = requests.get(url, headers=headers, timeout=20, proxies=proxies)
+                response.raise_for_status()
+                break
+            except requests.RequestException as exc:
+                if attempt == 2:
+                    raise
+                logger.warning(f"Scrape request failed (attempt {attempt + 1}): {exc}")
+                time.sleep(1)
 
         soup = BeautifulSoup(response.text, "lxml")
 
@@ -524,6 +535,29 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
         db.commit()
 
+        # If the duplicate unique-index was missed by in-memory dedupe, drop
+        # any now-duplicate rows surfaced by the DB constraint without failing
+        # the whole task.
+        if IntegrityError is not None:
+            try:
+                dupes = (
+                    db.query(ScrapeResult)
+                    .filter(ScrapeResult.task_id == resolved_task_id)
+                    .group_by(ScrapeResult.url)
+                    .having(func.count(ScrapeResult.id) > 1)
+                    .all()
+                )
+                for d in dupes:
+                    db.query(ScrapeResult).filter(
+                        ScrapeResult.task_id == resolved_task_id,
+                        ScrapeResult.url == d.url,
+                        ScrapeResult.id != d.id,
+                    ).delete(synchronize_session=False)
+                if dupes:
+                    db.commit()
+            except Exception as exc:
+                logger.warning(f"Duplicate cleanup skipped: {exc}")
+
         # Track token usage for this run
         # Estimate: ~1 token per result (for seller data extraction + processing)
         if task and new_count > 0:
@@ -655,7 +689,10 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         except Exception:
             pass
 
-        raise self.retry(exc=exc, countdown=120)
+        retries = self.request.retries
+        countdown = min(2 ** retries * 60, 600)
+        logger.info(f"Retrying in {countdown}s (attempt {retries + 1})")
+        raise self.retry(exc=exc, countdown=countdown)
 
     finally:
         db.close()
