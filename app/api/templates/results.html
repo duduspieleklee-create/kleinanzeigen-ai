@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Results · {{ task.parameters.get('keywords', 'Search') }} · kleinanzeigen-ai</title>
+    <title>Ergebnisse · {{ task.parameters.get('keywords', 'Suche') }} · kleinanzeigen-ai</title>
+    <meta name="description" content="Suchergebnisse für deine kleinanzeigen.de-Suche. Überwache neue Treffer in Echtzeit mit kleinanzeigen-ai.">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#007bff">
     <link rel="stylesheet" href="/static/style.css">
@@ -18,19 +19,26 @@
 </head>
 <body class="results-page">
     <div class="topbar">
-        <a class="back" href="/dashboard">&larr; Back to dashboard</a>
+        <a class="back" href="/dashboard">&larr; Zurück zum Dashboard</a>
     </div>
 
     <div class="wrap">
         <div class="summary">
-            <h1>{{ task.parameters.get('keywords', 'Search') }}
-                <span class="count-badge">{{ total_count }} result(s)</span>
-                {% if new_count > 0 %}<span class="badge-new">{{ new_count }} new</span>{% endif %}
+            <h1>{{ task.parameters.get('keywords', 'Suche') }}
+                <span class="count-badge">{{ total_count }} Ergebnis(se)</span>
+                {% if new_count > 0 %}<span class="badge-new">{{ new_count }} neu</span>{% endif %}
             </h1>
             <div class="meta">
-                Search #{{ task.id }} · status {{ task.status }}
-                {% if task.parameters.get('location') %} · {{ task.parameters.get('location') }}{% endif %}
-                {% if median %} · median <strong>{{ median | round | int }} €</strong>{% endif %}
+                Suche #{{ task.id }} &middot; Status: 
+                <strong>
+                    {% if task.status == 'completed' %}bereit
+                    {% elif task.status == 'running' %}läuft
+                    {% elif task.status == 'pending' %}ausstehend
+                    {% elif task.status == 'failed' %}fehlgeschlagen
+                    {% else %}{{ task.status }}{% endif %}
+                </strong>
+                {% if task.parameters.get('location') %} &middot; {{ task.parameters.get('location') }}{% endif %}
+                {% if median %} &middot; Median: <strong>{{ median | round | int }} €</strong>{% endif %}
             </div>
             {% set parts = [] %}
             {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
@@ -38,22 +46,22 @@
             {% endif %}
             {% if task.parameters.get('radius') %}{% set _ = parts.append((task.parameters.get('radius')|string) ~ ' km') %}{% endif %}
             {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
-            {% if parts %}<div class="filters">Filters: {{ parts | join(', ') }}</div>{% endif %}
+            {% if parts %}<div class="filters">Filter: {{ parts | join(', ') }}</div>{% endif %}
             {% if not show_deals %}
-            <div class="filters">Deal badges are a Core/Pro feature &mdash; <a href="/billing">upgrade</a> to unlock them.</div>
+            <div class="filters">Deal-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">führe ein Upgrade durch</a>, um sie freizuschalten.</div>
             {% endif %}
         </div>
 
         {# ── Tab bar (horizontally scrollable on mobile, see style.css) ──── #}
         {% set has_tabs = new_count > 0 or location_tabs %}
         {% if has_tabs %}
-        <nav class="tab-bar" aria-label="Filter results">
+        <nav class="tab-bar" aria-label="Ergebnisse filtern">
             <a href="?tab=all&page=1" class="{{ 'active' if tab == 'all' else '' }}">
-                All <span class="tab-count">{{ total_count }}</span>
+                Alle <span class="tab-count">{{ total_count }}</span>
             </a>
             {% if new_count > 0 %}
             <a href="?tab=new&page=1" class="{{ 'active' if tab == 'new' else '' }}">
-                New <span class="tab-count">{{ new_count }}</span>
+                Neu <span class="tab-count">{{ new_count }}</span>
             </a>
             {% endif %}
             {% for loc in location_tabs %}
@@ -71,15 +79,15 @@
                 {% if r.image_url %}
                 <img class="thumb" src="{{ r.image_url }}" alt="" loading="lazy"
                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                <div class="thumb-placeholder" style="display:none">No image</div>
+                <div class="thumb-placeholder" style="display:none">Kein Bild</div>
                 {% else %}
-                <div class="thumb-placeholder">No image</div>
+                <div class="thumb-placeholder">Kein Bild</div>
                 {% endif %}
                 <div class="card-body">
                     <span class="price-row">
                         <span class="card-price">{{ r.price }}</span>
-                        {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
-                        {% if r.is_new %}<span class="badge-new">new</span>{% endif %}
+                        {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label.replace('below market', 'unter Marktwert').replace('Fair price', 'Fairer Preis').replace('above market', 'über Marktwert') }}</span>{% endif %}
+                        {% if r.is_new %}<span class="badge-new">neu</span>{% endif %}
                     </span>
                     <span class="card-title">{{ r.title }}</span>
                     {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
@@ -96,7 +104,7 @@
         {% if total_pages > 1 %}
         <div class="pagination">
             {% if page > 1 %}
-            <a href="?tab={{ tab }}&page={{ page - 1 }}" aria-label="Previous">&laquo;</a>
+            <a href="?tab={{ tab }}&page={{ page - 1 }}" aria-label="Vorherige">&laquo;</a>
             {% else %}
             <span class="disabled">&laquo;</span>
             {% endif %}
@@ -112,19 +120,19 @@
             {% endfor %}
 
             {% if page < total_pages %}
-            <a href="?tab={{ tab }}&page={{ page + 1 }}" aria-label="Next">&raquo;</a>
+            <a href="?tab={{ tab }}&page={{ page + 1 }}" aria-label="Nächste">&raquo;</a>
             {% else %}
             <span class="disabled">&raquo;</span>
             {% endif %}
 
-            <span class="page-info">{{ (page - 1) * 10 + 1 }}–{{ [page * 10, total_in_tab] | min }} of {{ total_in_tab }}</span>
+            <span class="page-info">{{ (page - 1) * 10 + 1 }}–{{ [page * 10, total_in_tab] | min }} von {{ total_in_tab }}</span>
         </div>
         {% endif %}
 
         {% else %}
         <div class="empty">
-            {% if tab != 'all' %}No results in this filter — <a href="?tab=all&page=1">view all</a>.
-            {% else %}No results delivered yet for this search.{% endif %}
+            {% if tab != 'all' %}Keine Ergebnisse in diesem Filter &mdash; <a href="?tab=all&page=1">Alle anzeigen</a>.
+            {% else %}Für diese Suche wurden noch keine Ergebnisse geliefert.{% endif %}
         </div>
         {% endif %}
     </div>

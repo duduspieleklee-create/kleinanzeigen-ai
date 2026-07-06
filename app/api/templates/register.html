@@ -1,50 +1,65 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - kleinanzeigen-ai</title>
+    <title>Registrieren - kleinanzeigen-ai</title>
+    <meta name="description" content="Erstelle ein Konto bei kleinanzeigen-ai, um automatische Benachrichtigungen für deine kleinanzeigen.de-Suchen einzurichten.">
+    <link rel="canonical" href="https://kleinanzeigen-ai.de/auth/register">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#007bff">
     <link rel="stylesheet" href="/static/style.css">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://kleinanzeigen-ai.de/auth/register">
+    <meta property="og:title" content="Registrieren - kleinanzeigen-ai">
+    <meta property="og:description" content="Erstelle ein Konto bei kleinanzeigen-ai, um automatische Benachrichtigungen für deine kleinanzeigen.de-Suchen einzurichten.">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:url" content="https://kleinanzeigen-ai.de/auth/register">
+    <meta property="twitter:title" content="Registrieren - kleinanzeigen-ai">
+    <meta property="twitter:description" content="Erstelle ein Konto bei kleinanzeigen-ai, um automatische Benachrichtigungen für deine kleinanzeigen.de-Suchen einzurichten.">
 </head>
 <body class="auth-page">
     <div class="register-container">
         <h2>kleinanzeigen-ai</h2>
-        <p class="subtitle">Create your account</p>
+        <p class="subtitle">Erstelle dein Konto</p>
 
         <form method="post" action="/auth/register">
             <div class="form-group">
-                <label for="username">Username</label>
+                <label for="username">Benutzername</label>
                 <input type="text" id="username" name="username"
                        value="{{ username if username is defined else '' }}"
                        autocomplete="username" required autofocus>
             </div>
             <div class="form-group">
-                <label for="email">Email</label>
+                <label for="email">E-Mail</label>
                 <input type="email" id="email" name="email"
                        value="{{ email if email is defined else '' }}"
                        autocomplete="email" required>
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
+            <div class="form-group password-field">
+                <label for="password">Passwort</label>
                 <input type="password" id="password" name="password" autocomplete="new-password" required>
-                <p class="hint">Minimum 8 characters</p>
+                <button type="button" class="password-toggle" data-target="password" aria-label="Passwort anzeigen">Anzeigen</button>
+                <p class="hint" style="margin-top: 4px;">Mindestens 8 Zeichen</p>
             </div>
-            <div class="form-group">
-                <label for="confirm_password">Confirm password</label>
+            <div class="form-group password-field">
+                <label for="confirm_password">Passwort bestätigen</label>
                 <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
+                <button type="button" class="password-toggle" data-target="confirm_password" aria-label="Passwort bestätigen anzeigen">Anzeigen</button>
             </div>
-            <button type="submit" class="register-btn">Create account</button>
+            <button type="submit" class="register-btn">Konto erstellen</button>
         </form>
 
         {% if error is defined and error %}
         <p class="error-msg">{{ error }}</p>
         {% endif %}
 
-        <p class="login-link">Already have an account? <a href="/login">Sign in</a></p>
+        <p class="login-link">Bereits ein Konto? <a href="/login">Anmelden</a></p>
     </div>
-
 
     <script>
         // Register the service worker so the app is installable as a PWA
@@ -52,6 +67,18 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(function () {});
         }
+
+        // Password show/hide toggle logic
+        document.querySelectorAll('.password-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var input = document.getElementById(btn.dataset.target);
+                if (!input) return;
+                var showing = input.type === 'text';
+                input.type = showing ? 'password' : 'text';
+                btn.textContent = showing ? 'Anzeigen' : 'Verbergen';
+                btn.setAttribute('aria-label', showing ? 'Passwort anzeigen' : 'Passwort verbergen');
+            });
+        });
     </script>
 </body>
 </html>

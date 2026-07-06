@@ -1,21 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plans &amp; Pricing - kleinanzeigen-ai</title>
+    <title>Tarife &amp; Preise - kleinanzeigen-ai</title>
+    <meta name="description" content="Übersicht der Tarife und Preise für kleinanzeigen-ai. Finde den passenden Plan für deine automatische Suchüberwachung auf kleinanzeigen.de.">
+    <link rel="canonical" href="https://kleinanzeigen-ai.de/billing">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#007bff">
     <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://kleinanzeigen-ai.de/billing">
+    <meta property="og:title" content="Tarife &amp; Preise - kleinanzeigen-ai">
+    <meta property="og:description" content="Übersicht der Tarife und Preise für kleinanzeigen-ai. Finde den passenden Plan für deine automatische Suchüberwachung auf kleinanzeigen.de.">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:url" content="https://kleinanzeigen-ai.de/billing">
+    <meta property="twitter:title" content="Tarife &amp; Preise - kleinanzeigen-ai">
+    <meta property="twitter:description" content="Übersicht der Tarife und Preise für kleinanzeigen-ai. Finde den passenden Plan für deine automatische Suchüberwachung auf kleinanzeigen.de.">
 </head>
 <body class="dashboard-page">
     <div class="container">
         <div class="header-row">
-            <h2 style="margin:0">Plans &amp; Pricing</h2>
+            <h2 style="margin:0">Tarife &amp; Preise</h2>
             {% if is_authenticated %}
-            <a class="logout-link" href="/dashboard">&larr; Back to dashboard</a>
+            <a class="logout-link" href="/dashboard">&larr; Zurück zum Dashboard</a>
             {% else %}
-            <a class="logout-link" href="/">&larr; Back home</a>
+            <a class="logout-link" href="/">&larr; Zurück zur Startseite</a>
             {% endif %}
         </div>
 
@@ -28,8 +42,8 @@
 
         {% if not billing_enabled %}
         <div class="flash-error">
-            Paid plans are not available yet &mdash; payment setup is still in progress.
-            You are on the free Basic plan.
+            Kostenpflichtige Tarife sind momentan noch nicht verfügbar &mdash; die Zahlungseinrichtung ist noch in Arbeit.
+            Du befindest dich im kostenlosen Basic-Tarif.
         </div>
         {% endif %}
 
@@ -37,53 +51,53 @@
             {% for key, cfg in plans.items() %}
             {% set price = display_prices.get(key) %}
             <div class="plan-card{% if current_plan == key %} plan-current{% endif %}{% if key == 'core' %} plan-featured{% endif %}">
-                {% if key == 'core' %}<div class="plan-ribbon">Most popular</div>{% endif %}
+                {% if key == 'core' %}<div class="plan-ribbon">Beliebt</div>{% endif %}
                 <h3>{{ cfg.label }}</h3>
                 <div class="plan-price">
                     {% if key == 'basic' %}
-                        Free
+                        Kostenlos
                     {% elif price %}
-                        {{ '%.2f' | format(price.amount / 100) }} {{ price.currency }}<span class="plan-per">/{{ price.interval }}</span>
+                        {{ '%.2f' | format(price.amount / 100) }} {{ price.currency.upper() }}<span class="plan-per">/{% if price.interval == 'month' %}Monat{% elif price.interval == 'year' %}Jahr{% else %}{{ price.interval }}{% endif %}</span>
                     {% else %}
                         &mdash;
                     {% endif %}
                 </div>
                 {% if key == 'core' and trial_eligible %}
-                <div class="plan-trial-note">{{ trial_days }}-day free trial &mdash; cancel anytime</div>
+                <div class="plan-trial-note">{{ trial_days }}-tägige kostenlose Testphase &mdash; jederzeit kündbar</div>
                 {% endif %}
                 <ul class="plan-features">
-                    <li><strong>{{ cfg.credits_per_week }}</strong> result credits / week</li>
-                    <li>Up to <strong>{{ cfg.max_active_searches }}</strong> recurring searches</li>
+                    <li><strong>{{ cfg.credits_per_week }}</strong> Ergebnis-Credits / Woche</li>
+                    <li>Bis zu <strong>{{ cfg.max_active_searches }}</strong> laufende Suchen</li>
                     <li>
                         {% if cfg.min_interval_seconds <= 60 %}
-                            <strong>Instant Notifications</strong>
+                            <strong>Sofort-Benachrichtigungen</strong>
                         {% else %}
-                            Intervals from {{ cfg.min_interval_seconds // 60 }} minutes
+                            Intervalle ab {{ cfg.min_interval_seconds // 60 }} Minuten
                         {% endif %}
                     </li>
                     {% if cfg.deal_badges %}
-                    <li>Push notifications &amp; deal badges</li>
+                    <li>Push-Benachrichtigungen &amp; Deal-Badges</li>
                     {% else %}
-                    <li>Push notifications</li>
+                    <li>Push-Benachrichtigungen</li>
                     {% endif %}
                 </ul>
                 {% if not is_authenticated %}
                     <a href="/auth/register" class="plan-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">
-                        {% if key == 'basic' %}Sign up free{% elif key == 'core' and billing_enabled %}Start {{ trial_days }}-day free trial{% else %}Sign up for {{ cfg.label }}{% endif %}
+                        {% if key == 'basic' %}Kostenlos registrieren{% elif key == 'core' and billing_enabled %}Kostenlose Testphase starten ({{ trial_days }} Tage){% else %}Registrieren für {{ cfg.label }}{% endif %}
                     </a>
                 {% elif current_plan == key %}
-                    <div class="plan-current-label">Your current plan</div>
+                    <div class="plan-current-label">Dein aktueller Tarif</div>
                 {% elif key == 'basic' %}
                     {% if has_subscription %}
                     <form action="/billing/portal" method="post">
-                        <button type="submit" class="plan-btn plan-btn-secondary">Cancel subscription</button>
+                        <button type="submit" class="plan-btn plan-btn-secondary">Abonnement kündigen</button>
                     </form>
                     {% endif %}
                 {% else %}
                     <form action="/billing/checkout" method="post">
                         <input type="hidden" name="plan" value="{{ key }}">
                         <button type="submit" class="plan-btn"{% if not billing_enabled %} disabled{% endif %}>
-                            {% if current_plan == 'pro' and key == 'core' %}Switch to Core{% elif key == 'core' and trial_eligible %}Start {{ trial_days }}-day free trial{% else %}Upgrade to {{ cfg.label }}{% endif %}
+                            {% if current_plan == 'pro' and key == 'core' %}Zu Core wechseln{% elif key == 'core' and trial_eligible %}Kostenlose Testphase starten ({{ trial_days }} Tage){% else %}Upgrade auf {{ cfg.label }}{% endif %}
                         </button>
                     </form>
                 {% endif %}
@@ -92,17 +106,17 @@
         </div>
 
         <div class="card" style="margin-top:24px">
-            <h3>How credits work</h3>
+            <h3>Wie Credits funktionieren</h3>
             <ul class="plan-features">
-                <li>Each <strong>new listing found</strong> costs <strong>1 credit</strong>. The <strong>first check of every new search is free</strong> &mdash; you only pay for listings that appear after that.</li>
-                <li>Starting searches and re-checks that find nothing new are free.</li>
-                <li>Credits refill automatically every week.</li>
-                <li>Cancelling a recurring search frees up one of your search slots.</li>
-                <li>Upgrades take effect immediately &mdash; downgrades at the end of the billing period.</li>
+                <li>Jeder **neu gefundene Eintrag** verbraucht **1 Credit**. Die **erste Überprüfung jeder neuen Suche ist kostenlos** &mdash; du zahlst nur für Einträge, die danach erscheinen.</li>
+                <li>Das Starten von Suchen und automatische Rechecks, bei denen nichts Neues gefunden wird, sind komplett kostenlos.</li>
+                <li>Credits werden jede Woche automatisch zurückgesetzt und neu aufgeladen.</li>
+                <li>Das Löschen oder Abbrechen einer wiederkehrenden Suche gibt sofort einen deiner Suchslots frei.</li>
+                <li>Upgrades treten sofort in Kraft &mdash; Downgrades erst am Ende deines aktuellen Abrechnungszeitraums.</li>
             </ul>
             {% if has_subscription %}
             <form action="/billing/portal" method="post" style="margin-top:12px">
-                <button type="submit" class="plan-btn plan-btn-secondary">Manage billing (invoices, payment method, cancel)</button>
+                <button type="submit" class="plan-btn plan-btn-secondary">Abrechnung verwalten (Rechnungen, Zahlungsmethode, Kündigung)</button>
             </form>
             {% endif %}
         </div>
