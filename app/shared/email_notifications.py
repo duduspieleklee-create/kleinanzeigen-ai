@@ -4,6 +4,7 @@ Sends via the Resend HTTP API, the same provider and credentials
 (`settings.resend_api_key`) already used for verification emails in
 app/api/emailer.py.
 """
+import html
 import logging
 from typing import Optional, List
 from dataclasses import dataclass
@@ -90,31 +91,38 @@ def create_new_results_email(
     Returns:
         EmailNotification object ready to send
     """
+    safe_keywords = html.escape(keywords)
     subject = f"[kleinanzeigen-ai] {result_count} neue Angebote für '{keywords}'"
     dashboard_url = f"{(settings.public_base_url or '').rstrip('/')}/dashboard#tab-my-results"
 
-    # Build HTML body
+    # Build HTML body — all fields below come from scraped, attacker-influenced
+    # listing data and must be escaped before interpolation into body_html.
     results_html = ""
     for i, result in enumerate(results[:10], 1):  # Limit to 10 results per email
         trust_score = result.get("trust_score", 0)
         trust_badge = _get_trust_badge_html(trust_score)
+        safe_title = html.escape(str(result.get("title", "N/A")))
+        safe_price = html.escape(str(result.get("price", "N/A")))
+        safe_location = html.escape(str(result.get("location", "N/A")))
+        safe_url = html.escape(str(result.get("url", "#")), quote=True)
         results_html += f"""
         <tr>
             <td style="padding: 10px; border-bottom: 1px solid #ddd;">
-                <strong>{i}. {result.get('title', 'N/A')}</strong><br>
-                Preis: {result.get('price', 'N/A')}<br>
-                Ort: {result.get('location', 'N/A')}<br>
+                <strong>{i}. {safe_title}</strong><br>
+                Preis: {safe_price}<br>
+                Ort: {safe_location}<br>
                 {trust_badge}
-                <a href="{result.get('url', '#')}" style="color: #0066cc;">Anzeige ansehen →</a>
+                <a href="{safe_url}" style="color: #0066cc;">Anzeige ansehen →</a>
             </td>
         </tr>
         """
-    
+
     highlight_section = ""
     if highlight:
+        safe_highlight = html.escape(highlight)
         highlight_section = f"""
         <div style="background-color: #fff3cd; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-            <strong style="color: #856404;">🎯 Deal Alert:</strong> {highlight}
+            <strong style="color: #856404;">🎯 Deal Alert:</strong> {safe_highlight}
         </div>
         """
     
@@ -134,7 +142,7 @@ def create_new_results_email(
         <div class="container">
             <div class="header">
                 <h1>kleinanzeigen-ai</h1>
-                <p>{result_count} neue Angebote für: <strong>{keywords}</strong></p>
+                <p>{result_count} neue Angebote für: <strong>{safe_keywords}</strong></p>
             </div>
             <div class="content">
                 {highlight_section}
