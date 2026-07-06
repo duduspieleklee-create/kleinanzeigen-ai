@@ -22,7 +22,7 @@ def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
     if dialect == "sqlite":
-        bind.execute("""
+        bind.execute(sa.text("""
             DELETE FROM scrape_results
             WHERE id NOT IN (
                 SELECT MIN(id)
@@ -30,9 +30,9 @@ def upgrade() -> None:
                 WHERE url IS NOT NULL
                 GROUP BY task_id, url
             )
-        """)
+        """))
     elif dialect == "postgresql":
-        bind.execute("""
+        bind.execute(sa.text("""
             DELETE FROM scrape_results a
             USING scrape_results b
             WHERE a.id > b.id
@@ -40,9 +40,9 @@ def upgrade() -> None:
               AND a.url IS NOT NULL
               AND b.url IS NOT NULL
               AND a.url = b.url
-        """)
+        """))
     else:
-        op.execute("""
+        bind.execute(sa.text("""
             DELETE FROM scrape_results
             WHERE id NOT IN (
                 SELECT MIN(id)
@@ -50,7 +50,7 @@ def upgrade() -> None:
                 WHERE url IS NOT NULL
                 GROUP BY task_id, url
             )
-        """)
+        """))
 
     op.create_index(
         "scrape_results_task_id_url_idx",
