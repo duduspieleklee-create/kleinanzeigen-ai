@@ -113,7 +113,11 @@ async def login(
                  "google_enabled": bool(settings.google_client_id)},
                 status_code=401,
             )
-    elif username == settings.app_username and password == settings.app_password:
+    elif (
+        settings.bootstrap_admin_enabled
+        and username == settings.app_username
+        and password == settings.app_password
+    ):
         # Settings-based bootstrap admin — find or create in DB so FK
         # constraints hold, and make sure the row is flagged as admin.
         user = db.query(User).filter(User.username == settings.app_username).first()

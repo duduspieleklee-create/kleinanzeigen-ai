@@ -33,6 +33,15 @@
                 </label>
             </div>
 
+            <div class="settings-item push-subscriptions-block">
+                <div class="settings-label">
+                    <span>Geräte mit aktivierten Benachrichtigungen</span>
+                    <small>Jedes Gerät, das sich für Push-Benachrichtigungen angemeldet hat</small>
+                </div>
+                <ul id="push-subscriptions-list" class="push-subscriptions-list"></ul>
+                <p id="push-subscriptions-empty" class="push-subscriptions-empty">Keine aktiven Geräte.</p>
+            </div>
+
             <div class="settings-item">
                 <div class="settings-label">
                     <span>Nur bei großartigen Angeboten benachrichtigen</span>
@@ -63,7 +72,7 @@
             <div class="settings-item">
                 <div class="settings-label">
                     <span>E-Mail-Benachrichtigungen</span>
-                    <small>Wöchentliche Zusammenfassung deiner Suchen</small>
+                    <small>Erhalte auch eine E-Mail, wenn eine deiner Suchen neue Treffer findet</small>
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="email-notifications-toggle"
@@ -149,8 +158,21 @@
                 </div>
             </div>
             <div class="settings-item">
+                <a href="/settings/export" class="export-data-link">⬇ Meine Daten exportieren (JSON)</a>
+            </div>
+            <div class="settings-item">
                 <a href="/auth/logout" class="logout-link">Abmelden</a>
             </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="settings-section">
+            <h2>Konto löschen</h2>
+            <p class="danger-zone-hint">
+                Löscht dein Konto, alle Suchen, Ergebnisse und Favoriten unwiderruflich.
+                Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <button type="button" class="delete-account-btn" onclick="deleteAccount()">Konto endgültig löschen</button>
         </div>
     </div>
 
@@ -219,6 +241,89 @@
             pushToggle.checked = !!sub;
         }
 
+        // ── Push subscriptions: per-device management list ──
+        // Separate from the toggle above, which only reflects *this*
+        // browser's own subscription — this lists every device on the
+        // account (e.g. a phone you no longer have) so any of them can be
+        // revoked from the server side.
+        async function currentSubscriptionEndpoint() {
+            if (!pushSupported() || Notification.permission !== 'granted') return null;
+            var reg = await navigator.serviceWorker.ready;
+            var sub = await reg.pushManager.getSubscription();
+            return sub ? sub.endpoint : null;
+        }
+
+        async function loadPushSubscriptions() {
+            var list = document.getElementById('push-subscriptions-list');
+            var empty = document.getElementById('push-subscriptions-empty');
+            try {
+                var resp = await fetch('/push/subscriptions');
+                if (!resp.ok) return;
+                var data = await resp.json();
+                var subs = data.subscriptions || [];
+                list.innerHTML = '';
+                empty.style.display = subs.length ? 'none' : 'block';
+                var currentEndpoint = await currentSubscriptionEndpoint();
+
+                subs.forEach(function(sub) {
+                    var li = document.createElement('li');
+                    li.className = 'push-sub-item';
+
+                    var info = document.createElement('div');
+                    info.className = 'push-sub-info';
+                    var label = document.createElement('span');
+                    label.textContent = sub.label + (sub.endpoint === currentEndpoint ? ' (dieses Gerät)' : '');
+                    info.appendChild(label);
+                    if (sub.created_at) {
+                        var date = document.createElement('small');
+                        date.textContent = 'Seit ' + new Date(sub.created_at).toLocaleDateString('de-DE');
+                        info.appendChild(date);
+                    }
+
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'push-sub-revoke';
+                    btn.textContent = 'Widerrufen';
+                    btn.addEventListener('click', function() {
+                        revokePushSubscription(sub.id, sub.endpoint, li);
+                    });
+
+                    li.appendChild(info);
+                    li.appendChild(btn);
+                    list.appendChild(li);
+                });
+            } catch (err) {
+                console.error('Failed to load push subscriptions:', err);
+            }
+        }
+
+        async function revokePushSubscription(id, endpoint, li) {
+            if (!confirm('Push-Benachrichtigungen für dieses Gerät widerrufen?')) return;
+            try {
+                var resp = await fetch('/push/subscriptions/' + id + '/revoke', { method: 'POST' });
+                if (!resp.ok) {
+                    alert('Konnte nicht widerrufen werden.');
+                    return;
+                }
+                li.remove();
+                if (!document.getElementById('push-subscriptions-list').children.length) {
+                    document.getElementById('push-subscriptions-empty').style.display = 'block';
+                }
+                // If this was the current browser's own subscription, also
+                // unsubscribe locally so the toggle above reflects reality.
+                var endpointHere = await currentSubscriptionEndpoint();
+                if (endpointHere && endpointHere === endpoint) {
+                    var reg = await navigator.serviceWorker.ready;
+                    var sub = await reg.pushManager.getSubscription();
+                    if (sub) await sub.unsubscribe();
+                    refreshPushToggleState();
+                }
+            } catch (err) {
+                console.error('Revoke error:', err);
+                alert('Fehler beim Widerrufen.');
+            }
+        }
+
         pushToggle.addEventListener('change', async function() {
             pushToggle.disabled = true;
             try {
@@ -241,6 +346,7 @@
                 pushToggle.checked = !pushToggle.checked;
             } finally {
                 pushToggle.disabled = false;
+                loadPushSubscriptions();
             }
         });
 
@@ -248,6 +354,7 @@
             navigator.serviceWorker.register('/sw.js').catch(function() {});
         }
         refreshPushToggleState();
+        loadPushSubscriptions();
 
         // Save notification settings
         function saveNotificationSettings() {
@@ -283,6 +390,36 @@
                 .catch(err => {
                     console.error('Test notification error:', err);
                     alert('Error sending test notification');
+                });
+        }
+
+        // Delete account — requires typing the exact confirmation phrase,
+        // since this app supports both password and Google-OAuth login and
+        // there's no single re-auth step that works for both.
+        function deleteAccount() {
+            var typed = prompt('Dies löscht dein Konto und alle Daten unwiderruflich.\n\nGib "LÖSCHEN" ein, um zu bestätigen:');
+            if (typed === null) return;
+            if (typed.trim() !== 'LÖSCHEN') {
+                alert('Eingabe stimmte nicht überein. Konto wurde nicht gelöscht.');
+                return;
+            }
+            fetch('/settings/delete-account', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirmation: typed.trim() }),
+            })
+                .then(function(r) {
+                    if (r.ok) {
+                        window.location.href = '/auth/logout';
+                    } else {
+                        return r.json().then(function(data) {
+                            alert('Konto konnte nicht gelöscht werden: ' + (data.detail || 'Unbekannter Fehler'));
+                        });
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Delete account error:', err);
+                    alert('Fehler beim Löschen des Kontos.');
                 });
         }
     </script>

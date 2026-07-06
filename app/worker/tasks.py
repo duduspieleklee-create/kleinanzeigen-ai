@@ -9,6 +9,11 @@ from sqlalchemy import or_
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
+from app.shared.email_notifications import (
+    create_new_results_email,
+    email_configured,
+    send_email_notification,
+)
 from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
@@ -200,6 +205,66 @@ def _send_push_notifications(
         db.query(PushSubscription).filter(PushSubscription.id.in_(stale)).delete(synchronize_session=False)
         db.commit()
 
+    return summary
+
+
+def _send_email_notifications(
+    db, user_id: int, result_count: int, keywords: str,
+    new_results: list, highlight: str = None, bypass_preferences: bool = False
+) -> dict:
+    """Email a user about genuinely-new listings.
+
+    Fires at the same point as _send_push_notifications and honors the same
+    preferences (email toggle, deals-only mode, quiet hours), unless
+    bypass_preferences is set.
+    """
+    summary = {"configured": True, "sent": False, "errors": []}
+
+    if not email_configured():
+        summary["configured"] = False
+        summary["errors"].append("RESEND_API_KEY is not configured on the server.")
+        return summary
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.email:
+        summary["errors"].append("No user/email on file.")
+        return summary
+
+    if not bypass_preferences:
+        if not user.email_notifications_enabled:
+            summary["errors"].append("User has disabled email notifications.")
+            return summary
+        if user.deals_only_enabled and not highlight:
+            summary["errors"].append("User only wants deal-highlight notifications.")
+            return summary
+        if _in_quiet_hours(user.quiet_start, user.quiet_end):
+            summary["errors"].append("Current time is within the user's quiet hours.")
+            return summary
+
+    # Trust scores are a Core/Pro feature — leave them off the email for
+    # Basic owners, same gating as the dashboard and the push payload.
+    show_trust = bool(user.is_admin or plan_config(user.plan).get("trust_scores"))
+    results_payload = [
+        {
+            "title": r.title,
+            "price": r.price,
+            "location": r.location,
+            "url": r.url,
+            "trust_score": r.trust_score if show_trust else None,
+        }
+        for r in new_results
+    ]
+
+    notification = create_new_results_email(
+        user_email=user.email,
+        keywords=keywords,
+        result_count=result_count,
+        results=results_payload,
+        highlight=highlight,
+    )
+    summary["sent"] = send_email_notification(notification)
+    if not summary["sent"]:
+        summary["errors"].append("Email send failed; see server logs.")
     return summary
 
 
@@ -523,6 +588,14 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 best_price=best_price_str,
                 image_url=best_image_url,
                 task_id=resolved_task_id,
+            )
+            _send_email_notifications(
+                db,
+                user_id=task.user_id,
+                result_count=new_count,
+                keywords=parameters.get("keywords", "your search"),
+                new_results=new_results,
+                highlight=highlight,
             )
         # ───────────────────────────────────────────────────────────────────
 

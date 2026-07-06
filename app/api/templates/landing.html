@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kleinanzeigen-ai — Automatische Suchüberwachung für kleinanzeigen.de</title>
+    <meta name="description" content="kleinanzeigen-ai durchsucht deine gespeicherten Suchen automatisch, benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dashboard-page landing-page">
+    <nav class="landing-nav">
+        <span class="landing-wordmark">kleinanzeigen-ai</span>
+        <div class="landing-nav-actions">
+            <a href="/login" class="landing-nav-link">Anmelden</a>
+            <a href="/auth/register" class="landing-nav-cta">Kostenlos starten</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <section class="hero">
+            <h1>Verpasse nie wieder ein gutes Angebot</h1>
+            <p class="hero-sub">
+                kleinanzeigen-ai durchsucht deine gespeicherten Suchen auf kleinanzeigen.de automatisch,
+                benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.
+            </p>
+            <div class="hero-actions">
+                <a href="/auth/register" class="hero-cta-primary">Kostenlos starten</a>
+                <a href="/billing" class="hero-cta-secondary">Preise ansehen</a>
+            </div>
+        </section>
+
+        <section class="feature-grid">
+            <div class="card feature-card">
+                <h3>🔍 Automatische Suche</h3>
+                <p>Deine Suchbegriffe werden laufend geprüft — von stündlich bis alle 60 Sekunden, je nach Plan.</p>
+            </div>
+            <div class="card feature-card">
+                <h3>🔔 Sofort benachrichtigt</h3>
+                <p>Push-Benachrichtigungen aufs Handy oder den Desktop, sobald ein neues Angebot erscheint.</p>
+            </div>
+            <div class="card feature-card">
+                <h3>💰 Faire Preise erkennen</h3>
+                <p>Deal-Badges zeigen dir auf einen Blick, ob ein Angebot unter, über oder im Marktdurchschnitt liegt.</p>
+            </div>
+            <div class="card feature-card">
+                <h3>🛡️ Vertrauenswürdige Verkäufer</h3>
+                <p>Ein Trust Score aus Bewertung, Kontoalter und Anzahl aktiver Anzeigen hilft dir, unseriöse Angebote zu meiden.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="landing-section-title">Für jeden Bedarf der passende Plan</h2>
+            <div class="pricing-grid">
+                {% for key, cfg in plans.items() %}
+                <div class="plan-card{% if key == 'core' %} plan-featured{% endif %}">
+                    {% if key == 'core' %}<div class="plan-ribbon">Beliebt</div>{% endif %}
+                    <h3>{{ cfg.label }}</h3>
+                    <ul class="plan-features">
+                        <li><strong>{{ cfg.credits_per_week }}</strong> Credits / Woche</li>
+                        <li>Bis zu <strong>{{ cfg.max_active_searches }}</strong> laufende Suchen</li>
+                        <li>
+                            {% if cfg.min_interval_seconds <= 60 %}
+                                <strong>Sofort-Benachrichtigungen</strong>
+                            {% else %}
+                                Intervalle ab {{ cfg.min_interval_seconds // 60 }} Minuten
+                            {% endif %}
+                        </li>
+                    </ul>
+                    <a href="/auth/register" class="plan-btn landing-plan-btn">Loslegen</a>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="landing-pricing-link"><a href="/billing">Alle Preise &amp; Details ansehen →</a></p>
+        </section>
+    </div>
+
+    {% include "_version_footer.html" %}
+</body>
+</html>

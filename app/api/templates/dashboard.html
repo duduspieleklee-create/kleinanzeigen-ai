@@ -694,12 +694,196 @@
 
         {% if is_admin %}
         <div id="tab-admin" class="tab-pane">
+
+            <!-- Test push notification -->
             <div class="card">
                 <h3>Benachrichtigungen testen</h3>
+                <p style="font-size:14px;color:#666;margin:0 0 14px">
+                    Sende eine Test-Benachrichtigung an die Geräte dieses Kontos, um zu
+                    prüfen, ob Benachrichtigungen einwandfrei funktionieren.
+                </p>
                 <form method="post" action="/admin/test-notification" style="margin:0">
                     <button type="submit">Test-Benachrichtigung senden</button>
                 </form>
             </div>
+
+            <!-- Add admin search -->
+            <div class="card">
+                <h3>Hintergrundsuche hinzufügen</h3>
+                <form action="/admin/searches" method="post">
+                    <label for="adm-keywords">Stichwörter</label>
+                    <input type="text" id="adm-keywords" name="keywords" placeholder="z. B. werkzeug" required>
+
+                    <label for="adm-location">Ort</label>
+                    <input type="text" id="adm-location" name="location" placeholder="z. B. Berlin">
+
+                    <div style="display:flex;gap:12px">
+                        <div style="flex:1">
+                            <label for="adm-price_min">Min. Preis (€)</label>
+                            <input type="number" id="adm-price_min" name="price_min" placeholder="0">
+                        </div>
+                        <div style="flex:1">
+                            <label for="adm-price_max">Max. Preis (€)</label>
+                            <input type="number" id="adm-price_max" name="price_max" placeholder="500">
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:12px">
+                        <div style="flex:1">
+                            <label for="adm-radius">Umkreis (km)</label>
+                            <input type="number" id="adm-radius" name="radius" placeholder="50">
+                        </div>
+                        <div style="flex:1">
+                            <label for="adm-interval">Intervall (Minuten)</label>
+                            <select id="adm-interval" name="interval_minutes">
+                                <option value="15">Alle 15 Min.</option>
+                                <option value="30" selected>Alle 30 Min.</option>
+                                <option value="60">Alle 60 Min.</option>
+                                <option value="180">Alle 3 Stunden</option>
+                                <option value="720">Alle 12 Stunden</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit">Suche hinzufügen</button>
+                </form>
+            </div>
+
+            <!-- List admin searches -->
+            <div class="card">
+                <h3>Hintergrundsuchen</h3>
+                {% if admin_searches %}
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Stichwörter</th>
+                            <th>Ort</th>
+                            <th>Preis</th>
+                            <th>Intervall</th>
+                            <th>Letzter Lauf</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in admin_searches %}
+                        <tr>
+                            <td>{{ s.id }}</td>
+                            <td>{{ s.keywords }}</td>
+                            <td>{{ s.location or '&mdash;' }}</td>
+                            <td style="font-size:12px;color:#666">
+                                {% if s.price_min or s.price_max %}
+                                    {{ s.price_min or '0' }}–{{ s.price_max or '∞' }} €
+                                {% else %}&mdash;{% endif %}
+                            </td>
+                            <td>{{ s.interval_minutes }} Min.</td>
+                            <td style="font-size:12px;color:#666">
+                                {{ s.last_run_at.strftime('%d.%m %H:%M') if s.last_run_at else 'nie' }}
+                            </td>
+                            <td>
+                                {% if s.is_active %}
+                                <span class="toggle-on">● Aktiv</span>
+                                {% else %}
+                                <span class="toggle-off">○ Pausiert</span>
+                                {% endif %}
+                            </td>
+                            <td style="white-space:nowrap">
+                                <form method="post" action="/admin/searches/{{ s.id }}/toggle" style="display:inline">
+                                    <button type="submit" class="action-btn muted">
+                                        {{ 'Pausieren' if s.is_active else 'Fortsetzen' }}
+                                    </button>
+                                </form>
+                                &nbsp;
+                                <form method="post" action="/admin/searches/{{ s.id }}/delete" style="display:inline"
+                                      onsubmit="return confirm('Diese Suche löschen?')">
+                                    <button type="submit" class="action-btn danger">Löschen</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">Noch keine Hintergrundsuchen. Füge oben eine hinzu.</div>
+                {% endif %}
+            </div>
+
+            <!-- Rotating proxy -->
+            <div class="card">
+                <h3>Rotierender Proxy</h3>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                    <div style="font-size:14px">
+                        Status:
+                        {% if rotating_proxy_enabled %}
+                        <span class="toggle-on">● Aktiviert</span>
+                        {% else %}
+                        <span class="toggle-off">○ Deaktiviert</span>
+                        {% endif %}
+                        <span style="color:#888;font-size:12px"> — der Scraper rotiert unten durch die aktiven Proxys</span>
+                    </div>
+                    <form method="post" action="/admin/proxy/toggle" style="margin:0">
+                        <button type="submit" class="action-btn muted">
+                            {{ 'Deaktivieren' if rotating_proxy_enabled else 'Aktivieren' }}
+                        </button>
+                    </form>
+                </div>
+
+                <form action="/admin/proxies" method="post" style="display:flex;gap:8px;align-items:flex-end">
+                    <div style="flex:1">
+                        <label for="proxy-url">Proxy hinzufügen (wird vor dem Hinzufügen live getestet)</label>
+                        <input type="text" id="proxy-url" name="url"
+                               placeholder="http://user:pass@host:port" required
+                               style="margin-bottom:0">
+                    </div>
+                    <button type="submit" style="width:auto;padding:10px 18px;margin:0">Testen &amp; hinzufügen</button>
+                </form>
+
+                {% if proxies %}
+                <table class="admin-table" style="margin-top:18px">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Proxy</th>
+                            <th>Status</th>
+                            <th>Zuletzt getestet</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in proxies %}
+                        <tr>
+                            <td>{{ p.id }}</td>
+                            <td style="font-size:12px;word-break:break-all">{{ p.url }}</td>
+                            <td>
+                                {% if p.is_active %}
+                                <span class="toggle-on">● Aktiv</span>
+                                {% else %}
+                                <span class="toggle-off">○ Fehlgeschlagen</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:12px;color:#666">
+                                {{ p.last_tested_at.strftime('%d.%m %H:%M') if p.last_tested_at else 'nie' }}
+                            </td>
+                            <td style="white-space:nowrap">
+                                <form method="post" action="/admin/proxies/{{ p.id }}/retest" style="display:inline">
+                                    <button type="submit" class="action-btn muted">Erneut testen</button>
+                                </form>
+                                &nbsp;
+                                <form method="post" action="/admin/proxies/{{ p.id }}/delete" style="display:inline"
+                                      onsubmit="return confirm('Diesen Proxy entfernen?')">
+                                    <button type="submit" class="action-btn danger">Entfernen</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state" style="margin-top:12px">Noch keine Proxys. Füge oben einen hinzu — er muss einen Live-Test bestehen.</div>
+                {% endif %}
+            </div>
+
         </div><!-- /tab-admin -->
         {% endif %}
 

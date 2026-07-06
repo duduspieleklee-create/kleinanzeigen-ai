@@ -119,12 +119,14 @@ def _require_web_user(request: Request, db: Session):
 
 @router.get("/", name="pricing_page")
 async def pricing_page(request: Request, db: Session = Depends(get_db)):
+    # Public: a visitor without an account can see plans and prices before
+    # signing up. Signed-in users additionally see their current plan,
+    # credits, and subscription-aware CTAs (checkout vs. manage-billing).
     current = _require_web_user(request, db)
-    if current is None:
-        return RedirectResponse(url="/")
-
-    user = db.query(User).filter(User.id == current["id"]).first()
-    ensure_weekly_credits(db, user)
+    user = None
+    if current is not None:
+        user = db.query(User).filter(User.id == current["id"]).first()
+        ensure_weekly_credits(db, user)
 
     flash_success = request.cookies.get("flash_success")
     flash_error = request.cookies.get("flash_error")
@@ -134,11 +136,12 @@ async def pricing_page(request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "plans": PLANS,
-            "current_plan": user.plan or "basic",
-            "credits": user.credits,
+            "is_authenticated": user is not None,
+            "current_plan": (user.plan or "basic") if user else None,
+            "credits": user.credits if user else None,
             "billing_enabled": _billing_enabled(),
-            "has_subscription": bool(user.stripe_subscription_id),
-            "trial_eligible": _billing_enabled() and _trial_eligible(user),
+            "has_subscription": bool(user and user.stripe_subscription_id),
+            "trial_eligible": bool(user) and _billing_enabled() and _trial_eligible(user),
             "trial_days": CORE_TRIAL_DAYS,
             "display_prices": _display_prices(),
             "flash_success": flash_success,

@@ -1,13 +1,20 @@
-"""Email notification system for search results and alerts.
+"""Email notification system for new search results.
 
-Supports both SMTP (standard email) and Resend API (modern email service).
-Configuration via environment variables.
+Sends via the Resend HTTP API, the same provider and credentials
+(`settings.resend_api_key`) already used for verification emails in
+app/api/emailer.py.
 """
 import logging
 from typing import Optional, List
 from dataclasses import dataclass
 
+import requests
+
+from app.api.config import settings
+
 logger = logging.getLogger("kleinanzeigen-ai")
+
+RESEND_API_URL = "https://api.resend.com/emails"
 
 
 @dataclass
@@ -19,97 +26,49 @@ class EmailNotification:
     body_text: Optional[str] = None
 
 
-def send_email_notification(
-    notification: EmailNotification,
-    use_resend: bool = False,
-) -> bool:
-    """Send an email notification.
-    
-    Args:
-        notification: EmailNotification object
-        use_resend: If True, use Resend API; otherwise use SMTP
-    
-    Returns:
-        True if sent successfully, False otherwise
+def email_configured() -> bool:
+    """True when a Resend API key is set and email can actually be sent."""
+    return bool(settings.resend_api_key)
+
+
+def send_email_notification(notification: EmailNotification) -> bool:
+    """Send an email notification via Resend. Never raises.
+
+    Returns True if sent successfully, False otherwise (and logs why).
     """
-    if use_resend:
-        return _send_via_resend(notification)
-    else:
-        return _send_via_smtp(notification)
+    if not email_configured():
+        logger.warning(
+            "Skipping email to %s: RESEND_API_KEY is not configured", notification.recipient
+        )
+        return False
 
-
-def _send_via_resend(notification: EmailNotification) -> bool:
-    """Send email via Resend API.
-    
-    Requires RESEND_API_KEY environment variable.
-    """
+    payload = {
+        "from": f"kleinanzeigen-ai <{settings.email_from}>",
+        "to": [notification.recipient],
+        "subject": notification.subject,
+        "html": notification.body_html,
+        "text": notification.body_text or "",
+    }
     try:
-        import os
-        from resend import Resend
-    except ImportError:
-        logger.warning("Resend library not installed. Install with: pip install resend")
-        return False
-    
-    api_key = os.getenv("RESEND_API_KEY")
-    if not api_key:
-        logger.warning("RESEND_API_KEY not configured")
-        return False
-    
-    try:
-        client = Resend(api_key=api_key)
-        response = client.emails.send({
-            "from": "noreply@kleinanzeigen-ai.de",
-            "to": notification.recipient,
-            "subject": notification.subject,
-            "html": notification.body_html,
-            "text": notification.body_text or "",
-        })
-        logger.info(f"Email sent via Resend to {notification.recipient}: {response}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send email via Resend: {e}")
+        resp = requests.post(
+            RESEND_API_URL,
+            json=payload,
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        logger.error("New-results email to %s failed: %s", notification.recipient, exc)
         return False
 
+    if resp.status_code >= 400:
+        logger.error(
+            "New-results email to %s rejected (%s): %s",
+            notification.recipient, resp.status_code, resp.text[:500],
+        )
+        return False
 
-def _send_via_smtp(notification: EmailNotification) -> bool:
-    """Send email via SMTP.
-    
-    Requires SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD environment variables.
-    """
-    import os
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    
-    smtp_host = os.getenv("SMTP_HOST")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")
-    
-    if not all([smtp_host, smtp_user, smtp_password]):
-        logger.warning("SMTP credentials not fully configured")
-        return False
-    
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = notification.subject
-        msg["From"] = smtp_user
-        msg["To"] = notification.recipient
-        
-        if notification.body_text:
-            msg.attach(MIMEText(notification.body_text, "plain"))
-        msg.attach(MIMEText(notification.body_html, "html"))
-        
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, notification.recipient, msg.as_string())
-        
-        logger.info(f"Email sent via SMTP to {notification.recipient}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send email via SMTP: {e}")
-        return False
+    logger.info("New-results email sent to %s", notification.recipient)
+    return True
 
 
 def create_new_results_email(
@@ -132,7 +91,8 @@ def create_new_results_email(
         EmailNotification object ready to send
     """
     subject = f"[kleinanzeigen-ai] {result_count} neue Angebote für '{keywords}'"
-    
+    dashboard_url = f"{(settings.public_base_url or '').rstrip('/')}/dashboard#tab-my-results"
+
     # Build HTML body
     results_html = ""
     for i, result in enumerate(results[:10], 1):  # Limit to 10 results per email
@@ -183,7 +143,7 @@ def create_new_results_email(
                     {results_html}
                 </table>
                 <p style="margin-top: 20px; text-align: center;">
-                    <a href="https://kleinanzeigen-ai.de/dashboard" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                    <a href="{dashboard_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
                         Dashboard öffnen
                     </a>
                 </p>

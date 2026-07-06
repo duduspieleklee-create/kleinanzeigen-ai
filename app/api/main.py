@@ -22,7 +22,7 @@ from app.api.security import limiter
 from app.api.version import BUILD_INFO
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, Proxy, ScrapeTask, ScrapeResult, User, Favorite
-from app.shared.plans import ensure_weekly_credits, plan_config
+from app.shared.plans import PLANS, ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price
 from app.shared.token_tracking import get_token_usage_stats
 from app.shared.proxy import is_rotating_enabled
@@ -166,6 +166,22 @@ async def offline(request: Request):
 
 @app.get("/", tags=["Web"])
 async def home(request: Request, db: Session = Depends(get_db)):
+    try:
+        get_current_user(
+            request, token=request.cookies.get("access_token") or "", db=db
+        )
+        return RedirectResponse(url="/dashboard")
+    except HTTPException:
+        # Public landing page — what a visitor without an account sees.
+        # The login form itself now lives at GET /login.
+        return templates.TemplateResponse(
+            "landing.html",
+            {"request": request, "plans": PLANS},
+        )
+
+
+@app.get("/login", tags=["Web"])
+async def login_page(request: Request, db: Session = Depends(get_db)):
     try:
         get_current_user(
             request, token=request.cookies.get("access_token") or "", db=db

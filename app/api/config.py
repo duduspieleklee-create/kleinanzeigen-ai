@@ -38,7 +38,13 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_email: str = "mailto:admin@example.com"
 
-    # Login credentials — set APP_USERNAME / APP_PASSWORD env vars to override.
+    # Settings-based bootstrap admin login — a fallback so the very first
+    # admin account can be created before any Google-OAuth admin exists
+    # (via ADMIN_EMAILS). It's a single shared credential with no per-person
+    # audit trail, so once real admin accounts exist, set
+    # BOOTSTRAP_ADMIN_ENABLED=false to close this path off. Set APP_USERNAME /
+    # APP_PASSWORD env vars to override the login credentials.
+    bootstrap_admin_enabled: bool = True
     app_username: str = "admin"
     app_password: str = "KaSearch2026"
 
@@ -87,8 +93,9 @@ class Settings(BaseSettings):
     def _reject_insecure_defaults_in_prod(self):
         """Fail fast if the app is started outside dev with built-in secrets.
 
-        A known SECRET_KEY lets anyone forge auth tokens; a known APP_PASSWORD
-        is an open admin login. Both must be overridden before deploying.
+        A known SECRET_KEY lets anyone forge auth tokens; a known or weak
+        APP_PASSWORD is an open admin login. Both must be overridden before
+        deploying — unless the bootstrap admin path is deliberately disabled.
         """
         if self.environment != "dev":
             problems = []
@@ -96,13 +103,17 @@ class Settings(BaseSettings):
                 problems.append("SECRET_KEY is still the built-in default")
             elif len(self.secret_key) < 32:
                 problems.append("SECRET_KEY must be at least 32 characters")
-            if self.app_password == "KaSearch2026":
-                problems.append("APP_PASSWORD is still the built-in default")
+            if self.bootstrap_admin_enabled:
+                if self.app_password == "KaSearch2026":
+                    problems.append("APP_PASSWORD is still the built-in default")
+                elif len(self.app_password) < 12:
+                    problems.append("APP_PASSWORD must be at least 12 characters")
             if problems:
                 raise ValueError(
                     f"Insecure configuration for environment='{self.environment}': "
                     + "; ".join(problems)
-                    + ". Set these via environment variables before deploying."
+                    + ". Set these via environment variables before deploying, "
+                    + "or set BOOTSTRAP_ADMIN_ENABLED=false if it's no longer needed."
                 )
         return self
 

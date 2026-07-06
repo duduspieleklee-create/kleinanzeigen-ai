@@ -12,7 +12,11 @@
     <div class="container">
         <div class="header-row">
             <h2 style="margin:0">Plans &amp; Pricing</h2>
+            {% if is_authenticated %}
             <a class="logout-link" href="/dashboard">&larr; Back to dashboard</a>
+            {% else %}
+            <a class="logout-link" href="/">&larr; Back home</a>
+            {% endif %}
         </div>
 
         {% if flash_success %}
@@ -63,7 +67,11 @@
                     <li>Push notifications</li>
                     {% endif %}
                 </ul>
-                {% if current_plan == key %}
+                {% if not is_authenticated %}
+                    <a href="/auth/register" class="plan-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">
+                        {% if key == 'basic' %}Sign up free{% elif key == 'core' and billing_enabled %}Start {{ trial_days }}-day free trial{% else %}Sign up for {{ cfg.label }}{% endif %}
+                    </a>
+                {% elif current_plan == key %}
                     <div class="plan-current-label">Your current plan</div>
                 {% elif key == 'basic' %}
                     {% if has_subscription %}
