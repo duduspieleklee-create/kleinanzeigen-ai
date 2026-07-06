@@ -538,25 +538,21 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         # If the duplicate unique-index was missed by in-memory dedupe, drop
         # any now-duplicate rows surfaced by the DB constraint without failing
         # the whole task.
-        if IntegrityError is not None:
-            try:
-                dupes = (
-                    db.query(ScrapeResult)
-                    .filter(ScrapeResult.task_id == resolved_task_id)
-                    .group_by(ScrapeResult.url)
-                    .having(func.count(ScrapeResult.id) > 1)
-                    .all()
-                )
-                for d in dupes:
-                    db.query(ScrapeResult).filter(
-                        ScrapeResult.task_id == resolved_task_id,
-                        ScrapeResult.url == d.url,
-                        ScrapeResult.id != d.id,
-                    ).delete(synchronize_session=False)
-                if dupes:
-                    db.commit()
-            except Exception as exc:
-                logger.warning(f"Duplicate cleanup skipped: {exc}")
+        dupes = (
+            db.query(ScrapeResult)
+            .filter(ScrapeResult.task_id == resolved_task_id, ScrapeResult.url.isnot(None))
+            .group_by(ScrapeResult.url)
+            .having(func.count(ScrapeResult.id) > 1)
+            .all()
+        )
+        for d in dupes:
+            db.query(ScrapeResult).filter(
+                ScrapeResult.task_id == resolved_task_id,
+                ScrapeResult.url == d.url,
+                ScrapeResult.id != d.id,
+            ).delete(synchronize_session=False)
+        if dupes:
+            db.commit()
 
         # Track token usage for this run
         # Estimate: ~1 token per result (for seller data extraction + processing)
