@@ -16,6 +16,12 @@ from app.api.dependencies import (
 )
 from app.api.emailer import email_configured, send_verification_email
 from app.api.security import limiter
+from app.api.turnstile import (
+    FORM_FIELD as TURNSTILE_FIELD,
+    client_ip,
+    turnstile_configured,
+    verify_turnstile,
+)
 from app.api.version import register_globals
 from app.shared.database import get_db
 from app.shared.models import User
@@ -89,6 +95,19 @@ def _start_verification(request: Request, user: User, db: Session) -> tuple[bool
     return send_verification_email(user.email, user.username, verify_url)
 
 
+async def _turnstile_ok(request: Request, token: str) -> bool:
+    """Validate the Turnstile token, or pass through when Turnstile is off."""
+    if not turnstile_configured():
+        return True
+    return await verify_turnstile(token, client_ip(request))
+
+
+TURNSTILE_ERROR = (
+    "Bitte bestätige mit dem Sicherheitscheck, dass du kein Roboter bist, "
+    "und versuche es erneut."
+)
+
+
 def _dashboard_flash(kind: str, message: str) -> RedirectResponse:
     # Flash cookie values must stay ASCII — Starlette encodes Set-Cookie
     # headers as latin-1 and non-ASCII raises at response time.
@@ -103,8 +122,17 @@ async def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
+    cf_turnstile_response: str = Form("", alias=TURNSTILE_FIELD),
     db: Session = Depends(get_db),
 ):
+    if not await _turnstile_ok(request, cf_turnstile_response):
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": TURNSTILE_ERROR,
+             "google_enabled": bool(settings.google_client_id)},
+            status_code=400,
+        )
+
     user = db.query(User).filter(User.username == username).first()
 
     if user:
@@ -175,8 +203,22 @@ async def register(
     email: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
+    cf_turnstile_response: str = Form("", alias=TURNSTILE_FIELD),
     db: Session = Depends(get_db),
 ):
+    if not await _turnstile_ok(request, cf_turnstile_response):
+        return templates.TemplateResponse(
+            "register.html",
+            {
+                "request": request,
+                "error": TURNSTILE_ERROR,
+                "username": username,
+                "email": email,
+                "google_enabled": bool(settings.google_client_id),
+            },
+            status_code=400,
+        )
+
     if password != confirm_password:
         return templates.TemplateResponse(
             "register.html",

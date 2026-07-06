@@ -20,5 +20,11 @@ BUILD_INFO = {
 
 
 def register_globals(templates) -> None:
-    """Expose BUILD_INFO to a Jinja2Templates environment as `build_info`."""
+    """Expose shared template globals to a Jinja2Templates environment.
+
+    - `build_info`: version/commit metadata for the footer and cache-busting.
+    - `turnstile_site_key`: public Cloudflare Turnstile site key; empty when
+      Turnstile is disabled, so templates render the widget only when set.
+    """
     templates.env.globals["build_info"] = BUILD_INFO
+    templates.env.globals["turnstile_site_key"] = settings.turnstile_site_key

@@ -9,7 +9,10 @@
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#007bff">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
-    
+    {% if turnstile_site_key %}
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    {% endif %}
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://kleeblatt.space/auth/register">
@@ -51,6 +54,9 @@
                 <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
                 <button type="button" class="password-toggle" data-target="confirm_password" aria-label="Passwort bestätigen anzeigen">Anzeigen</button>
             </div>
+            {% if turnstile_site_key %}
+            <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="auto"></div>
+            {% endif %}
             <button type="submit" class="register-btn">Konto erstellen</button>
         </form>
 

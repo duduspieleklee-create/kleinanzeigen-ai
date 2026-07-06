@@ -10,6 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="KA-AI">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
+    {% if turnstile_site_key %}
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    {% endif %}
 </head>
 <body class="auth-page">
     <div class="login-container">
@@ -32,6 +35,9 @@
                 <input type="password" id="password" name="password" autocomplete="current-password" required>
                 <button type="button" class="password-toggle" data-target="password" aria-label="Passwort anzeigen">Anzeigen</button>
             </div>
+            {% if turnstile_site_key %}
+            <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="auto"></div>
+            {% endif %}
             <button type="submit" class="login-btn">Anmelden</button>
         </form>
 

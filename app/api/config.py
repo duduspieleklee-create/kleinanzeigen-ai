@@ -80,6 +80,15 @@ class Settings(BaseSettings):
     proxy_test_url: str = "https://www.kleinanzeigen.de/"
     proxy_test_timeout: int = 15
 
+    # ── Cloudflare Turnstile (bot / abuse protection on public forms) ─────────
+    # Site key is public and rendered into the login/register widget; the
+    # secret key is used server-side to validate the token via the siteverify
+    # API. Leave both empty to disable Turnstile (dev/local convenience) — the
+    # forms then submit without a challenge. Get keys from
+    # https://dash.cloudflare.com/ → Turnstile → Add site.
+    turnstile_site_key: str = ""
+    turnstile_secret_key: str = ""
+
     # ── Error tracking (Sentry) ────────────────────────────────────────────────
     # DSN from https://sentry.io/ (Settings → Projects → <project> → Client Keys).
     # Leave empty to disable — no-op in dev by default even if set, unless
@@ -88,6 +97,15 @@ class Settings(BaseSettings):
     sentry_enable_in_dev: bool = False
     # Fraction of requests/tasks traced for performance monitoring (0 = errors only).
     sentry_traces_sample_rate: float = 0.0
+
+    @property
+    def turnstile_enabled(self) -> bool:
+        """True only when both Turnstile keys are configured.
+
+        Both are required: without the site key the widget can't render, and
+        without the secret key the token can't be validated server-side.
+        """
+        return bool(self.turnstile_site_key and self.turnstile_secret_key)
 
     @model_validator(mode="after")
     def _reject_insecure_defaults_in_prod(self):
