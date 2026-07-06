@@ -538,17 +538,17 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         # any now-duplicate rows surfaced by the DB constraint without failing
         # the whole task.
         dupes = (
-            db.query(ScrapeResult)
+            db.query(ScrapeResult.url, func.min(ScrapeResult.id).label("keep_id"))
             .filter(ScrapeResult.task_id == resolved_task_id, ScrapeResult.url.isnot(None))
             .group_by(ScrapeResult.url)
             .having(func.count(ScrapeResult.id) > 1)
             .all()
         )
-        for d in dupes:
+        for dup_url, keep_id in dupes:
             db.query(ScrapeResult).filter(
                 ScrapeResult.task_id == resolved_task_id,
-                ScrapeResult.url == d.url,
-                ScrapeResult.id != d.id,
+                ScrapeResult.url == dup_url,
+                ScrapeResult.id != keep_id,
             ).delete(synchronize_session=False)
         if dupes:
             db.commit()
