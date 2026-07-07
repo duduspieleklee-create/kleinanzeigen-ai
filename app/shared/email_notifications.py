@@ -99,7 +99,7 @@ def create_new_results_email(
     # listing data and must be escaped before interpolation into body_html.
     results_html = ""
     for i, result in enumerate(results[:10], 1):  # Limit to 10 results per email
-        trust_score = result.get("trust_score", 0)
+        trust_score = result.get("trust_score") if result.get("show_trust", True) else None
         trust_badge = _get_trust_badge_html(trust_score)
         safe_title = html.escape(str(result.get("title", "N/A")))
         safe_price = html.escape(str(result.get("price", "N/A")))

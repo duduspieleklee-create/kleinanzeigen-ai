@@ -194,6 +194,15 @@
         <div class="flash-error">{{ flash_error }}</div>
         {% endif %}
 
+        {% if is_admin %}
+        {% if admin_error %}
+        <div class="flash-warning">{{ admin_error }}</div>
+        {% endif %}
+        {% if proxy_error %}
+        <div class="flash-warning">{{ proxy_error }}</div>
+        {% endif %}
+        {% endif %}
+
         <!-- ── Main Tab Navigation (visible on tablet/desktop; hidden on
              mobile in favor of the fixed bottom nav, see style.css) ── -->
         <div class="tab-nav">

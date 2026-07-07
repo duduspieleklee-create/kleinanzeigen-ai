@@ -14,9 +14,10 @@ Prices themselves live in Stripe (STRIPE_PRICE_CORE / STRIPE_PRICE_PRO env vars
 hold the recurring Price IDs), so amounts can be changed in the Stripe
 dashboard without a code deploy.
 """
+import json
 import logging
-import time
 
+import redis
 import stripe
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -40,6 +41,19 @@ logger = logging.getLogger("kleinanzeigen-ai")
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
 register_globals(templates)
+
+# Redis client for price caching (shared across all workers/replicas)
+_redis_client = None
+_PRICE_CACHE_KEY = "stripe:price_cache"
+_PRICE_CACHE_TTL = 600  # seconds
+
+
+def _get_redis():
+    """Lazy Redis client initialization."""
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+    return _redis_client
 
 
 def _billing_enabled() -> bool:
@@ -75,38 +89,82 @@ def _base_url(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
-# Cache the display prices fetched from Stripe so the pricing page does not
-# call the Stripe API on every render. {plan: {"amount": int_cents, "currency": str}}
-_price_cache: dict = {"at": 0.0, "prices": {}}
-_PRICE_CACHE_TTL = 600  # seconds
-
-
 def _display_prices() -> dict:
-    """Fetch human-display prices from Stripe, cached for 10 minutes."""
+    """Fetch human-display prices from Stripe, cached in Redis for 10 minutes.
+    
+    This ensures price consistency across all worker replicas and allows
+    webhook-triggered cache invalidation when prices change in Stripe.
+    """
     if not _billing_enabled():
         return {}
-    now = time.time()
-    if now - _price_cache["at"] < _PRICE_CACHE_TTL and _price_cache["prices"]:
-        return _price_cache["prices"]
-    prices = {}
-    stripe.api_key = settings.stripe_secret_key
-    for plan, price_id in (
-        ("core", settings.stripe_price_core),
-        ("pro", settings.stripe_price_pro),
-    ):
-        try:
-            p = stripe.Price.retrieve(price_id)
-            prices[plan] = {
-                "amount": p["unit_amount"],
-                "currency": (p["currency"] or "eur").upper(),
-                "interval": (p.get("recurring") or {}).get("interval", "month"),
-            }
-        except Exception as e:
-            logger.warning(f"Could not fetch Stripe price for {plan}: {e}")
-    if prices:
-        _price_cache["prices"] = prices
-        _price_cache["at"] = now
-    return prices
+    
+    try:
+        r = _get_redis()
+        
+        # Try to get cached prices from Redis
+        cached = r.get(_PRICE_CACHE_KEY)
+        if cached:
+            try:
+                return json.loads(cached)
+            except json.JSONDecodeError:
+                logger.warning("Invalid JSON in price cache, refetching")
+        
+        # Cache miss or invalid - fetch from Stripe
+        prices = {}
+        stripe.api_key = settings.stripe_secret_key
+        for plan, price_id in (
+            ("core", settings.stripe_price_core),
+            ("pro", settings.stripe_price_pro),
+        ):
+            try:
+                p = stripe.Price.retrieve(price_id)
+                prices[plan] = {
+                    "amount": p["unit_amount"],
+                    "currency": (p["currency"] or "eur").upper(),
+                    "interval": (p.get("recurring") or {}).get("interval", "month"),
+                }
+            except Exception as e:
+                logger.warning(f"Could not fetch Stripe price for {plan}: {e}")
+        
+        # Store in Redis with TTL if we got any prices
+        if prices:
+            r.setex(_PRICE_CACHE_KEY, _PRICE_CACHE_TTL, json.dumps(prices))
+        
+        return prices
+        
+    except redis.RedisError as e:
+        logger.error(f"Redis error in price cache, falling back to direct Stripe fetch: {e}")
+        # Fallback: fetch directly without caching if Redis is down
+        prices = {}
+        stripe.api_key = settings.stripe_secret_key
+        for plan, price_id in (
+            ("core", settings.stripe_price_core),
+            ("pro", settings.stripe_price_pro),
+        ):
+            try:
+                p = stripe.Price.retrieve(price_id)
+                prices[plan] = {
+                    "amount": p["unit_amount"],
+                    "currency": (p["currency"] or "eur").upper(),
+                    "interval": (p.get("recurring") or {}).get("interval", "month"),
+                }
+            except Exception as e:
+                logger.warning(f"Could not fetch Stripe price for {plan}: {e}")
+        return prices
+
+
+def invalidate_price_cache():
+    """Invalidate the Redis price cache.
+    
+    Call this from webhook handlers when Stripe price updates are received
+    to ensure users see current prices immediately.
+    """
+    try:
+        r = _get_redis()
+        r.delete(_PRICE_CACHE_KEY)
+        logger.info("Price cache invalidated")
+    except redis.RedisError as e:
+        logger.warning(f"Could not invalidate price cache: {e}")
 
 
 def _require_web_user(request: Request, db: Session):
@@ -275,6 +333,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
       checkout.session.completed      -> upgrade the user, grant credits
       customer.subscription.updated   -> plan change / cancellation state
       customer.subscription.deleted   -> downgrade to basic
+      price.updated                   -> invalidate price cache
     """
     if not settings.stripe_webhook_secret:
         raise HTTPException(status_code=503, detail="Webhook not configured")
@@ -354,6 +413,12 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             db.commit()
             enforce_plan_limits(db, user)
             logger.info(f"Billing: user {user.id} subscription ended -> basic")
+
+    elif etype == "price.updated":
+        # Invalidate the price cache when Stripe prices change so users
+        # see current amounts immediately instead of stale cached values.
+        invalidate_price_cache()
+        logger.info(f"Billing: price cache invalidated due to price.updated event")
 
     return JSONResponse({"received": True})
 

@@ -36,7 +36,8 @@ celery_app.conf.update(
     timezone="Europe/Berlin",
     enable_utc=True,
     task_track_started=True,
-    task_time_limit=30 * 60,
+    task_time_limit=30 * 60,  # Hard timeout: 30 minutes
+    task_soft_time_limit=25 * 60,  # Soft timeout: 25 minutes (allows graceful cleanup)
     broker_use_ssl=_SSL_OPTS or None,
     redis_backend_use_ssl=_SSL_OPTS or None,
 )

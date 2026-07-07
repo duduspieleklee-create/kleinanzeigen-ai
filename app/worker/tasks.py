@@ -285,6 +285,7 @@ def _send_email_notifications(
             "location": r.location,
             "url": r.url,
             "trust_score": r.trust_score if show_trust else None,
+            "show_trust": show_trust,
         }
         for r in new_results
     ]
@@ -764,20 +765,70 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             attributes={"job": "scrape.kleinanzeigen"},
         )
 
-        try:
-            if update_id is not None:
-                failed_task = db.query(ScrapeTask).filter(ScrapeTask.id == update_id).first()
-                if failed_task:
-                    failed_task.status = "failed"
-                    failed_task.error_message = error_detail
-                    db.commit()
-        except Exception:
-            pass
-
-        retries = self.request.retries
-        countdown = min(2 ** retries * 60, 600)
-        logger.info(f"Retrying in {countdown}s (attempt {retries + 1})")
-        raise self.retry(exc=exc, countdown=countdown)
+        # Only mark as permanently failed if this is the last retry attempt.
+        # Earlier attempts should leave the task in "running" state so a
+        # successful retry can complete normally without having to overwrite
+        # a stale "failed" status.
+        will_retry = self.request.retries < self.max_retries
+        
+        if update_id is not None:
+            try:
+                # Use a conditional update to avoid race conditions: only update
+                # if the task hasn't been cancelled or completed by another process.
+                # This prevents a retry from overwriting a successful completion
+                # or a user cancellation that arrived while the task was running.
+                if will_retry:
+                    # Store error for debugging but keep status as "running" for retry
+                    updated = (
+                        db.query(ScrapeTask)
+                        .filter(
+                            ScrapeTask.id == update_id,
+                            ScrapeTask.status.in_(["running", "pending"])
+                        )
+                        .update(
+                            {
+                                "error_message": f"Attempt {attempt} failed: {error_detail}. Retrying..."
+                            },
+                            synchronize_session=False,
+                        )
+                    )
+                else:
+                    # Final attempt failed - mark as permanently failed
+                    updated = (
+                        db.query(ScrapeTask)
+                        .filter(
+                            ScrapeTask.id == update_id,
+                            ScrapeTask.status != "cancelled"
+                        )
+                        .update(
+                            {
+                                "status": "failed",
+                                "error_message": error_detail
+                            },
+                            synchronize_session=False,
+                        )
+                    )
+                db.commit()
+                if updated:
+                    logger.info(
+                        f"Task {update_id} marked as {'retrying' if will_retry else 'failed'} "
+                        f"(attempt {attempt}/{self.max_retries + 1})"
+                    )
+            except Exception:
+                logger.exception(
+                    "Could not update scrape task %s after error", update_id
+                )
+                db.rollback()
+        
+        if will_retry:
+            retries = self.request.retries
+            countdown = min(2 ** retries * 60, 600)
+            logger.info(f"Retrying in {countdown}s (attempt {retries + 1}/{self.max_retries + 1})")
+            raise self.retry(exc=exc, countdown=countdown)
+        else:
+            logger.error(f"Task {update_id} exhausted all retries, permanently failed")
+            # Don't retry - let the exception propagate so Celery marks it as failed
+            raise
 
     finally:
         db.close()
@@ -785,7 +836,12 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
 @celery_app.task(name="scrape.dispatch_admin_searches", bind=False)
 def dispatch_admin_searches():
-    """Dispatches scrape tasks for all due admin-configured searches."""
+    """Dispatches scrape tasks for all due admin-configured searches.
+    
+    Uses an idempotency check to prevent dispatching duplicate tasks for the
+    same AdminSearch when multiple Beat instances run concurrently or when
+    the dispatcher is triggered manually while scheduled runs are pending.
+    """
     db = SessionLocal()
     try:
         with track_job("scrape.dispatch_admin_searches"):
@@ -798,7 +854,40 @@ def dispatch_admin_searches():
                 )
                 .all()
             )
+            dispatched = 0
             for search in searches:
+                # Idempotency check: only dispatch if we can atomically claim
+                # this run by updating next_run_at. If another dispatcher beat
+                # us to it, the update returns 0 rows and we skip this search.
+                next_run = now + timedelta(minutes=search.interval_minutes)
+                claimed = (
+                    db.query(AdminSearch)
+                    .filter(
+                        AdminSearch.id == search.id,
+                        AdminSearch.is_active.is_(True),
+                        or_(
+                            AdminSearch.next_run_at.is_(None),
+                            AdminSearch.next_run_at <= now
+                        ),
+                    )
+                    .update(
+                        {
+                            "last_run_at": now,
+                            "next_run_at": next_run,
+                        },
+                        synchronize_session=False,
+                    )
+                )
+                
+                if not claimed:
+                    logger.debug(
+                        f"Skipping admin search id={search.id} - already dispatched by another process"
+                    )
+                    continue
+                
+                db.commit()
+                
+                # Build parameters for the scrape task
                 parameters = {k: v for k, v in {
                     "keywords": search.keywords,
                     "category": search.category,
@@ -812,13 +901,17 @@ def dispatch_admin_searches():
                     "condition": search.condition,
                     "shipping": search.shipping,
                 }.items() if v is not None}
+                
                 scrape_kleinanzeigen.apply_async(args=[parameters])
-                search.last_run_at = now
-                search.next_run_at = now + timedelta(minutes=search.interval_minutes)
-                logger.info(f"Dispatched admin search id={search.id} keywords={search.keywords}")
-            if searches:
-                db.commit()
-            sentry_metrics.count("admin_search.dispatched", len(searches))
+                dispatched += 1
+                logger.info(
+                    f"Dispatched admin search id={search.id} keywords={search.keywords} "
+                    f"next_run={next_run.isoformat()}"
+                )
+            
+            sentry_metrics.count("admin_search.dispatched", dispatched)
+            if dispatched:
+                logger.info(f"Dispatched {dispatched} admin search(es)")
     except Exception as e:
         logger.error(f"dispatch_admin_searches failed: {e}")
         db.rollback()
