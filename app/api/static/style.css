@@ -3719,21 +3719,29 @@ input:checked + .toggle-slider:before {
 
 .rc-card {
   display: flex;
-  gap: 12px;
-  padding: 10px;
+  gap: 16px;
+  padding: 16px;
   background: var(--rc-card);
   border: 1.5px solid var(--rc-border);
-  border-radius: 16px;
+  border-radius: 20px;
   text-decoration: none;
   color: inherit;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+
+.rc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.12);
 }
 
 .rc-thumb {
   position: relative;
   flex-shrink: 0;
-  width: 76px;
-  height: 76px;
-  border-radius: 12px;
+  width: 90px;
+  height: 90px;
+  border-radius: 16px;
   overflow: hidden;
   background: var(--rc-green-bg);
   display: flex;
@@ -3824,7 +3832,7 @@ input:checked + .toggle-slider:before {
 }
 
 .rc-price-main {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--rc-text);
 }
@@ -3897,6 +3905,14 @@ input:checked + .toggle-slider:before {
   align-items: center;
   padding: 8px 10px;
   border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+
+.rc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.12);
 }
 
 .rc-grid[data-view="compact"] .rc-thumb {
@@ -3963,6 +3979,14 @@ input:checked + .toggle-slider:before {
   flex-direction: column;
   padding: 0;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+
+.rc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.12);
 }
 
 .rc-grid[data-view="grid"] .rc-thumb {
