@@ -95,34 +95,24 @@ jobs:
             set -e
             cd /opt/kleinanzeigen-ai
             git pull
-            if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
-              if grep -q '^RESEND_API_KEY=' .env; then
-                sed -i "s/^RESEND_API_KEY=.*/RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}/" .env
+            # Upsert a KEY=VALUE line into .env. tr strips any CR/LF so a stray
+            # trailing newline in a GitHub secret can't corrupt the file (a
+            # newline pasted into the secret would otherwise split the line).
+            # Empty/whitespace-only secrets are skipped, leaving .env untouched.
+            upsert_env() {
+              local key="$1" val
+              val="$(printf '%s' "$2" | tr -d '\r\n')"
+              [ -n "$val" ] || return 0
+              if grep -q "^${key}=" .env; then
+                sed -i "s|^${key}=.*|${key}=${val}|" .env
               else
-                printf '\nRESEND_API_KEY=%s\n' "${{ secrets.RESEND_API_KEY }}" >> .env
+                printf '\n%s=%s\n' "$key" "$val" >> .env
               fi
-            fi
-            if [ -n "${{ secrets.EMAIL_FROM }}" ]; then
-              if grep -q '^EMAIL_FROM=' .env; then
-                sed -i "s|^EMAIL_FROM=.*|EMAIL_FROM=${{ secrets.EMAIL_FROM }}|" .env
-              else
-                printf '\nEMAIL_FROM=%s\n' "${{ secrets.EMAIL_FROM }}" >> .env
-              fi
-            fi
-            if [ -n "${{ secrets.TURNSTILE_SITE_KEY }}" ]; then
-              if grep -q '^TURNSTILE_SITE_KEY=' .env; then
-                sed -i "s|^TURNSTILE_SITE_KEY=.*|TURNSTILE_SITE_KEY=${{ secrets.TURNSTILE_SITE_KEY }}|" .env
-              else
-                printf '\nTURNSTILE_SITE_KEY=%s\n' "${{ secrets.TURNSTILE_SITE_KEY }}" >> .env
-              fi
-            fi
-            if [ -n "${{ secrets.TURNSTILE_SECRET_KEY }}" ]; then
-              if grep -q '^TURNSTILE_SECRET_KEY=' .env; then
-                sed -i "s|^TURNSTILE_SECRET_KEY=.*|TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}|" .env
-              else
-                printf '\nTURNSTILE_SECRET_KEY=%s\n' "${{ secrets.TURNSTILE_SECRET_KEY }}" >> .env
-              fi
-            fi
+            }
+            upsert_env RESEND_API_KEY "${{ secrets.RESEND_API_KEY }}"
+            upsert_env EMAIL_FROM "${{ secrets.EMAIL_FROM }}"
+            upsert_env TURNSTILE_SITE_KEY "${{ secrets.TURNSTILE_SITE_KEY }}"
+            upsert_env TURNSTILE_SECRET_KEY "${{ secrets.TURNSTILE_SECRET_KEY }}"
             export GIT_SHA="${{ github.sha }}"
             export BUILD_NUMBER="${{ github.run_number }}"
             export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
