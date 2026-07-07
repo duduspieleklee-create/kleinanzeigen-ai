@@ -765,22 +765,70 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             attributes={"job": "scrape.kleinanzeigen"},
         )
 
+        # Only mark as permanently failed if this is the last retry attempt.
+        # Earlier attempts should leave the task in "running" state so a
+        # successful retry can complete normally without having to overwrite
+        # a stale "failed" status.
+        will_retry = self.request.retries < self.max_retries
+        
         if update_id is not None:
-            failed_task = db.query(ScrapeTask).filter(ScrapeTask.id == update_id).first()
-            if failed_task:
-                try:
-                    failed_task.status = "failed"
-                    failed_task.error_message = error_detail
-                    db.commit()
-                except Exception:
-                    logger.exception(
-                        "Could not mark scrape task %s as failed after error", update_id
+            try:
+                # Use a conditional update to avoid race conditions: only update
+                # if the task hasn't been cancelled or completed by another process.
+                # This prevents a retry from overwriting a successful completion
+                # or a user cancellation that arrived while the task was running.
+                if will_retry:
+                    # Store error for debugging but keep status as "running" for retry
+                    updated = (
+                        db.query(ScrapeTask)
+                        .filter(
+                            ScrapeTask.id == update_id,
+                            ScrapeTask.status.in_(["running", "pending"])
+                        )
+                        .update(
+                            {
+                                "error_message": f"Attempt {attempt} failed: {error_detail}. Retrying..."
+                            },
+                            synchronize_session=False,
+                        )
                     )
-                    db.rollback()
-        retries = self.request.retries
-        countdown = min(2 ** retries * 60, 600)
-        logger.info(f"Retrying in {countdown}s (attempt {retries + 1})")
-        raise self.retry(exc=exc, countdown=countdown)
+                else:
+                    # Final attempt failed - mark as permanently failed
+                    updated = (
+                        db.query(ScrapeTask)
+                        .filter(
+                            ScrapeTask.id == update_id,
+                            ScrapeTask.status != "cancelled"
+                        )
+                        .update(
+                            {
+                                "status": "failed",
+                                "error_message": error_detail
+                            },
+                            synchronize_session=False,
+                        )
+                    )
+                db.commit()
+                if updated:
+                    logger.info(
+                        f"Task {update_id} marked as {'retrying' if will_retry else 'failed'} "
+                        f"(attempt {attempt}/{self.max_retries + 1})"
+                    )
+            except Exception:
+                logger.exception(
+                    "Could not update scrape task %s after error", update_id
+                )
+                db.rollback()
+        
+        if will_retry:
+            retries = self.request.retries
+            countdown = min(2 ** retries * 60, 600)
+            logger.info(f"Retrying in {countdown}s (attempt {retries + 1}/{self.max_retries + 1})")
+            raise self.retry(exc=exc, countdown=countdown)
+        else:
+            logger.error(f"Task {update_id} exhausted all retries, permanently failed")
+            # Don't retry - let the exception propagate so Celery marks it as failed
+            raise
 
     finally:
         db.close()
