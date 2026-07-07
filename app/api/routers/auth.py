@@ -290,15 +290,15 @@ async def register(
         if sent:
             response.set_cookie(
                 "flash_success",
-                "Account created - check your inbox and click the "
-                "verification link to activate searching.",
+                "Konto erstellt – prüfe dein Postfach und klicke auf den "
+                "Bestätigungslink, um Suchen zu starten.",
                 max_age=10,
             )
         else:
             response.set_cookie(
                 "flash_error",
-                f"Account created, but the verification email failed: "
-                f"{send_error}. Use 'Resend verification email' to try again.",
+                f"Konto erstellt, aber die Bestätigungs-E-Mail konnte nicht gesendet werden: "
+                f"{send_error}. Nutze 'Bestätigungs-E-Mail erneut senden', um es erneut zu versuchen.",
                 max_age=10,
             )
         return response
@@ -338,7 +338,7 @@ async def verify_email(
     db.commit()
 
     return _dashboard_flash(
-        "flash_success", "Email verified - you can now start searches."
+        "flash_success", "E-Mail bestätigt – du kannst jetzt Suchen starten."
     )
 
 

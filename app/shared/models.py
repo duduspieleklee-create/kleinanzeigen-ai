@@ -49,7 +49,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Notification preferences, editable on /settings.
-    push_notifications_enabled = Column(Boolean, nullable=False, server_default="true")
+    push_notifications_enabled = Column(Boolean, nullable=False, server_default="false")
     email_notifications_enabled = Column(Boolean, nullable=False, server_default="true")
     # Only push the "great deal" highlight, skip plain "N new listings" pushes.
     deals_only_enabled = Column(Boolean, nullable=False, server_default="false")
@@ -73,7 +73,7 @@ class ScrapeTask(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     url = Column(Text, nullable=False)
-    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    status = Column(String(20), default="pending")  # pending, running, completed, failed, partial_failed
     parameters = Column(JSON)                       # Stores search parameters as JSON
     # Short, user-facing explanation set when status == "failed" (e.g. "kleinanzeigen.de
     # timed out"). Cleared on the next successful run. Full tracebacks go to Sentry, not here.
@@ -112,6 +112,7 @@ class ScrapeResult(Base):
     image_url = Column(Text)                        # listing thumbnail
     description = Column(Text)
     raw_data = Column(JSON)                         # Optional: store full raw data
+    parse_error = Column(Text)                      # Per-listing parse/validation error message
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Seller & Trust Info
