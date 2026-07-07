@@ -285,6 +285,7 @@ def _send_email_notifications(
             "location": r.location,
             "url": r.url,
             "trust_score": r.trust_score if show_trust else None,
+            "show_trust": show_trust,
         }
         for r in new_results
     ]
