@@ -224,6 +224,7 @@
 - [x] Added per-device push subscription management on /settings — a lost
       or old device's subscription can now be revoked from the server side,
       not just from the browser that created it
-- [ ] Remaining from that audit: /locations/suggest has no auth or
+- [x] Remaining from that audit: /locations/suggest has no auth or
       route-level rate limit (open, unauthenticated proxy to kleinanzeigen.de's
-      own suggestion API)
+      own suggestion API) — FIXED 2026-07-07: endpoint now requires auth via
+      get_current_user dependency and has @limiter.limit("30/minute") rate limiting

@@ -50,7 +50,7 @@ class User(Base):
 
     # Notification preferences, editable on /settings.
     push_notifications_enabled = Column(Boolean, nullable=False, server_default="true")
-    email_notifications_enabled = Column(Boolean, nullable=False, server_default="false")
+    email_notifications_enabled = Column(Boolean, nullable=False, server_default="true")
     # Only push the "great deal" highlight, skip plain "N new listings" pushes.
     deals_only_enabled = Column(Boolean, nullable=False, server_default="false")
     # "HH:MM" strings; both set means suppress push notifications in that window.

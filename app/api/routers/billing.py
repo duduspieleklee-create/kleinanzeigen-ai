@@ -418,7 +418,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         # Invalidate the price cache when Stripe prices change so users
         # see current amounts immediately instead of stale cached values.
         invalidate_price_cache()
-        logger.info(f"Billing: price cache invalidated due to price.updated event")
+        logger.info("Billing: price cache invalidated due to price.updated event")
 
     return JSONResponse({"received": True})
 

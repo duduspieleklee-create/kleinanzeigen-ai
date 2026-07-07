@@ -1012,6 +1012,23 @@
         </div>
     </div>
 
+    <!-- First-search notification prompt -->
+    <div class="sheet-backdrop" id="notification-prompt-backdrop"></div>
+    <div class="tutorial-modal" id="notification-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="notification-prompt-title">
+        <div class="tutorial-icon">🔔</div>
+        <h4 id="notification-prompt-title">Benachrichtigungen einrichten</h4>
+        <p>Deine erste Suche läuft! Möchtest du per Push oder E-Mail benachrichtigt werden, wenn neue Angebote gefunden werden?</p>
+        <p style="font-size: 14px; color: #666; margin-top: 12px;">
+            Push- und E-Mail-Benachrichtigungen sind standardmäßig aktiviert. Du kannst sie jederzeit in den Einstellungen anpassen.
+        </p>
+        <div class="tutorial-actions" style="margin-top: 20px;">
+            <button type="button" class="sheet-btn sheet-btn-cancel" onclick="closeNotificationPrompt()">Später</button>
+            <button type="button" class="sheet-btn tutorial-next-btn" onclick="window.location.href='/settings'">Einstellungen öffnen</button>
+        </div>
+    </div>
+
+
+
     <script>
         // ── First-login guided tutorial ──
         (function() {
@@ -1040,9 +1057,15 @@
                     body: 'Alle gefundenen Angebote landen gesammelt hier. Favorisiere die besten Treffer, damit du sie schnell wiederfindest.'
                 },
                 {
+                    icon: '🔔',
+                    title: '4. Benachrichtigungen einrichten',
+                    body: 'Push- und E-Mail-Benachrichtigungen sind standardmäßig aktiviert. Du kannst sie jederzeit in den Einstellungen (Zahnrad-Symbol) anpassen oder deaktivieren.'
+                },
+
+                {
                     icon: '⚙️',
-                    title: '4. Benachrichtigungen & Einstellungen',
-                    body: 'Über das Zahnrad-Symbol oben rechts aktivierst du Push- oder E-Mail-Benachrichtigungen und verwaltest deinen Plan. Los geht’s!'
+                    title: '5. Einstellungen & Plan',
+                    body: 'Über das Zahnrad-Symbol oben rechts verwaltest du deinen Plan, passt Benachrichtigungen an und exportierst deine Daten. Los geht’s!'
                 }
             ];
 
@@ -1103,6 +1126,30 @@
 
             render();
             open();
+
+
+    <script>
+        // ── First-search notification prompt ──
+        (function() {
+            var showPrompt = document.cookie.split('; ').find(row => row.startsWith('show_notification_prompt='));
+            if (!showPrompt) return;
+
+            // Clear the cookie immediately
+            document.cookie = 'show_notification_prompt=; max-age=0; path=/';
+
+            var backdrop = document.getElementById('notification-prompt-backdrop');
+            var modal = document.getElementById('notification-prompt-modal');
+
+            backdrop.classList.add('open');
+            modal.classList.add('open');
+
+            window.closeNotificationPrompt = function() {
+                backdrop.classList.remove('open');
+                modal.classList.remove('open');
+            };
+        })();
+    </script>
+
         })();
     </script>
     <script>

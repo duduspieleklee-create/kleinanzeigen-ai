@@ -58,6 +58,23 @@
                 <div class="settings-label">
                     <span>Benachrichtigungen kündigen</span>
                     <small>Stille Zeiten einstellen (z.B. keine Benachrichtigungen 22:00–08:00)</small>
+
+            <!-- Notification Status Banner -->
+            {% if not user_settings.email_notifications_enabled %}
+            <div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 24px;">📧</span>
+                    <div>
+                        <strong style="color: #856404;">E-Mail-Benachrichtigungen sind deaktiviert</strong>
+                        <p style="margin: 4px 0 0 0; color: #856404; font-size: 14px;">
+                            Du verpasst möglicherweise neue Angebote. Aktiviere E-Mail-Benachrichtigungen unten, um sofort informiert zu werden.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+
                 </div>
                 <div class="quiet-hours">
                     <label>Von:
