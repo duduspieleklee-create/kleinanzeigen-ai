@@ -405,22 +405,14 @@
 
                     <div class="form-field">
                     <label for="category">Kategorie</label>
-                    <select id="category" name="category">
+                    <input type="text" id="category-search" placeholder="Kategorie suchen…" autocomplete="off">
+                    <select id="category" name="category" style="display:none;">
+
                         {{ category_options() }}
-                    </select>
+                                        </select>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-field">
-                        <label for="price_min">Min. Preis (€)</label>
-                        <input type="number" id="price_min" name="price_min" placeholder="0">
-                        </div>
-
-                        <div class="form-field">
-                        <label for="price_max">Max. Preis (€)</label>
-                        <input type="number" id="price_max" name="price_max" placeholder="10000">
-                        </div>
-                    </div>
+                    
                   </div>
 
                   <!--
@@ -446,7 +438,17 @@
                             <option value="angebote">Angebot</option>
                             <option value="gesuche">Gesucht</option>
                         </select>
-                        </div>
+                        
+<div class="form-field">
+                        <label for="price_min">Min. Preis (€)</label>
+                        <input type="number" id="price_min" name="price_min" placeholder="0">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="price_max">Max. Preis (€)</label>
+                        <input type="number" id="price_max" name="price_max" placeholder="10000">
+                    </div>
+</div>
 
                         <div class="form-field">
                         <label for="poster_type">Von</label>
@@ -2044,5 +2046,111 @@
         });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<style>
+.category-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+.category-dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+.category-dropdown-item:hover {
+    background: #f0f0f0;
+}
+</style>
+
+
+<script>
+// Category searchable dropdown
+(function() {
+    var select = document.getElementById('category');
+    var input = document.getElementById('category-search');
+    if (!select || !input) return;
+
+    // Store all options
+    var options = [];
+    for (var i = 0; i < select.options.length; i++) {
+        var opt = select.options[i];
+        options.push({value: opt.value, text: opt.text});
+    }
+
+    function filterOptions() {
+        var query = input.value.trim().toLowerCase();
+        // Clear datalist? we'll create a temporary dropdown
+        var dropdown = document.getElementById('category-dropdown');
+        if (!dropdown) {
+            dropdown = document.createElement('div');
+            dropdown.id = 'category-dropdown';
+            dropdown.className = 'category-dropdown';
+            input.parentNode.insertBefore(dropdown, input.nextSibling);
+        }
+        dropdown.innerHTML = '';
+        if (query === '') {
+            dropdown.style.display = 'none';
+            return;
+        }
+        var matched = options.filter(function(o) {
+            return o.text.toLowerCase().indexOf(query) !== -1;
+        });
+        if (matched.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        dropdown.style.display = 'block';
+        matched.forEach(function(o) {
+            var div = document.createElement('div');
+            div.className = 'category-dropdown-item';
+            div.textContent = o.text;
+            div.dataset.value = o.value;
+            div.addEventListener('click', function() {
+                input.value = this.textContent;
+                select.value = this.dataset.value;
+                dropdown.style.display = 'none';
+                // trigger change event in case any listeners
+                var event = new Event('change');
+                select.dispatchEvent(event);
+            });
+            dropdown.appendChild(dropdown);
+        });
+        // Position dropdown below input
+        var rect = input.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+        dropdown.style.left = (rect.left + window.scrollX) + 'px';
+        dropdown.style.width = rect.width + 'px';
+    });
+
+    input.addEventListener('input', function() {
+        // debounce
+        clearTimeout(input._debounceTimer);
+        input._debounceTimer = setTimeout(filterOptions, 150);
+    });
+    input.addEventListener('focus', filterOptions);
+    input.addEventListener('blur', function() {
+        // hide dropdown after a short delay to allow click
+        setTimeout(function() {
+            var dropdown = document.getElementById('category-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }, 200);
+    });
+    // Hide dropdown on scroll or resize
+    window.addEventListener('scroll', function() {
+        var dropdown = document.getElementById('category-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    });
+    window.addEventListener('resize', function() {
+        var dropdown = document.getElementById('category-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    });
+})();
+</script>
+
 </body>
 </html>
