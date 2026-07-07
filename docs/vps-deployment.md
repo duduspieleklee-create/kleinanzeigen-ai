@@ -109,9 +109,12 @@ SYSTEM_USER_ID=1
 ```
 
 Everything else in `.env.example` (`VAPID_*`, `STRIPE_*`, `RESEND_API_KEY`,
+`TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`,
 `BEAT_KEYWORDS`/`BEAT_LOCATION`/`BEAT_PRICE_MAX`, `ALLOWED_EMAILS`,
 `ADMIN_EMAILS`) can stay at its default/empty value — those features are
-optional and disable themselves cleanly when unset.
+optional and disable themselves cleanly when unset. To turn on bot protection
+for the login/register forms, set the two `TURNSTILE_*` keys — see
+[docs/turnstile.md](turnstile.md).
 
 `openssl rand -hex 32` prints straight to stdout; paste the result into
 `SECRET_KEY=` in the file rather than relying on the `$(...)` substitution
@@ -219,6 +222,11 @@ Actions**:
 | `VPS_SSH_PASSWORD` | That user's SSH login password |
 
 `VPS_PORT` is an optional secret if SSH doesn't listen on the default `22`.
+
+Optional secrets the `deploy` job injects into the server's `.env` when set
+(skipped when empty): `RESEND_API_KEY`, `EMAIL_FROM`, `TURNSTILE_SITE_KEY`,
+`TURNSTILE_SECRET_KEY`. See [docs/turnstile.md](turnstile.md) for the
+Turnstile keys.
 
 ## Day-2 operations
 
