@@ -193,10 +193,21 @@ async def create_scrape(
     db.commit()
     db.refresh(task)
 
+
+    # First-search notification prompt: set a cookie flag so the dashboard
+    # can show a one-time modal prompting the user to review notification
+    # settings after their very first search is created.
+    is_first_search = db.query(ScrapeTask).filter(
+        ScrapeTask.user_id == current_user["id"]
+    ).count() == 1  # Just created their first one above
+
+
     scrape_kleinanzeigen.delay(parameters, task.id)
 
     response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie("flash_success", f"Scrape job #{task.id} started!", max_age=5)
+    if is_first_search:
+        response.set_cookie("show_notification_prompt", "1", max_age=60)
     return response
 
 
