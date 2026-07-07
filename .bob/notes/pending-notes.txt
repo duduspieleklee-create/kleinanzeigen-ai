@@ -1,9 +1,0 @@
-{"id":"2919d963-23bc-4a94-ac7d-4a09ba707f93","ts":"2026-07-07T11:59:07.530Z","path":"/opt/kleinanzeigen-ai/.bob/AGENTS.md","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"4bd8d59b-89ae-42f7-baca-39c32ffb67b6","ts":"2026-07-07T12:42:00.646Z","path":"/opt/kleinanzeigen-ai/alembic/versions/52ad6a85a96f_fix_push_notifications_default_to_false.py","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"72ac5396-7706-4246-a7dc-3499ebd071c3","ts":"2026-07-07T12:42:14.952Z","path":"/opt/kleinanzeigen-ai/app/shared/models.py","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"5b41172a-d25f-4177-9ea9-c4e4b418c24b","ts":"2026-07-07T12:43:47.866Z","path":"/opt/kleinanzeigen-ai/app/api/routers/auth.py","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"42aea7b8-80a2-409d-83d6-3d16281c3427","ts":"2026-07-07T12:46:11.617Z","path":"/opt/kleinanzeigen-ai/app/api/routers/auth.py","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"fd589dfb-4bd0-4858-9e8e-bea69e477bb4","ts":"2026-07-07T12:46:26.012Z","path":"/opt/kleinanzeigen-ai/app/api/templates/dashboard.html","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"6d92a84d-4d8f-4e57-87b6-1a81e78891cd","ts":"2026-07-07T12:54:49.325Z","path":"/opt/kleinanzeigen-ai/app/shared/models.py","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"67d8f9dc-f940-4dd0-884e-e4ce9cec6527","ts":"2026-07-07T12:56:17.734Z","path":"/opt/kleinanzeigen-ai/alembic/versions/a43ba04bf415_add_partial_failed_status_and_parse_.py","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
-{"id":"fae07626-fc23-4ec1-ae48-98c3afcc3e04","ts":"2026-07-07T12:56:39.962Z","path":"/opt/kleinanzeigen-ai/app/worker/validation.py","version":"1.0.0","taskID":"9a85cd74-36ac-408a-a6cd-dce5a0e7cd44"}
