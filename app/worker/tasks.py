@@ -764,16 +764,18 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             attributes={"job": "scrape.kleinanzeigen"},
         )
 
-        try:
-            if update_id is not None:
-                failed_task = db.query(ScrapeTask).filter(ScrapeTask.id == update_id).first()
-                if failed_task:
+        if update_id is not None:
+            failed_task = db.query(ScrapeTask).filter(ScrapeTask.id == update_id).first()
+            if failed_task:
+                try:
                     failed_task.status = "failed"
                     failed_task.error_message = error_detail
                     db.commit()
-        except Exception:
-            pass
-
+                except Exception:
+                    logger.exception(
+                        "Could not mark scrape task %s as failed after error", update_id
+                    )
+                    db.rollback()
         retries = self.request.retries
         countdown = min(2 ** retries * 60, 600)
         logger.info(f"Retrying in {countdown}s (attempt {retries + 1})")
