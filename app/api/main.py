@@ -28,6 +28,7 @@ from app.shared.token_tracking import get_token_usage_stats
 from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
 from app.shared.sentry import init_sentry
+import sentry_sdk
 
 logger.info("Starting kleinanzeigen-ai application...")
 init_sentry("api")
@@ -230,6 +231,8 @@ async def dashboard(
 
     is_admin = current_user["is_admin"]
 
+    admin_error = None
+    proxy_error = None
     admin_searches = []
     proxies = []
     rotating_proxy_enabled = False
@@ -237,12 +240,18 @@ async def dashboard(
         try:
             admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
         except Exception:
-            pass
+            logger.exception("Failed to load admin searches for dashboard")
+            sentry_sdk.capture_exception()
+            admin_error = "Admin-Suchen konnten nicht geladen werden."
+            db.rollback()  # reset session before the next query
         try:
             proxies = db.query(Proxy).order_by(Proxy.created_at.desc()).all()
             rotating_proxy_enabled = is_rotating_enabled(db)
         except Exception:
-            pass
+            logger.exception("Failed to load proxies for dashboard")
+            sentry_sdk.capture_exception()
+            proxy_error = "Proxy-Status konnte nicht geladen werden."
+            db.rollback()
 
     # ── Plan / credit status for the plan bar ────────────────────────────────
     db_user = db.query(User).filter(User.id == current_user["id"]).first()
@@ -329,6 +338,8 @@ async def dashboard(
             "admin_searches": admin_searches,
             "proxies": proxies,
             "rotating_proxy_enabled": rotating_proxy_enabled,
+            "admin_error": admin_error,
+            "proxy_error": proxy_error,
             # Plan bar
             "plan_name": plan_name,
             "plan_label": cfg["label"],

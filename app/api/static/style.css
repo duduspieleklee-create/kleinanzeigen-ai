@@ -889,6 +889,16 @@ body.dashboard-page {
   font-size: 13px;
 }
 
+.flash-warning {
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+
 .quota-bar {
   background: var(--color-accent-soft);
   border: 1px solid var(--color-accent-soft-border);
@@ -902,6 +912,7 @@ body.dashboard-page {
 @media (min-width: 561px) {
   .flash-success,
   .flash-error,
+  .flash-warning,
   .quota-bar {
     font-size: 13.5px;
     padding: 13px 16px;
