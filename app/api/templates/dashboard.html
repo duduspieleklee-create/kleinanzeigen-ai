@@ -700,7 +700,11 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="rc-empty-state">Noch keine Ergebnisse &mdash; neue Anzeigen deiner Suchen erscheinen hier.</div>
+                <div class="rc-empty-state" id="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <p>Noch keine Ergebnisse – erstelle deine erste Suche, um automatisch benachrichtigt zu werden.</p>
+                    <button type="button" class="empty-state-cta-btn" onclick="goToNewSearchTab()">+ Neue Suche erstellen</button>
+                </div>
                 {% endif %}
                 {% endif %}
 
