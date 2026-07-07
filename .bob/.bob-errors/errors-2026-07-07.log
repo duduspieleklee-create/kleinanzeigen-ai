@@ -1,0 +1,52 @@
+
+================================================================================
+ERROR LOGGED: 2026-07-07T12:48:20.085Z
+User ID: frederikpeter20@gmail.com
+================================================================================
+Error Name: Error
+Error Message: ripgrep exited with code 2: regex parse error:
+    )\(
+    ^
+error: unopened group
+
+
+Stack Trace:
+Error: ripgrep exited with code 2: regex parse error:
+    )\(
+    ^
+error: unopened group
+
+    at ChildProcess.<anonymous> (file:///root/.nvm/versions/node/v24.18.0/lib/node_modules/bobshell/bundle/bob.js:2272:1451)
+    at ChildProcess.emit (node:events:509:28)
+    at maybeClose (node:internal/child_process:1124:16)
+    at Socket.<anonymous> (node:internal/child_process:481:11)
+    at Socket.emit (node:events:509:28)
+    at Pipe.<anonymous> (node:net:351:12)
+================================================================================
+
+
+================================================================================
+ERROR LOGGED: 2026-07-07T12:48:20.086Z
+User ID: frederikpeter20@gmail.com
+================================================================================
+Error Name: Error
+Error Message: ripgrep exited with code 2: regex parse error:
+    )\(
+    ^
+error: unopened group
+
+
+Stack Trace:
+Error: ripgrep exited with code 2: regex parse error:
+    )\(
+    ^
+error: unopened group
+
+    at ChildProcess.<anonymous> (file:///root/.nvm/versions/node/v24.18.0/lib/node_modules/bobshell/bundle/bob.js:2272:1451)
+    at ChildProcess.emit (node:events:509:28)
+    at maybeClose (node:internal/child_process:1124:16)
+    at Socket.<anonymous> (node:internal/child_process:481:11)
+    at Socket.emit (node:events:509:28)
+    at Pipe.<anonymous> (node:net:351:12)
+================================================================================
+
