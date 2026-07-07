@@ -528,7 +528,7 @@
         </div><!-- /tab-new-search -->
 
         <!-- ── TAB: My Results (redesigned — see #tab-my-results in style.css) ── -->
-        {% macro rc_card(r, is_favorite=False) %}
+                {% macro rc_card(r, is_favorite=False) %}
         <div class="rc-card-wrapper result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords or '' }}" data-location="{{ r.location or '' }}">
             <button class="favorite-btn rc-fav-btn{% if is_favorite %} favorited{% endif %}" onclick="toggleFavorite({{ r.id }}, this)" title="{% if is_favorite %}Aus Favoriten entfernen{% else %}Zu Favoriten hinzufügen{% endif %}">{% if is_favorite %}♥{% else %}♡{% endif %}</button>
             <a class="rc-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
@@ -544,12 +544,12 @@
                 </div>
                 <div class="rc-body">
                     <div>
-                        <p class="rc-title">{{ r.title }}</p>
+                        <h3 class="rc-title">{{ r.title }}</h3>
                         <p class="rc-meta">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                             {{ r.location }}{% if r.relative_time %} · {{ r.relative_time }}{% endif %}
                         </p>
-                        {% if r.description %}<span class="card-desc">{{ r.description }}</span>{% endif %}
+                        {% if r.description %}<p class="rc-description">{{ r.description|truncate(100) }}</p>{% endif %}
                     </div>
                     <div class="rc-footer">
                         <div class="rc-price">
@@ -558,24 +558,11 @@
                             {% if not is_favorite %}<span class="rc-search-tag">Suche: {{ r.search_keywords }}</span>{% endif %}
                         </div>
                         {% if r.trust_score %}
-                        <div class="rc-trust-pill {% if show_trust_scores %}{% if r.trust_score >= 75 %}rc-trust-high{% elif r.trust_score >= 50 %}rc-trust-medium{% else %}rc-trust-low{% endif %}{% else %}rc-trust-locked{% endif %}"
-                             title="{% if show_trust_scores %}Trust Score: {{ r.trust_score }}/100{% else %}Trust Score — mit Core oder Pro sichtbar{% endif %}">
-                            {% if show_trust_scores %}
-                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            <span>{{ r.trust_score }}</span>
-                            {% else %}
-                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                            <span class="rc-lock-dots"><span></span><span></span><span></span></span>
-                            {% endif %}
+                        <div class="rc-trust-pill {% if show_trust_scores %}{% if r.trust_score >= 70 %}trust-good{% elif r.trust_score >= 40 %}trust-medium{% else %}trust-low{% endif %}{% endif %}">
+                            Trust: {{ r.trust_score }}/100
                         </div>
                         {% endif %}
                     </div>
-                    {% if not is_favorite %}
-                    <span class="card-actions">
-                        <button class="share-btn" data-result-id="{{ r.id }}" data-title="{{ r.title }}" data-url="{{ r.url }}" title="Teilen">📤</button>
-                        <button class="copy-link-btn" data-url="{{ r.url }}" title="Link kopieren">🔗</button>
-                    </span>
-                    {% endif %}
                 </div>
             </a>
         </div>
