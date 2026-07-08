@@ -77,12 +77,16 @@ if ! echo "$HEALTH" | grep -q '"status":"ok"'; then
   run docker compose -f docker-compose.prod.yml up -d --build
   exit 1
 fi
-if ! echo "$VERSION" | grep -q "\"git_sha\":\"${GIT_SHA}\""; then
-  echo "FAIL: /version git_sha mismatch. got=$VERSION expected=$GIT_SHA"
+if ! echo "$VERSION" | grep -q "\"commit\":\"${GIT_SHA}\""; then
+  echo "FAIL: /version commit mismatch. got=$VERSION expected=$GIT_SHA"
   exit 1
 fi
-if ! echo "$VERSION" | grep -q "\"app_version\":\"${APP_VERSION}\""; then
-  echo "FAIL: /version app_version mismatch. got=$VERSION expected=$APP_VERSION"
+if ! echo "$VERSION" | grep -q "\"version\":\"${APP_VERSION}\""; then
+  echo "FAIL: /version version mismatch. got=$VERSION expected=$APP_VERSION"
+  exit 1
+fi
+if ! echo "$VERSION" | grep -q "\"build\":\"${BUILD_NUMBER}\""; then
+  echo "FAIL: /version build mismatch. got=$VERSION expected=$BUILD_NUMBER"
   exit 1
 fi
 echo "Deploy smoke checks passed: healthz=ok version=$VERSION"

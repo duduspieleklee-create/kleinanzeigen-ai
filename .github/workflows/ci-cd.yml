@@ -139,10 +139,13 @@ jobs:
             if ! echo "$HEALTH" | grep -q '"status":"ok"'; then
               echo "FAIL: /healthz did not return ok: $HEALTH"; exit 1
             fi
-            if ! echo "$VERSION" | grep -q "\"git_sha\":\"${EXPECTED_GIT_SHA}\""; then
-              echo "FAIL: /version git_sha mismatch. got=$VERSION expected=$EXPECTED_GIT_SHA"; exit 1
+            if ! echo "$VERSION" | grep -q "\"commit\":\"${EXPECTED_GIT_SHA}\""; then
+              echo "FAIL: /version commit mismatch. got=$VERSION expected=$EXPECTED_GIT_SHA"; exit 1
             fi
-            if ! echo "$VERSION" | grep -q "\"app_version\":\"${EXPECTED_APP_VERSION}\""; then
-              echo "FAIL: /version app_version mismatch. got=$VERSION expected=$EXPECTED_APP_VERSION"; exit 1
+            if ! echo "$VERSION" | grep -q "\"version\":\"${EXPECTED_APP_VERSION}\""; then
+              echo "FAIL: /version version mismatch. got=$VERSION expected=$EXPECTED_APP_VERSION"; exit 1
+            fi
+            if ! echo "$VERSION" | grep -q "\"build\":\"${EXPECTED_BUILD_NUMBER}\""; then
+              echo "FAIL: /version build mismatch. got=$VERSION expected=$EXPECTED_BUILD_NUMBER"; exit 1
             fi
             echo "Deploy smoke checks passed: healthz=ok version=$VERSION"
