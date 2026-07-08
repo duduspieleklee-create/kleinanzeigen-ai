@@ -18,7 +18,7 @@ from app.shared.email_notifications import (
     send_email_notification,
 )
 from app.shared.metrics import track_job
-from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
+from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
@@ -106,6 +106,28 @@ def _retry_with_backoff(policy: dict, op_name: str, send_fn):
             if attempt < policy.get("max_attempts", 1):
                 time.sleep(min(2 ** attempt, policy.get("backoff_cap", 60)))
     return False, last
+
+
+def _save_notification_delivery(db, user_id: int, task_id: int | None, channel: str, summary: dict | None) -> None:
+    summary = summary or {}
+    raw_payload = dict(summary)
+    if isinstance(raw_payload.get("errors"), list):
+        raw_payload["errors"] = [str(e) for e in raw_payload["errors"] if e is not None]
+    delivered = bool(summary.get("sent"))
+    status = "sent" if delivered else "failed"
+    last_error = "; ".join([str(e) for e in summary.get("errors", []) if e]) or None
+    db.add(
+        NotificationDelivery(
+            user_id=user_id,
+            task_id=task_id,
+            channel=channel,
+            status=status,
+            attempt_count=int(summary.get("sent", 0)) + int(summary.get("failed", 0)) + int(summary.get("removed", 0)),
+            last_error=last_error,
+            sent_at=datetime.now(timezone.utc) if delivered else None,
+            raw_payload=raw_payload,
+        )
+    )
 
 
 def _send_push_notifications(
@@ -267,6 +289,7 @@ def _send_push_notifications(
     if summary["failed"]:
         sentry_metrics.count("notifications.push_failed", summary["failed"])
 
+    _save_notification_delivery(db, user_id, task_id, "push", summary)
     return summary
 
 
@@ -340,6 +363,8 @@ def _send_email_notifications(
     else:
         summary["errors"].append(f"Email send failed: {last}")
         sentry_metrics.count("notifications.email_failed", 1)
+
+    _save_notification_delivery(db, user_id, task_id, "email", summary)
     return summary
 
 
