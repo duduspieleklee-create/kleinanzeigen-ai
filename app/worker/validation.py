@@ -4,7 +4,7 @@ Provides strict schema validation for listings before they're saved to the datab
 ensuring data quality and enabling partial-failure tracking.
 """
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
