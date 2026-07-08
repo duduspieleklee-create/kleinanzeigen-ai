@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app.api.config import settings
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
-from app.shared.database import get_db
+from app.shared.database import SessionLocal, get_db
 from app.shared.models import BillingEvent, User
 from app.shared.plans import (
     PLANS,
