@@ -22,13 +22,14 @@ import stripe
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.config import settings
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
 from app.shared.database import get_db
-from app.shared.models import User
+from app.shared.models import BillingEvent, User
 from app.shared.plans import (
     PLANS,
     enforce_plan_limits,
@@ -157,7 +158,7 @@ def invalidate_price_cache():
     """Invalidate the Redis price cache.
     
     Call this from webhook handlers when Stripe price updates are received
-    to ensure users see current prices immediately.
+    to ensure users see current prices immediately instead of stale cached values.
     """
     try:
         r = _get_redis()
@@ -165,6 +166,39 @@ def invalidate_price_cache():
         logger.info("Price cache invalidated")
     except redis.RedisError as e:
         logger.warning(f"Could not invalidate price cache: {e}")
+
+
+def _has_billing_events_table() -> bool:
+    """Best-effort at-runtime check for the billing_events table."""
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT to_regclass('public.billing_events')"))
+            return True
+    except Exception:
+        return False
+
+
+def _record_billing_event(db, event_id: str, event_type: str, user_id: int | None = None) -> BillingEvent | None:
+    """Persist a billing event row for dedup/audit."""
+    if not event_id:
+        return None
+    return BillingEvent(
+        event_id=event_id,
+        event_type=event_type,
+        user_id=user_id,
+        status="processed",
+        payload=None,
+    )
+
+
+def _already_processed(db, event_id: str) -> bool:
+    """Return True if this Stripe event has already been handled."""
+    if not event_id:
+        return False
+    try:
+        return db.query(BillingEvent).filter(BillingEvent.event_id == event_id).first() is not None
+    except Exception:
+        return False
 
 
 def _require_web_user(request: Request, db: Session):
@@ -350,75 +384,98 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     etype = event["type"]
     obj = event["data"]["object"]
 
-    if etype == "checkout.session.completed":
-        user_id = (obj.get("metadata") or {}).get("user_id")
-        plan = (obj.get("metadata") or {}).get("plan")
-        try:
-            user_id_int = int(user_id)
-        except (TypeError, ValueError):
-            logger.warning(f"Billing webhook: bad user_id metadata {user_id!r}")
-            user_id_int = None
-        user = (
-            db.query(User).filter(User.id == user_id_int).first()
-            if user_id_int is not None
-            else None
-        )
-        if user and plan in ("core", "pro"):
-            user.stripe_customer_id = obj.get("customer") or user.stripe_customer_id
-            user.stripe_subscription_id = (
-                obj.get("subscription") or user.stripe_subscription_id
-            )
-            # Any started subscription (trialing or not) ends first-time
-            # eligibility for the Core trial.
-            user.trial_used = True
-            grant_plan(db, user, plan)
-            enforce_plan_limits(db, user)
-            logger.info(f"Billing: user {user.id} upgraded to {plan}")
+    event_id = str(event.get("id") or "")
 
-    elif etype == "customer.subscription.updated":
-        user = (
-            db.query(User)
-            .filter(User.stripe_customer_id == obj.get("customer"))
-            .first()
-        )
-        if user:
-            status = obj.get("status")
-            items = (obj.get("items") or {}).get("data") or []
-            price_id = items[0]["price"]["id"] if items else ""
-            plan = _price_to_plan(price_id)
-            if status in ("active", "trialing") and plan and plan != user.plan:
-                user.stripe_subscription_id = obj.get("id")
-                user.trial_used = True  # backstop if the checkout webhook was missed
+    if not _has_billing_events_table() or _already_processed(db, event_id):
+        return JSONResponse({"received": True, "skipped": bool(event_id)})
+
+    billing_event = BillingEvent(
+        event_id=event_id,
+        event_type=etype,
+        payload=dict(event),
+    )
+    db.add(billing_event)
+
+    try:
+        if etype == "checkout.session.completed":
+            user_id = (obj.get("metadata") or {}).get("user_id")
+            plan = (obj.get("metadata") or {}).get("plan")
+            try:
+                user_id_int = int(user_id)
+            except (TypeError, ValueError):
+                logger.warning(f"Billing webhook: bad user_id metadata {user_id!r}")
+                user_id_int = None
+            user = (
+                db.query(User).filter(User.id == user_id_int).first()
+                if user_id_int is not None
+                else None
+            )
+            if user and plan in ("core", "pro"):
+                user.stripe_customer_id = obj.get("customer") or user.stripe_customer_id
+                user.stripe_subscription_id = (
+                    obj.get("subscription") or user.stripe_subscription_id
+                )
+                billing_event.stripe_customer_id = user.stripe_customer_id
+                billing_event.user_id = user.id
+                user.trial_used = True
                 grant_plan(db, user, plan)
-                # Plan switches include downgrades (pro -> core): sweep any
-                # recurring searches that exceed the new plan's limits.
                 enforce_plan_limits(db, user)
-                logger.info(f"Billing: user {user.id} switched to {plan}")
-            elif status in ("canceled", "unpaid", "incomplete_expired"):
+                logger.info(f"Billing: user {user.id} upgraded to {plan}")
+
+        elif etype == "customer.subscription.updated":
+            user = (
+                db.query(User)
+                .filter(User.stripe_customer_id == obj.get("customer"))
+                .first()
+            )
+            if user:
+                billing_event.stripe_customer_id = user.stripe_customer_id
+                billing_event.user_id = user.id
+                status = obj.get("status")
+                items = (obj.get("items") or {}).get("data") or []
+                price_id = items[0]["price"]["id"] if items else ""
+                plan = _price_to_plan(price_id)
+                if status in ("active", "trialing") and plan and plan != user.plan:
+                    user.stripe_subscription_id = obj.get("id")
+                    user.trial_used = True
+                    grant_plan(db, user, plan)
+                    enforce_plan_limits(db, user)
+                    logger.info(f"Billing: user {user.id} switched to {plan}")
+                elif status in ("canceled", "unpaid", "incomplete_expired"):
+                    user.plan = "basic"
+                    user.stripe_subscription_id = None
+                    grant_plan(db, user, user.plan)
+                    enforce_plan_limits(db, user)
+                    logger.info(f"Billing: user {user.id} downgraded (status={status})")
+
+        elif etype == "customer.subscription.deleted":
+            user = (
+                db.query(User)
+                .filter(User.stripe_customer_id == obj.get("customer"))
+                .first()
+            )
+            if user:
+                billing_event.stripe_customer_id = user.stripe_customer_id
+                billing_event.user_id = user.id
                 user.plan = "basic"
                 user.stripe_subscription_id = None
-                db.commit()
+                grant_plan(db, user, user.plan)
                 enforce_plan_limits(db, user)
-                logger.info(f"Billing: user {user.id} downgraded (status={status})")
+                logger.info(f"Billing: user {user.id} subscription ended -> basic")
 
-    elif etype == "customer.subscription.deleted":
-        user = (
-            db.query(User)
-            .filter(User.stripe_customer_id == obj.get("customer"))
-            .first()
-        )
-        if user:
-            user.plan = "basic"
-            user.stripe_subscription_id = None
-            db.commit()
-            enforce_plan_limits(db, user)
-            logger.info(f"Billing: user {user.id} subscription ended -> basic")
+        elif etype == "price.updated":
+            invalidate_price_cache()
+            logger.info("Billing: price cache invalidated due to price.updated event")
 
-    elif etype == "price.updated":
-        # Invalidate the price cache when Stripe prices change so users
-        # see current amounts immediately instead of stale cached values.
-        invalidate_price_cache()
-        logger.info("Billing: price cache invalidated due to price.updated event")
+        billing_event.status = "processed"
+        db.commit()
+    except Exception:
+        db.rollback()
+        billing_event.status = "failed"
+        db.add(billing_event)
+        db.commit()
+        logger.exception("Billing webhook failed")
+        raise
 
     return JSONResponse({"received": True})
 

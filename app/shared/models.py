@@ -249,3 +249,21 @@ class NotificationDelivery(Base):
 
     def __repr__(self):
         return f"<NotificationDelivery(id={self.id}, channel='{self.channel}', status='{self.status}')>"
+
+
+class BillingEvent(Base):
+    __tablename__ = "billing_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(String(120), nullable=False, unique=True, index=True)
+    event_type = Column(String(100), nullable=False, index=True)
+    stripe_customer_id = Column(String(100), index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    status = Column(String(20), nullable=False, server_default="pending", index=True)
+    processed_at = Column(DateTime(timezone=True), server_default=func.now())
+    payload = Column(JSON)
+
+    user = relationship("User")
+
+    def __repr__(self):
+        return f"<BillingEvent(id={self.id}, event_id='{self.event_id}', status='{self.status}')>"
