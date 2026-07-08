@@ -7,6 +7,7 @@ current best-effort in-memory summary.
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import text
 
 revision = "0026_add_notification_deliveries"
 down_revision = "0025"
@@ -15,6 +16,10 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    row = bind.execute(text("SELECT to_regclass('public.notification_deliveries')"))
+    if row.scalar() is not None:
+        return
     op.create_table(
         "notification_deliveries",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -30,11 +35,7 @@ def upgrade():
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
-    op.create_index("ix_notification_deliveries_channel", "notification_deliveries", ["channel"])
-    op.create_index("ix_notification_deliveries_status", "notification_deliveries", ["status"])
 
 
 def downgrade():
-    op.drop_index("ix_notification_deliveries_status", table_name="notification_deliveries")
-    op.drop_index("ix_notification_deliveries_channel", table_name="notification_deliveries")
     op.drop_table("notification_deliveries")
