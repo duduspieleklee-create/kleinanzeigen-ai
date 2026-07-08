@@ -627,8 +627,12 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             task = db.query(ScrapeTask).filter(ScrapeTask.id == resolved_task_id).first()
             if task:
                 if task.status != "cancelled":
-                    task.status = "completed"
-                    task.error_message = None
+                    if parse_error_count > 0:
+                        task.status = "partial_failed"
+                        task.error_message = f"{parse_error_count} listing(s) failed to parse; see ScrapeResult.parse_error for details."
+                    else:
+                        task.status = "completed"
+                        task.error_message = None
                 # A successful run consumed the free baseline (a failed run
                 # keeps it — nothing was charged, so the retry is still free).
                 task.baseline_done = True
