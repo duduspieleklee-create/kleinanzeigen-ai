@@ -455,8 +455,10 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
         new_count = 0
         new_results = []
+        parse_error_count = 0
 
         for item in listings[:25]:
+            item_url = None
             try:
                 title_tag = item.find("h2") or item.find("a", class_="ellipsis")
                 title = title_tag.get_text(strip=True) if title_tag else "No title"
@@ -568,7 +570,29 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 new_count += 1
 
             except Exception as e:
-                logger.warning(f"Failed to parse listing: {e}")
+                err_msg = f"{type(e).__name__}: {e}"
+                logger.warning(f"Failed to parse listing: {err_msg}")
+                parse_error_count += 1
+                db.add(
+                    ScrapeResult(
+                        task_id=resolved_task_id,
+                        title="Parse failed",
+                        price="N/A",
+                        price_value=None,
+                        location="N/A",
+                        url=item_url,
+                        image_url=None,
+                        description=None,
+                        seller_id=None,
+                        seller_name=None,
+                        seller_rating=None,
+                        seller_badges=None,
+                        seller_active_since=None,
+                        seller_listings_count=None,
+                        trust_score=None,
+                        parse_error=err_msg,
+                    )
+                )
                 continue
 
         db.commit()
