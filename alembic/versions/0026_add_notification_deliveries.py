@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSON
 
 revision = "0026_add_notification_deliveries"
-down_revision = "0025_enable_email_notifications_by_default"
+down_revision = "0025"
 branch_labels = None
 depends_on = None
 
