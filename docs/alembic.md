@@ -16,7 +16,7 @@ Database schema changes are managed exclusively through Alembic migrations.
 
 ### Apply all pending migrations (bring DB up to date)
 ```bash
-alembic upgrade head
+alembic upgrade heads
 ```
 
 ### Roll back the last migration
@@ -55,7 +55,7 @@ Use sequential numeric IDs (`0001`, `0002`, …) for clarity.
 
 ## CI / Deployment
 
-Run `alembic upgrade head` as the first step before starting the API server. In the Helm chart, this is the correct place for an init container or a pre-start hook.
+Run `alembic upgrade heads` as the first step before starting the API server. In the Helm chart, this is the correct place for an init container or a pre-start hook.
 
 ## Adding a New Model
 
@@ -63,4 +63,4 @@ Run `alembic upgrade head` as the first step before starting the API server. In 
 2. Import it in `alembic/env.py` if it's in a new file (models already imported via `import app.shared.models`)
 3. Run `alembic revision --autogenerate -m "add_<model_name>"`
 4. Review and clean up the generated migration file
-5. Run `alembic upgrade head`
+5. Run `alembic upgrade heads`

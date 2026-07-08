@@ -45,7 +45,7 @@ if [ "$previous_build_number" -lt 0 ]; then
 fi
 
 run docker compose -f docker-compose.prod.yml build api
-run docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
+run docker compose -f docker-compose.prod.yml run --rm api alembic upgrade heads
 run docker compose -f docker-compose.prod.yml up -d --build
 
 if [ "$DRY_RUN" -eq 1 ]; then

@@ -17,7 +17,7 @@ docker compose up --build
 ruff check app/
 
 # Database migrations
-alembic upgrade head                                 # apply pending
+alembic upgrade heads                                # apply pending
 alembic revision --autogenerate -m "describe change" # generate from model changes
 alembic downgrade -1                                 # roll back one
 alembic current                                      # check applied revision
