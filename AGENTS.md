@@ -225,11 +225,6 @@ This is a starting point. Add your own conventions, style, and rules as you figu
 
 Example entry format:
 
-```
-- [YYYY-MM-DD] feat: summary of changes
-  - Modified files: list of key files
-  - Brief description of what was accomplished.
-```
 
 - [2026-07-07] feat: enhance search wizard with location autosuggest and searchable category dropdown
   - Modified files: app/api/templates/dashboard.html
