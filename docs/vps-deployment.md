@@ -134,7 +134,7 @@ managed exclusively through Alembic — see `docs/alembic.md`):
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d db redis
-docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
+docker compose -f docker-compose.prod.yml run --rm api alembic upgrade heads
 ```
 
 ## 6. Start the full stack
