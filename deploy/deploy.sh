@@ -10,6 +10,8 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
+git checkout main
+git branch --set-upstream-to=origin/main main
 git pull
 
 export GIT_SHA="$(git rev-parse HEAD)"
