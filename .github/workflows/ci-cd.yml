@@ -94,6 +94,8 @@ jobs:
           script: |
             set -e
             cd /opt/kleinanzeigen-ai
+            git checkout main
+            git branch --set-upstream-to=origin/main main
             git pull
             # Upsert a KEY=VALUE line into .env. tr strips any CR/LF so a stray
             # trailing newline in a GitHub secret can't corrupt the file (a
