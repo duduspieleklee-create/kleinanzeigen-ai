@@ -122,3 +122,27 @@ jobs:
             docker compose -f docker-compose.prod.yml build api
             docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
             docker compose -f docker-compose.prod.yml up -d --build
+
+            # Post-deploy smoke checks: must match the new build args.
+            EXPECTED_GIT_SHA="$GIT_SHA"
+            EXPECTED_APP_VERSION="$APP_VERSION"
+            EXPECTED_BUILD_NUMBER="$BUILD_NUMBER"
+            for i in $(seq 1 60); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8000/healthz" 2>/dev/null || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                break
+              fi
+              sleep 2
+            done
+            HEALTH=$(curl -s "http://127.0.0.1:8000/healthz" 2>/dev/null || echo '{}')
+            VERSION=$(curl -s "http://127.0.0.1:8000/version" 2>/dev/null || echo '{}')
+            if ! echo "$HEALTH" | grep -q '"status":"ok"'; then
+              echo "FAIL: /healthz did not return ok: $HEALTH"; exit 1
+            fi
+            if ! echo "$VERSION" | grep -q "\"git_sha\":\"${EXPECTED_GIT_SHA}\""; then
+              echo "FAIL: /version git_sha mismatch. got=$VERSION expected=$EXPECTED_GIT_SHA"; exit 1
+            fi
+            if ! echo "$VERSION" | grep -q "\"app_version\":\"${EXPECTED_APP_VERSION}\""; then
+              echo "FAIL: /version app_version mismatch. got=$VERSION expected=$EXPECTED_APP_VERSION"; exit 1
+            fi
+            echo "Deploy smoke checks passed: healthz=ok version=$VERSION"

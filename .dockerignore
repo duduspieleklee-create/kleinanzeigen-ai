@@ -1,0 +1,28 @@
+# Secrets / local config
+.env
+.env.*
+
+# Git
+.git
+.gitattributes
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.venv
+venv/
+
+# Node/frontend artifacts
+node_modules
+dist
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
