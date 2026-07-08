@@ -6,6 +6,8 @@ extracts listing metadata from search result pages.
 """
 import logging
 from typing import Optional, Dict
+
+import sentry_sdk.metrics as sentry_metrics
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger("kleinanzeigen-ai")
@@ -68,7 +70,9 @@ def extract_seller_info(html: str) -> Optional[Dict]:
 
         # Extract badges (Freundlich, Zuverlässig)
         badges = []
-        badge_elements = profile_section.find_all("a", href=lambda x: x and ("freundlichkeits" in x or "zuverlaessigkeits" in x))
+        badge_elements = profile_section.find_all(
+            "a", href=lambda x: x and ("freundlichkeits" in x or "zuverlaessigkeits" in x)
+        )
         for badge_elem in badge_elements:
             badge_text = badge_elem.get_text(strip=True)
             if "Freundlich" in badge_text:
@@ -81,8 +85,9 @@ def extract_seller_info(html: str) -> Optional[Dict]:
 
         # Extract account age and listings count from profile text
         import re
+
         profile_text = profile_section.get_text()
-        
+
         # Extract account age ("Aktiv seit 2015")
         year_match = re.search(r"Aktiv seit\s+(\d{4})", profile_text)
         if year_match:
@@ -114,6 +119,10 @@ def extract_seller_info(html: str) -> Optional[Dict]:
 def fetch_and_extract_seller_info(url: str, session=None) -> Optional[Dict]:
     """Fetch a listing detail page and extract seller information.
 
+    Emits ``seller_extraction.no_match`` on extraction misses and
+    ``seller_extraction.fetch_failed`` on HTTP/network failures so DOM
+    breakage is visible in Sentry within one scrape cycle.
+
     Args:
         url: Full URL to the listing detail page
         session: Optional requests.Session for connection pooling
@@ -134,8 +143,26 @@ def fetch_and_extract_seller_info(url: str, session=None) -> Optional[Dict]:
             response = requests.get(url, headers=headers, timeout=10)
 
         response.raise_for_status()
-        return extract_seller_info(response.text)
+        seller_info = extract_seller_info(response.text)
+        if seller_info is None:
+            try:
+                sentry_metrics.count(
+                    "seller_extraction.no_match",
+                    1,
+                    attributes={"url": str(url)[:120]},
+                )
+            except Exception:
+                pass
+        return seller_info
 
     except Exception as e:
         logger.warning(f"Failed to fetch seller info from {url}: {e}")
+        try:
+            sentry_metrics.count(
+                "seller_extraction.fetch_failed",
+                1,
+                attributes={"url": str(url)[:120]},
+            )
+        except Exception:
+            pass
         return None

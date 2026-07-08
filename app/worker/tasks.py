@@ -43,9 +43,27 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
         }
         response = requests.get(url, headers=headers, timeout=6)
         response.raise_for_status()
-        return extract_seller_info(response.text)
+        seller_info = extract_seller_info(response.text)
+        if seller_info is None:
+            try:
+                sentry_metrics.count(
+                    "seller_extraction.no_match",
+                    1,
+                    attributes={"url": str(url)[:120]},
+                )
+            except Exception:
+                pass
+        return seller_info
     except Exception as e:
         logger.debug(f"Failed to extract seller info from {url}: {e}")
+        try:
+            sentry_metrics.count(
+                "seller_extraction.fetch_failed",
+                1,
+                attributes={"url": str(url)[:120]},
+            )
+        except Exception:
+            pass
         return None
 
 
