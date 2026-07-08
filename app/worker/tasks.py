@@ -18,7 +18,7 @@ from app.shared.email_notifications import (
     send_email_notification,
 )
 from app.shared.metrics import track_job
-from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
+from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
@@ -85,6 +85,27 @@ def _in_quiet_hours(quiet_start: str | None, quiet_end: str | None) -> bool:
     if quiet_start <= quiet_end:
         return quiet_start <= now < quiet_end
     return now >= quiet_start or now < quiet_end
+
+
+def _retry_with_backoff(policy: dict, op_name: str, send_fn):
+    """Call `send_fn()` up to `policy['max_attempts']` times with backoff.
+
+    Returns
+    -------
+    tuple(bool, Exception | None)
+        Whether the send succeeded, and the last exception if not.
+    """
+    last = None
+    for attempt in range(1, policy.get("max_attempts", 1) + 1):
+        try:
+            send_fn()
+            return True, None
+        except Exception as exc:  # pragma: no cover - behavior verified by source
+            last = exc
+            logger.warning("%s failed (attempt %s): %s", op_name, attempt, exc)
+            if attempt < policy.get("max_attempts", 1):
+                time.sleep(min(2 ** attempt, policy.get("backoff_cap", 60)))
+    return False, last
 
 
 def _send_push_notifications(
@@ -202,20 +223,27 @@ def _send_push_notifications(
         sub_claim = "mailto:admin@example.com"
 
     stale = []
+    push_policy = {"max_attempts": 3, "backoff_cap": 60}
     for sub in subs:
         try:
-            webpush(
-                subscription_info={
-                    "endpoint": sub.endpoint,
-                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
-                },
-                data=payload,
-                vapid_private_key=private_key,
-                # pywebpush mutates the claims dict (adds aud/exp), so pass a
-                # fresh copy per subscription.
-                vapid_claims={"sub": sub_claim},
-            )
-            summary["sent"] += 1
+            def _do_push() -> None:
+                webpush(
+                    subscription_info={
+                        "endpoint": sub.endpoint,
+                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                    },
+                    data=payload,
+                    vapid_private_key=private_key,
+                    vapid_claims={"sub": sub_claim},
+                )
+
+            ok, last = _retry_with_backoff(push_policy, f"webpush(subs={sub.id})", _do_push)
+            if ok:
+                summary["sent"] += 1
+            else:
+                summary["failed"] += 1
+                summary["errors"].append(str(last))
+                logger.warning(f"Push failed for sub {sub.id}: {last}")
         except WebPushException as e:
             # 404/410 means the subscription has expired — clean it up
             if e.response is not None and e.response.status_code in (404, 410):
@@ -244,7 +272,8 @@ def _send_push_notifications(
 
 def _send_email_notifications(
     db, user_id: int, result_count: int, keywords: str,
-    new_results: list, highlight: str = None, bypass_preferences: bool = False
+    new_results: list, highlight: str = None, bypass_preferences: bool = False,
+    task_id: int = None,
 ) -> dict:
     """Email a user about genuinely-new listings.
 
@@ -297,11 +326,19 @@ def _send_email_notifications(
         results=results_payload,
         highlight=highlight,
     )
-    summary["sent"] = send_email_notification(notification)
+
+    email_policy = {"max_attempts": 3, "backoff_cap": 60}
+    def _do_send():
+        if not send_email_notification(notification):
+            raise RuntimeError("Email send failed; see server logs.")
+        return True
+
+    ok, last = _retry_with_backoff(email_policy, f"resend(user={user.id},task={task_id})", _do_send)
+    summary["sent"] = bool(ok)
     if summary["sent"]:
         sentry_metrics.count("notifications.email_sent", 1)
     else:
-        summary["errors"].append("Email send failed; see server logs.")
+        summary["errors"].append(f"Email send failed: {last}")
         sentry_metrics.count("notifications.email_failed", 1)
     return summary
 

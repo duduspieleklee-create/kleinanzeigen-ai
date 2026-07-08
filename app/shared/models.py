@@ -62,6 +62,7 @@ class User(Base):
     push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     token_usages = relationship("TokenUsage", back_populates="user", cascade="all, delete-orphan")
+    notification_deliveries = relationship("NotificationDelivery", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}')>"
@@ -226,3 +227,25 @@ class AdminSearch(Base):
 
     def __repr__(self):
         return f"<AdminSearch(id={self.id}, keywords='{self.keywords}')>"
+
+
+class NotificationDelivery(Base):
+    __tablename__ = "notification_deliveries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(Integer, ForeignKey("scrape_tasks.id", ondelete="SET NULL"), nullable=True)
+    channel = Column(String(20), nullable=False, index=True)  # push / email / loopback
+    status = Column(String(20), nullable=False, default="pending", index=True)  # pending/sent/failed
+    attempt_count = Column(Integer, nullable=False, default=0)
+    last_error = Column(Text)
+    sent_at = Column(DateTime(timezone=True))
+    retry_after = Column(DateTime(timezone=True))
+    raw_payload = Column(JSON)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="notification_deliveries")
+
+    def __repr__(self):
+        return f"<NotificationDelivery(id={self.id}, channel='{self.channel}', status='{self.status}')>"
