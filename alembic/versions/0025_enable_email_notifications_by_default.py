@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision: str = "0025"
-down_revision: Union[str, None] = "0024"
+revision = "0025_enable_email_notifications_by_default"
+down_revision: Union[str, None] = "0024_admin_search_parity_and_rotation"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
