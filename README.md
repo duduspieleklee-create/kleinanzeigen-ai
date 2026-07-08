@@ -61,7 +61,7 @@ Full list with comments in `.env.example`. The essentials:
 
 ```bash
 # Apply all migrations
-alembic upgrade head
+alembic upgrade heads
 
 # Create a new migration after model changes
 alembic revision --autogenerate -m "describe change"
@@ -75,7 +75,7 @@ On every push to `main` and every pull request:
 
 On a push to `main` only, once lint + test pass:
 
-3. **deploy** — SSHes into the VPS and runs `git pull` + `alembic upgrade head` + `docker compose up -d --build`
+3. **deploy** — SSHes into the VPS and runs `git pull` + `alembic upgrade heads` + `docker compose up -d --build`
 
 See `.github/workflows/ci-cd.yml` and `docs/architecture.md` for details.
 

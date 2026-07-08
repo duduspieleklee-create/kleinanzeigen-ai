@@ -38,7 +38,7 @@ push to main / pull request
   ├── lint          ruff check app/
   ├── test          import check (api, worker, beat) + /healthz smoke test
   └── deploy        (main branch only, after lint+test pass)
-                     SSH into the VPS: git pull, alembic upgrade head,
+                     SSH into the VPS: git pull, alembic upgrade heads,
                      docker compose up -d --build
 ```
 
