@@ -18,7 +18,7 @@ from app.shared.email_notifications import (
     send_email_notification,
 )
 from app.shared.metrics import track_job
-from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
+from app.shared.models import AdminSearch, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
