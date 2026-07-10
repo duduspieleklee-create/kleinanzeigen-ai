@@ -915,6 +915,29 @@ body.dashboard-page {
   font-size: 13px;
 }
 
+.flash-info {
+  background: var(--color-accent-soft, #eef2ff);
+  border: 1px solid var(--color-accent-soft-border, #c7d2fe);
+  color: #33395b;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+.flash-info a { color: inherit; font-weight: 600; }
+
+.wizard-preview {
+  background: var(--color-accent-soft, #eef2ff);
+  border: 1px solid var(--color-accent-soft-border, #c7d2fe);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  word-break: break-all;
+}
+.wizard-preview-label { font-weight: 600; margin-right: 6px; }
+.wizard-preview-url { color: #1d4ed8; text-decoration: underline; }
+
 .quota-bar {
   background: var(--color-accent-soft);
   border: 1px solid var(--color-accent-soft-border);
