@@ -1408,7 +1408,10 @@
 
             function selectSuggestion(item) {
                 locInput.value = item.label;
-                locIdField.value = item.value || '';
+                // The /locations/suggest API returns {id, label} — use item.id,
+                // NOT item.value (which is undefined, so the geo filter was
+                // silently dropped and radius+location validation then failed).
+                locIdField.value = item.id || '';
                 clearSuggestions();
                 // Enable the radius dropdown
                 var radiusSelect = document.getElementById('radius');
