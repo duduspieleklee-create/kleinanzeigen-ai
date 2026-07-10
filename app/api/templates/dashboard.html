@@ -496,13 +496,6 @@
 
                     <div class="wizard-summary" id="wizard-summary"></div>
 
-                    <!-- Live URL preview (issue #156): shows the resolved
-                         kleinanzeigen.de query before the user commits. -->
-                    <div class="wizard-preview" id="wizard-preview" style="display:none">
-                        <span class="wizard-preview-label">Suche nach:</span>
-                        <a id="wizard-preview-url" class="wizard-preview-url" href="#" target="_blank" rel="noopener"></a>
-                    </div>
-
                     <label>Häufigkeit</label>
                     {% set min_iv = min_interval_seconds or 300 %}
                     {% set default_iv = 300 if min_iv <= 300 else min_iv %}
@@ -519,27 +512,6 @@
                         </label>
                         {% endfor %}
                     </div>
-
-                    <!--
-                        NEW: notification opt-in as a full card, not a pair
-                        of quiet checkboxes. Push is pre-checked (the
-                        strongest retention lever in the whole flow); email
-                        stays opt-in since it's a heavier commitment. Each
-                        option explains its own "why" in one line.
-                    -->
-                    <div class="notify-card">
-                        <div class="notify-card-title">🔔 Benachrichtigungen</div>
-                        <p class="notify-card-sub">Push- und E-Mail-Benachrichtigungen sind standardmäßig aktiviert. Du kannst sie jederzeit in den Einstellungen (⚙️ oben rechts) anpassen.</p>
-                    </div>
-
-                    <!-- Collapsed by default so step 2 stays short on a phone -->
-                    <details class="promo-box">
-                        <summary>
-                            <span class="promo-icon">&#10024;</span>
-                            <strong>Smart Alerts &mdash; jetzt aktiv</strong>
-                        </summary>
-                        <p>Angebotsbewertung gegen den Marktpreis und automatische Treffer-Zusammenfassungen sind bereits aktiv (Angebotsbewertung mit Core/Pro). Preissenkungs-Verfolgung für bereits gesehene Inserate ist als Nächstes geplant.</p>
-                    </details>
 
                     <div class="wizard-actions">
                         <button type="button" class="wizard-back-btn" id="wizard-back-btn">&larr; Zurück</button>
@@ -1630,8 +1602,6 @@
             var indicator1 = document.querySelector('.wizard-step-indicator[data-step="1"]');
             var indicator2 = document.querySelector('.wizard-step-indicator[data-step="2"]');
             var summary = document.getElementById('wizard-summary');
-            var previewEl = document.getElementById('wizard-preview');
-            var previewUrlEl = document.getElementById('wizard-preview-url');
             if (!step1 || !step2 || !nextBtn || !backBtn) return;
 
             function buildSummary() {
@@ -1646,45 +1616,6 @@
                 summary.textContent = parts.length ? parts.join(' · ') : 'Alle Anzeigen';
             }
 
-            // Fetch and render the resolved kleinanzeigen.de URL (issue #156).
-            function refreshPreview() {
-                if (!previewEl || !previewUrlEl) return;
-                var params = new URLSearchParams();
-                var kw = document.getElementById('keywords').value.trim();
-                var loc = document.getElementById('location-input').value.trim();
-                var locId = document.getElementById('location_id').value.trim();
-                var catSelect = document.getElementById('category');
-                var cat = catSelect.value || '';
-                var priceMin = document.getElementById('price_min').value.trim();
-                var priceMax = document.getElementById('price_max').value.trim();
-                var radius = document.getElementById('radius').value.trim();
-                var adType = document.getElementById('ad_type').value.trim();
-                var posterType = document.getElementById('poster_type').value.trim();
-                var condition = document.getElementById('condition').value.trim();
-                var shipping = document.getElementById('shipping').value.trim();
-                if (kw) params.set('keywords', kw);
-                if (cat) params.set('category', cat);
-                if (loc) params.set('location', loc);
-                if (locId) params.set('location_id', locId);
-                if (priceMin) params.set('price_min', priceMin);
-                if (priceMax) params.set('price_max', priceMax);
-                if (radius) params.set('radius', radius);
-                if (adType) params.set('ad_type', adType);
-                if (posterType) params.set('poster_type', posterType);
-                if (condition) params.set('condition', condition);
-                if (shipping) params.set('shipping', shipping);
-                if (!params.toString()) { previewEl.style.display = 'none'; return; }
-                fetch('/scrapes/preview?' + params.toString())
-                    .then(function(r) { return r.ok ? r.json() : null; })
-                    .then(function(data) {
-                        if (!data || !data.url) { previewEl.style.display = 'none'; return; }
-                        previewUrlEl.textContent = data.url;
-                        previewUrlEl.href = data.url;
-                        previewEl.style.display = 'block';
-                    })
-                    .catch(function() { previewEl.style.display = 'none'; });
-            }
-
             function goToStep2() {
                 var kw = document.getElementById('keywords').value.trim();
                 var loc = document.getElementById('location-input').value.trim();
@@ -1694,7 +1625,6 @@
                 }
                 warning.style.display = 'none';
                 buildSummary();
-                refreshPreview();
                 step1.classList.remove('active');
                 step2.classList.add('active');
                 indicator1.classList.remove('active');
@@ -1789,24 +1719,6 @@
                     ticking = false;
                 });
             }, { passive: true });
-        })();
-
-        // ── Compact notify-card for users who already opted in once ──
-        (function() {
-            var card = document.querySelector('.notify-card');
-            if (!card) return;
-            var opted = false;
-            try { opted = localStorage.getItem('ka-notify-opted') === '1'; } catch (e) {}
-            if (opted || (('Notification' in window) && Notification.permission === 'granted')) {
-                card.classList.add('compact');
-            }
-            var form = document.getElementById('scrape-form');
-            if (form) form.addEventListener('submit', function() {
-                var push = document.getElementById('push_notifications');
-                if (push && push.checked) {
-                    try { localStorage.setItem('ka-notify-opted', '1'); } catch (e) {}
-                }
-            });
         })();
 
         // ── Swipe gestures (touch + phone widths only) ──
