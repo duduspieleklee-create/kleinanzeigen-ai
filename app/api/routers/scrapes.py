@@ -108,6 +108,31 @@ async def create_scrape(
     radius_v = _clean_int(radius, "Radius", errors)
     interval_v = _clean_int(interval_seconds, "Interval", errors)
 
+    # ── Server-side location resolution (issue #168 hardening) ──────────────
+    # The wizard normally submits a concrete location_id from a picked
+    # suggestion. But if the client ever omits it (e.g. a JS slip like the
+    # item.value/value.id bug fixed in PR #164), a radius+location combo was
+    # falsely rejected with "A radius requires a selected location". Resolve
+    # the free-text location here so the rejection only fires when we truly
+    # cannot place the query (empty upstream result) — never on a benign
+    # client omission.
+    if (location_id_v is None) and location and radius_v:
+        try:
+            from app.shared.locations_client import suggest_locations
+
+            suggestions = await asyncio.to_thread(suggest_locations, location)
+            if suggestions:
+                top = suggestions[0]
+                location_id_v = _clean_int(str(top["id"]), "Location", errors)
+                # Prefer the canonical label (e.g. "Berlin (Mitte)" over "berlin").
+                if top.get("label"):
+                    location = top["label"]
+        except Exception:
+            # Location service down / timeout — fail soft. If a radius is set
+            # we still can't honor it, but that produces a clear message below
+            # rather than a silent drop. Never block the whole create on this.
+            pass
+
     # Reject negative magnitudes — a negative price/radius is meaningless and
     # would otherwise reach url_builder unchanged.
     if price_min_v is not None and price_min_v < 0:

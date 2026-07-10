@@ -144,6 +144,32 @@ def test_radius_with_location_id_succeeds(client_and_db):
         assert task.parameters.get("location_id") == 123
 
 
+def test_free_text_location_resolves_for_radius(client_and_db, monkeypatch):
+    """Server-side hardening (issue #168): a user who types a location and
+    sets a radius but never sends location_id must NOT be rejected with
+    'A radius requires a selected location'. create_scrape resolves the
+    free-text location via suggest_locations and stores the resolved id."""
+    import app.shared.locations_client as loc_client
+
+    monkeypatch.setattr(
+        loc_client, "suggest_locations",
+        lambda q, timeout=5.0: [{"id": "777", "label": "Berlin (Mitte)"}],
+    )
+    c, Session, user_id, _ = client_and_db
+    r = c.post("/scrapes/", data={"keywords": "sofa", "location": "berlin",
+                                  "radius": "50", "interval_seconds": "3600"},
+               follow_redirects=False)
+    assert r.status_code == 303
+    assert not c.cookies.get("flash_error")
+    with Session() as db:
+        task = db.query(ScrapeTask).filter(ScrapeTask.user_id == user_id).first()
+        assert task is not None
+        assert task.parameters.get("radius") == 50
+        assert task.parameters.get("location_id") == 777
+        # canonical label preferred over the raw free text
+        assert task.parameters.get("location") == "Berlin (Mitte)"
+
+
 # ── Duplicate guard (issue #155) ───────────────────────────────────────────
 
 def test_duplicate_user_search_blocked(client_and_db):
