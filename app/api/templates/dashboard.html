@@ -291,6 +291,7 @@
                                     <span class="badge badge-{{ task.status }}">{{ task.status }}</span>
                                     <span class="search-iv">{{ iv_label }}</span>
                                     {% if parts %}<span class="search-filters">{{ parts | join(' · ') }}</span>{% endif %}
+                                    {% if task.last_checked_de %}<span class="search-checked">geprüft {{ task.last_checked_de }}</span>{% endif %}
                                 </div>
                                 {% if task.status == 'failed' and task.error_message %}
                                 <div class="task-error-detail">{{ task.error_message }}</div>
