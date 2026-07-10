@@ -24,6 +24,7 @@ from app.api.turnstile import (
 )
 from app.api.version import register_globals
 from app.shared.database import get_db
+from app.shared.cookies import ascii_cookie
 from app.shared.models import User
 
 router = APIRouter()
@@ -112,7 +113,7 @@ def _dashboard_flash(kind: str, message: str) -> RedirectResponse:
     # Flash cookie values must stay ASCII — Starlette encodes Set-Cookie
     # headers as latin-1 and non-ASCII raises at response time.
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie(kind, message, max_age=10)
+    response.set_cookie(kind, ascii_cookie(message), max_age=10)
     return response
 
 
@@ -290,15 +291,19 @@ async def register(
         if sent:
             response.set_cookie(
                 "flash_success",
-                "Konto erstellt – prüfe dein Postfach und klicke auf den "
-                "Bestätigungslink, um Suchen zu starten.",
+                ascii_cookie(
+                    "Konto erstellt – prüfe dein Postfach und klicke auf den "
+                    "Bestätigungslink, um Suchen zu starten."
+                ),
                 max_age=10,
             )
         else:
             response.set_cookie(
                 "flash_error",
-                f"Konto erstellt, aber die Bestätigungs-E-Mail konnte nicht gesendet werden: "
-                f"{send_error}. Nutze 'Bestätigungs-E-Mail erneut senden', um es erneut zu versuchen.",
+                ascii_cookie(
+                    f"Konto erstellt, aber die Bestätigungs-E-Mail konnte nicht gesendet werden: "
+                    f"{send_error}. Nutze 'Bestätigungs-E-Mail erneut senden', um es erneut zu versuchen."
+                ),
                 max_age=10,
             )
         return response

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.shared.database import get_db, SessionLocal
+from app.shared.cookies import ascii_cookie
 from app.shared.models import ScrapeTask, ScrapeResult, User, Favorite
 from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
@@ -103,7 +104,7 @@ async def create_scrape(
     # instead of returning a raw 422 JSON body.
     if errors:
         response = RedirectResponse(url="/dashboard", status_code=303)
-        response.set_cookie("flash_error", " · ".join(errors), max_age=10)
+        response.set_cookie("flash_error", ascii_cookie(" · ".join(errors)), max_age=10)
         return response
 
     # ── Plan enforcement (credits / search slots / interval floor) ───────────
@@ -205,7 +206,7 @@ async def create_scrape(
     scrape_kleinanzeigen.delay(parameters, task.id)
 
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie("flash_success", f"Scrape job #{task.id} started!", max_age=5)
+    response.set_cookie("flash_success", ascii_cookie(f"Scrape job #{task.id} started!"), max_age=5)
     if is_first_search:
         response.set_cookie("show_notification_prompt", "1", max_age=60)
     return response
@@ -215,7 +216,7 @@ def _flash_error(message: str) -> RedirectResponse:
     # Flash cookie values must stay ASCII — Starlette encodes Set-Cookie
     # headers as latin-1 and non-ASCII raises at response time.
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie("flash_error", message, max_age=10)
+    response.set_cookie("flash_error", ascii_cookie(message), max_age=10)
     return response
 
 
@@ -429,7 +430,7 @@ async def delete_scrape(
     db.commit()
 
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie("flash_success", f"Search #{task_id} and all results deleted.", max_age=5)
+    response.set_cookie("flash_success", ascii_cookie(f"Search #{task_id} and all results deleted."), max_age=5)
     return response
 
 
@@ -503,5 +504,5 @@ async def cancel_scrape(
     db.commit()
 
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie("flash_success", f"Scrape job #{task_id} cancelled.", max_age=5)
+    response.set_cookie("flash_success", ascii_cookie(f"Scrape job #{task_id} cancelled."), max_age=5)
     return response
