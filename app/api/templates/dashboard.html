@@ -500,14 +500,10 @@
                     {% set min_iv = min_interval_seconds or 300 %}
                     {% set default_iv = 300 if min_iv <= 300 else min_iv %}
                     <div class="frequency-group frequency-group-compact">
-                        <label class="frequency-option">
-                            <input type="radio" name="interval_seconds" value="">
-                            <span class="frequency-label">Einmal ausführen</span>
-                        </label>
                         {% for val, lbl in [(60, 'Sofort'), (300, 'Alle 5 Minuten'), (1800, 'Alle 30 Minuten'), (3600, 'Alle 60 Minuten')] %}
                         <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
                             <input type="radio" name="interval_seconds" value="{{ val }}"{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
-                            {% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}><span class="frequency-label">{{ lbl }}
+                            <span class="frequency-label">{{ lbl }}
                             {% if val < min_iv %}<a href="/billing" class="freq-upgrade">Upgrade</a>{% endif %}</span>
                         </label>
                         {% endfor %}
