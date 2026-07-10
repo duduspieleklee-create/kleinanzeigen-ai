@@ -124,7 +124,7 @@ def _display_prices() -> dict:
                     "currency": (p["currency"] or "eur").upper(),
                     "interval": (p.get("recurring") or {}).get("interval", "month"),
                 }
-            except Exception as e:
+            except stripe.error.StripeError as e:
                 logger.warning(f"Could not fetch Stripe price for {plan}: {e}")
         
         # Store in Redis with TTL if we got any prices
@@ -149,7 +149,7 @@ def _display_prices() -> dict:
                     "currency": (p["currency"] or "eur").upper(),
                     "interval": (p.get("recurring") or {}).get("interval", "month"),
                 }
-            except Exception as e:
+            except stripe.error.StripeError as e:
                 logger.warning(f"Could not fetch Stripe price for {plan}: {e}")
         return prices
 
@@ -283,7 +283,7 @@ async def create_checkout(
                 return_url=f"{_base_url(request)}/billing",
             )
             return RedirectResponse(url=session["url"], status_code=303)
-        except Exception as e:
+        except stripe.error.StripeError as e:
             logger.error(f"Stripe portal (plan switch) failed for user {user.id}: {e}")
             return _flash_redirect(
                 "/billing",
@@ -318,7 +318,7 @@ async def create_checkout(
             subscription_data=subscription_data,
             allow_promotion_codes=True,
         )
-    except Exception as e:
+    except stripe.error.StripeError as e:
         logger.error(f"Stripe checkout failed for user {user.id}: {e}")
         return _flash_redirect(
             "/billing", error="Could not start checkout. Please try again."
@@ -351,7 +351,7 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
             customer=user.stripe_customer_id,
             return_url=f"{_base_url(request)}/billing",
         )
-    except Exception as e:
+    except stripe.error.StripeError as e:
         logger.error(f"Stripe portal failed for user {user.id}: {e}")
         return _flash_redirect(
             "/billing", error="Could not open the billing portal. Please try again."
@@ -378,7 +378,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         event = stripe.Webhook.construct_event(
             payload, signature, settings.stripe_webhook_secret
         )
-    except Exception:
+    except stripe.error.StripeError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     etype = event["type"]
