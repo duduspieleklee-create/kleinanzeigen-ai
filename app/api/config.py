@@ -42,11 +42,15 @@ class Settings(BaseSettings):
     # admin account can be created before any Google-OAuth admin exists
     # (via ADMIN_EMAILS). It's a single shared credential with no per-person
     # audit trail, so once real admin accounts exist, set
-    # BOOTSTRAP_ADMIN_ENABLED=false to close this path off. Set APP_USERNAME /
-    # APP_PASSWORD env vars to override the login credentials.
+    # BOOTSTRAP_ADMIN_ENABLED=false to close this path off.
+    #
+    # IMPORTANT: there is NO built-in default password. APP_USERNAME / APP_PASSWORD
+    # MUST be supplied via env (.env). Leaving APP_PASSWORD empty keeps the
+    # bootstrap path disabled even when BOOTSTRAP_ADMIN_ENABLED=true, so the app
+    # never ships with a known credential.
     bootstrap_admin_enabled: bool = True
     app_username: str = "admin"
-    app_password: str = "KaSearch2026"
+    app_password: str = ""
 
     # ── Stripe billing (leave empty to disable paid plans) ────────────────────
     # Secret API key from https://dashboard.stripe.com/apikeys
@@ -122,8 +126,18 @@ class Settings(BaseSettings):
             elif len(self.secret_key) < 32:
                 problems.append("SECRET_KEY must be at least 32 characters")
             if self.bootstrap_admin_enabled:
+                # Reject the previously-hardcoded credential if it somehow
+                # survives in an env file — it is public in git history.
                 if self.app_password == "KaSearch2026":
-                    problems.append("APP_PASSWORD is still the built-in default")
+                    problems.append(
+                        "APP_PASSWORD is the old hardcoded default; it is public "
+                        "in git history and must be rotated to a fresh secret"
+                    )
+                elif not self.app_password:
+                    problems.append(
+                        "APP_PASSWORD is empty; set a strong password (>=12 chars) "
+                        "via env, or set BOOTSTRAP_ADMIN_ENABLED=false"
+                    )
                 elif len(self.app_password) < 12:
                     problems.append("APP_PASSWORD must be at least 12 characters")
             if problems:
