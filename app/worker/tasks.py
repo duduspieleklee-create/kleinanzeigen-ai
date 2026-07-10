@@ -202,10 +202,9 @@ def _send_push_notifications(
     actually happened instead of failing silently:
     {configured, total, sent, failed, removed, errors}.
 
-    Honors the user's notification preferences (push toggle, deals-only mode,
-    quiet hours) set on /settings, unless bypass_preferences is set — used by
-    the explicit "send test notification" button, which should fire
-    regardless of the current toggle state.
+    Honors the user's notification preferences (push toggle) set on /settings,
+    unless bypass_preferences is set — used by the explicit "send test
+    notification" button, which should fire regardless of the current toggle state.
     """
     summary = {
         "configured": True,
@@ -231,9 +230,6 @@ def _send_push_notifications(
         user = db.query(User).filter(User.id == user_id).first()
         if user and not user.push_notifications_enabled:
             summary["errors"].append("User has disabled push notifications.")
-            return summary
-        if user and user.deals_only_enabled and not highlight:
-            summary["errors"].append("User only wants deal-highlight notifications.")
             return summary
 
     subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
@@ -359,8 +355,7 @@ def _send_email_notifications(
     """Email a user about genuinely-new listings.
 
     Fires at the same point as _send_push_notifications and honors the same
-    preferences (email toggle, deals-only mode, quiet hours), unless
-    bypass_preferences is set.
+    preferences (email toggle), unless bypass_preferences is set.
     """
     summary = {"configured": True, "sent": False, "errors": []}
 
@@ -377,9 +372,6 @@ def _send_email_notifications(
     if not bypass_preferences:
         if not user.email_notifications_enabled:
             summary["errors"].append("User has disabled email notifications.")
-            return summary
-        if user.deals_only_enabled and not highlight:
-            summary["errors"].append("User only wants deal-highlight notifications.")
             return summary
 
     # Trust scores are a Core/Pro feature — leave them off the email for
@@ -823,6 +815,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 keywords=parameters.get("keywords", "your search"),
                 new_results=new_results,
                 highlight=highlight,
+                task_id=resolved_task_id,
             )
         # ───────────────────────────────────────────────────────────────────
 
