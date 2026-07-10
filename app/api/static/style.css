@@ -733,58 +733,6 @@ body.dashboard-page {
   background: #e2e6ea;
 }
 
-/* Collapsed <details> disclosure — one line when closed so wizard step 2
-   stays short; expands on tap for the curious. */
-.promo-box {
-  display: block;
-  background: linear-gradient(135deg, #eef1ff, #f5f0ff);
-  border: 1px solid var(--color-accent-soft-border);
-  border-radius: var(--radius-md);
-  padding: 12px 16px;
-  margin: 18px 0 6px;
-}
-
-.promo-box summary {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  list-style: none;
-  min-height: 28px;
-}
-
-.promo-box summary::-webkit-details-marker {
-  display: none;
-}
-
-.promo-box summary::after {
-  content: "+";
-  margin-left: auto;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-subtle);
-}
-
-.promo-box[open] summary::after {
-  content: "\2013";
-}
-
-.promo-icon {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.promo-box strong {
-  font-size: 13.5px;
-  color: #33395b;
-}
-
-.promo-box p {
-  margin: 8px 0 2px;
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-}
-
 /* frequency group: single column on mobile */
 .frequency-group {
   margin: 6px 0 20px;
@@ -817,80 +765,6 @@ body.dashboard-page {
   font-size: 14px;
   color: var(--color-text);
   min-height: 44px;
-}
-
-/* ---------- notification opt-in card ------------------------------------- */
-
-.notify-card {
-  background: var(--color-accent-soft);
-  border: 1.5px solid var(--color-accent-soft-border);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  margin: 18px 0;
-}
-
-.notify-card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #23285c;
-  margin-bottom: 4px;
-}
-
-.notify-card-sub {
-  font-size: 12.5px;
-  color: #4a5080;
-  margin: 0 0 14px;
-}
-
-.notify-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #fff;
-  border: 1px solid var(--color-accent-soft-border);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  min-height: 44px;
-}
-
-.notify-option:last-child {
-  margin-bottom: 0;
-}
-
-.notify-option-label {
-  flex: 1;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.notify-option-detail {
-  display: block;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--color-text-subtle);
-  margin-top: 1px;
-}
-
-/* Compact variant once the user has opted in before (JS adds .compact):
-   the pitch is dropped, only the toggles remain. */
-.notify-card.compact {
-  padding: 12px 14px;
-  margin: 14px 0;
-}
-
-.notify-card.compact .notify-card-sub {
-  display: none;
-}
-
-.notify-card.compact .notify-card-title {
-  font-size: 13.5px;
-  margin-bottom: 10px;
 }
 
 /* ---------- flash / quota bars ------------------------------------------- */
@@ -948,18 +822,6 @@ body.dashboard-page {
   font-size: 13px;
 }
 .flash-info a { color: inherit; font-weight: 600; }
-
-.wizard-preview {
-  background: var(--color-accent-soft, #eef2ff);
-  border: 1px solid var(--color-accent-soft-border, #c7d2fe);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  margin-bottom: 16px;
-  font-size: 12px;
-  word-break: break-all;
-}
-.wizard-preview-label { font-weight: 600; margin-right: 6px; }
-.wizard-preview-url { color: #1d4ed8; text-decoration: underline; }
 
 .quota-bar {
   background: var(--color-accent-soft);
