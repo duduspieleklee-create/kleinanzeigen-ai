@@ -44,6 +44,9 @@ logs/
 # Local database backups (deploy/backup.sh)
 /backups/
 
+# Stray artifact from sqlite in-memory test URL (DATABASE_URL=sqlite:///file::memory:?cache=shared)
+file::memory:
+
 # Claude Code: machine-local permission settings, not shared project config
 .claude/settings.local.json
 
