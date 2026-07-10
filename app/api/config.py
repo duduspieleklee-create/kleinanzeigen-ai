@@ -119,7 +119,12 @@ class Settings(BaseSettings):
         APP_PASSWORD is an open admin login. Both must be overridden before
         deploying — unless the bootstrap admin path is deliberately disabled.
         """
-        if self.environment != "dev":
+        # test mirrors dev: no production secrets required (CI sets a short
+        # SECRET_KEY and no APP_PASSWORD). Every other env-branch in the app
+        # already treats test like dev (see auth.py secure/auto_verify,
+        # main.py allow_origins/https_only), so enforce secrets only outside
+        # dev and test.
+        if self.environment not in ("dev", "test"):
             problems = []
             if self.secret_key == "change-me-in-production":
                 problems.append("SECRET_KEY is still the built-in default")
