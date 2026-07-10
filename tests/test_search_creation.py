@@ -124,6 +124,26 @@ def test_valid_search_creates_task(client_and_db):
         assert db.query(ScrapeTask).filter(ScrapeTask.user_id == user_id).count() == 1
 
 
+def test_radius_with_location_id_succeeds(client_and_db):
+    """Regression for the 'radius requires a selected location' rejection:
+    when the wizard actually submits location_id (populated from the
+    suggestion's `id` field), a radius is accepted and the search is created.
+    This guards against the client silently dropping location_id (item.value
+    bug)."""
+    c, Session, user_id, _ = client_and_db
+    r = c.post("/scrapes/", data={"keywords": "sofa", "location": "berlin",
+                                  "location_id": "123", "radius": "50",
+                                  "interval_seconds": "3600"},
+               follow_redirects=False)
+    assert r.status_code == 303
+    assert not c.cookies.get("flash_error")
+    with Session() as db:
+        task = db.query(ScrapeTask).filter(ScrapeTask.user_id == user_id).first()
+        assert task is not None
+        assert task.parameters.get("radius") == 50
+        assert task.parameters.get("location_id") == 123
+
+
 # ── Duplicate guard (issue #155) ───────────────────────────────────────────
 
 def test_duplicate_user_search_blocked(client_and_db):
