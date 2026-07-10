@@ -3308,30 +3308,6 @@ input:checked + .toggle-slider:before {
   transform: scale(0.95);
 }
 
-/* Quiet hours settings */
-.quiet-hours {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-top: 8px;
-}
-
-.quiet-hours label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-text-primary);
-}
-
-.quiet-hours input[type="time"] {
-  padding: 6px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: monospace;
-}
-
 /* Test notification button */
 .test-notification-btn {
   display: block;

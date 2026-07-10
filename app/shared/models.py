@@ -53,9 +53,6 @@ class User(Base):
     email_notifications_enabled = Column(Boolean, nullable=False, server_default="true")
     # Only push the "great deal" highlight, skip plain "N new listings" pushes.
     deals_only_enabled = Column(Boolean, nullable=False, server_default="false")
-    # "HH:MM" strings; both set means suppress push notifications in that window.
-    quiet_start = Column(String(5))
-    quiet_end = Column(String(5))
 
     # Relationships
     scrape_tasks = relationship("ScrapeTask", back_populates="user")
