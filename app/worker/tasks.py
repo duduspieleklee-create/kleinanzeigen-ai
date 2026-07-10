@@ -148,20 +148,6 @@ def _describe_scrape_error(exc: Exception) -> str:
     return "An unexpected error occurred while running this search. Our team has been notified."
 
 
-def _in_quiet_hours(quiet_start: str | None, quiet_end: str | None) -> bool:
-    """True if the current UTC time falls in the user's quiet-hours window.
-
-    Both bounds are "HH:MM" strings. The window may wrap midnight
-    (e.g. 22:00-08:00), so we can't just compare start < end.
-    """
-    if not quiet_start or not quiet_end:
-        return False
-    now = datetime.now(timezone.utc).strftime("%H:%M")
-    if quiet_start <= quiet_end:
-        return quiet_start <= now < quiet_end
-    return now >= quiet_start or now < quiet_end
-
-
 def _retry_with_backoff(policy: dict, op_name: str, send_fn):
     """Call `send_fn()` up to `policy['max_attempts']` times with backoff.
 
@@ -248,9 +234,6 @@ def _send_push_notifications(
             return summary
         if user and user.deals_only_enabled and not highlight:
             summary["errors"].append("User only wants deal-highlight notifications.")
-            return summary
-        if user and _in_quiet_hours(user.quiet_start, user.quiet_end):
-            summary["errors"].append("Current time is within the user's quiet hours.")
             return summary
 
     subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
@@ -397,9 +380,6 @@ def _send_email_notifications(
             return summary
         if user.deals_only_enabled and not highlight:
             summary["errors"].append("User only wants deal-highlight notifications.")
-            return summary
-        if _in_quiet_hours(user.quiet_start, user.quiet_end):
-            summary["errors"].append("Current time is within the user's quiet hours.")
             return summary
 
     # Trust scores are a Core/Pro feature — leave them off the email for

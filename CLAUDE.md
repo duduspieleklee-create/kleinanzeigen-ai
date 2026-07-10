@@ -51,7 +51,7 @@ All three service Dockerfiles build from the repo root so they can `import app.s
 3. A scrape form POST to `POST /scrapes/` enforces plan limits (email verification, credits, active-search cap, interval floor — `app/api/routers/scrapes.py`), creates a `ScrapeTask` row (status `pending`), and calls `scrape_kleinanzeigen.delay(parameters, task_id)`.
 4. The Celery worker (`app/worker/tasks.py`) picks up the task, sets status → `running`, fetches the URL, parses HTML with BeautifulSoup, saves up to 25 `ScrapeResult` rows (the first successful run per task is a free "baseline" — no credits charged, no notification sent), then sets status → `completed`.
 5. If the task fails it retries up to 2 times with a 120 s countdown, then sets status → `failed`.
-6. On a run that finds genuinely new listings (not the baseline), the worker sends a web push notification (`_send_push_notifications`) and, if the user has opted in, an email via Resend (`_send_email_notifications`) — both respect the user's quiet-hours/deals-only preferences from `/settings`.
+6. On a run that finds genuinely new listings (not the baseline), the worker sends a web push notification (`_send_push_notifications`) and, if the user has opted in, an email via Resend (`_send_email_notifications`) — both respect the user's deals-only preference from `/settings`.
 
 ### Beat-scheduled vs. API-triggered scrapes
 
