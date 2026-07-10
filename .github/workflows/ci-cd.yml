@@ -94,7 +94,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: ci
-          POSTGRES_PASSWORD: "***"
+          POSTGRES_PASSWORD: "ci"
           POSTGRES_DB: ci
         ports:
           - 5432:5432
