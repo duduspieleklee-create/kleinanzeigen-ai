@@ -545,7 +545,7 @@
                 <div class="rc-thumb">
                     {% if r.is_new %}<span class="rc-neu-badge">NEU</span>{% endif %}
                     {% if r.image_url %}
-                    <img src="{{ r.image_url }}" alt="" loading="lazy"
+                    <img src="{{ r.image_url }}" alt="" loading="lazy" decoding="async"
                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                     <div class="rc-thumb-placeholder" style="display:none"></div>
                     {% else %}
@@ -1126,6 +1126,10 @@
         (function() {
             var showPrompt = document.cookie.split('; ').find(row => row.startsWith('show_notification_prompt='));
             if (!showPrompt) return;
+
+            // Don't stack on top of the tutorial onboarding modal if it's open.
+            var tutorial = document.getElementById('tutorial-modal');
+            if (tutorial && tutorial.classList.contains('open')) return;
 
             // Clear the cookie immediately
             document.cookie = 'show_notification_prompt=; max-age=0; path=/';
