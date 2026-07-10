@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app.api.config import settings
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
-from app.shared.database import get_db
+from app.shared.database import SessionLocal, get_db
 from app.shared.models import BillingEvent, User
 from app.shared.plans import (
     PLANS,
@@ -444,7 +444,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 elif status in ("canceled", "unpaid", "incomplete_expired"):
                     user.plan = "basic"
                     user.stripe_subscription_id = None
-                    grant_plan(db, user, user.plan)
+                    grant_plan(db, user, str(user.plan or "basic"))
                     enforce_plan_limits(db, user)
                     logger.info(f"Billing: user {user.id} downgraded (status={status})")
 
@@ -459,7 +459,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 billing_event.user_id = user.id
                 user.plan = "basic"
                 user.stripe_subscription_id = None
-                grant_plan(db, user, user.plan)
+                grant_plan(db, user, str(user.plan or "basic"))
                 enforce_plan_limits(db, user)
                 logger.info(f"Billing: user {user.id} subscription ended -> basic")
 
