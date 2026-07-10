@@ -205,6 +205,18 @@ async def dashboard(
     db: Session = Depends(get_db),
 ):
     try:
+        return await _build_dashboard(request, db)
+    except Exception:
+        logger.exception("Unhandled exception on /dashboard")
+        sentry_sdk.capture_exception()
+        raise
+
+
+async def _build_dashboard(
+    request: Request,
+    db: Session,
+):
+    try:
         current_user = get_current_user(
             request, token=request.cookies.get("access_token") or "", db=db
         )
