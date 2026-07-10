@@ -85,11 +85,22 @@ async def create_scrape(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    MAX_KEYWORDS_LEN = 255
+    MAX_CATEGORY_LEN = 100
+
     errors: list = []
 
     keywords = _clean_str(keywords)
     if not keywords:
         errors.append("Please enter search keywords")
+
+    # Cap free-text length BEFORE the DB commit — the String columns in
+    # ScrapeTask.parameters would otherwise raise a raw 500 on overflow.
+    if keywords and len(keywords) > MAX_KEYWORDS_LEN:
+        errors.append("Search keywords are too long (max 255 characters)")
+    category_v = _clean_str(category)
+    if category_v and len(category_v) > MAX_CATEGORY_LEN:
+        errors.append("Category is too long (max 100 characters)")
 
     location_id_v = _clean_int(location_id, "Location", errors)
     price_min_v = _clean_int(price_min, "Minimum price", errors)
@@ -97,8 +108,22 @@ async def create_scrape(
     radius_v = _clean_int(radius, "Radius", errors)
     interval_v = _clean_int(interval_seconds, "Interval", errors)
 
+    # Reject negative magnitudes — a negative price/radius is meaningless and
+    # would otherwise reach url_builder unchanged.
+    if price_min_v is not None and price_min_v < 0:
+        errors.append("Minimum price cannot be negative")
+    if price_max_v is not None and price_max_v < 0:
+        errors.append("Maximum price cannot be negative")
+    if radius_v is not None and radius_v < 0:
+        errors.append("Radius cannot be negative")
+
     if price_min_v is not None and price_max_v is not None and price_min_v > price_max_v:
         errors.append("Minimum price cannot be greater than maximum price")
+
+    # Radius only scopes a search when a concrete location is known — without
+    # a location_id the canonical URL can't carry the radius segment.
+    if radius_v is not None and radius_v > 0 and location_id_v is None:
+        errors.append("A radius requires a selected location")
 
     # On any bad input, go back to the dashboard with a readable message
     # instead of returning a raw 422 JSON body.
@@ -182,6 +207,28 @@ async def create_scrape(
     # Remove None values so url_builder receives clean kwargs
     parameters = {k: v for k, v in parameters.items() if v is not None}
 
+    # ── Duplicate guard ─────────────────────────────────────────────────────
+    # Don't let a user stack identical searches — each duplicate burns a plan
+    # slot (count_active_recurring) and accrues credits on the same results.
+    # Compare against the stored parameters of the user's own tasks; an exact
+    # match on the normalized filter set (incl. interval) is treated as a dup.
+    existing = (
+        db.query(ScrapeTask)
+        .filter(ScrapeTask.user_id == current_user["id"])
+        .all()
+    )
+    for t in existing:
+        if t.parameters == parameters:
+            response = RedirectResponse(url="/dashboard", status_code=303)
+            response.set_cookie(
+                "flash_error",
+                ascii_cookie(
+                    f"Diese Suche existiert bereits (Suche #{t.id})"
+                ),
+                max_age=10,
+            )
+            return response
+
     task = ScrapeTask(
         user_id=current_user["id"],
         url="pending",
@@ -206,10 +253,60 @@ async def create_scrape(
     scrape_kleinanzeigen.delay(parameters, task.id)
 
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie("flash_success", ascii_cookie(f"Scrape job #{task.id} started!"), max_age=5)
+    response.set_cookie(
+        "flash_success",
+        ascii_cookie(f"Suche #{task.id} gestartet! Erste Ergebnisse erscheinen in Kürze."),
+        max_age=5,
+    )
+    # Let the dashboard watch this freshly created task via /scrapes/stream and
+    # nudge the user once its first run completes (see issue #161).
+    response.set_cookie("new_task_id", str(task.id), max_age=120)
     if is_first_search:
         response.set_cookie("show_notification_prompt", "1", max_age=60)
     return response
+
+
+@router.get("/preview", response_model=None)
+async def preview_scrape_url(
+    keywords: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    location_id: Optional[int] = Query(None),
+    price_min: Optional[int] = Query(None),
+    price_max: Optional[int] = Query(None),
+    radius: Optional[int] = Query(None),
+    ad_type: Optional[str] = Query(None),
+    poster_type: Optional[str] = Query(None),
+    condition: Optional[str] = Query(None),
+    shipping: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the canonical kleinanzeigen.de URL a search would scrape.
+
+    Lets the wizard show users the resolved query before they commit, so a
+    mistyped/unsuggested location or an invalid category slug is visible
+    up front instead of surfacing as a silently empty result set.
+    """
+    from app.shared.url_builder import build_kleinanzeigen_url
+
+    params = {
+        k: v
+        for k, v in {
+            "keywords": _clean_str(keywords),
+            "category": _clean_str(category),
+            "location": _clean_str(location),
+            "location_id": location_id,
+            "price_min": price_min,
+            "price_max": price_max,
+            "radius": radius,
+            "ad_type": _clean_str(ad_type),
+            "poster_type": _clean_str(poster_type),
+            "condition": _clean_str(condition),
+            "shipping": _clean_str(shipping),
+        }.items()
+        if v is not None
+    }
+    return {"url": build_kleinanzeigen_url(**params)}
 
 
 def _flash_error(message: str) -> RedirectResponse:

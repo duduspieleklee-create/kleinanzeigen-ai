@@ -62,6 +62,7 @@ def _context(is_admin: bool = False):
         "show_trust_scores": is_admin,
         "flash_success": None,
         "flash_error": None,
+        "new_task_id": None,
         "plan_notice": None,
         "is_admin": is_admin,
         "admin_searches": [],

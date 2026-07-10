@@ -95,6 +95,58 @@ def create_admin_search(
         )
         return response
 
+    # ── Input hardening (mirrors the user-facing flow) ──────────────────────
+    if keywords and len(keywords) > 255:
+        response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+        response.set_cookie(
+            "flash_error", "Stichwörter zu lang (max. 255 Zeichen)", max_age=10
+        )
+        return response
+    if category and len(category) > 100:
+        response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+        response.set_cookie(
+            "flash_error", "Kategorie zu lang (max. 100 Zeichen)", max_age=10
+        )
+        return response
+    if radius is not None and radius > 0 and not location_id:
+        response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+        response.set_cookie(
+            "flash_error", "Ein Umkreis erfordert einen ausgewählten Ort", max_age=10
+        )
+        return response
+    if interval_minutes is not None and interval_minutes <= 0:
+        response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+        response.set_cookie(
+            "flash_error", "Intervall muss größer als 0 sein", max_age=10
+        )
+        return response
+
+    # ── Duplicate guard (admin) ─────────────────────────────────────────────
+    dup = (
+        db.query(AdminSearch)
+        .filter(
+            AdminSearch.keywords == (keywords or None),
+            AdminSearch.category == (category or None),
+            AdminSearch.location_id == location_id,
+            AdminSearch.price_min == price_min,
+            AdminSearch.price_max == price_max,
+            AdminSearch.radius == radius,
+            AdminSearch.ad_type == (ad_type or None),
+            AdminSearch.poster_type == (poster_type or None),
+            AdminSearch.condition == (condition or None),
+            AdminSearch.shipping == (shipping or None),
+        )
+        .first()
+    )
+    if dup:
+        response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
+        response.set_cookie(
+            "flash_error",
+            f"Diese Hintergrundsuche existiert bereits (#{dup.id})",
+            max_age=10,
+        )
+        return response
+
     search = AdminSearch(
         keywords=keywords,
         category=category,

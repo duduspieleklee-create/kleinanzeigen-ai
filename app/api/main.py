@@ -225,6 +225,7 @@ async def _build_dashboard(
 
     flash_success = request.cookies.get("flash_success")
     flash_error = request.cookies.get("flash_error")
+    new_task_id = request.cookies.get("new_task_id")
 
     rows = (
         db.query(ScrapeTask, func.count(ScrapeResult.id).label("result_count"))
@@ -345,6 +346,7 @@ async def _build_dashboard(
             "show_trust_scores": show_trust_scores,
             "flash_success": flash_success,
             "flash_error": flash_error,
+            "new_task_id": new_task_id,
             "plan_notice": plan_notice,
             "is_admin": is_admin,
             "admin_searches": admin_searches,
@@ -376,6 +378,8 @@ async def _build_dashboard(
         response.delete_cookie("flash_success")
     if flash_error:
         response.delete_cookie("flash_error")
+    if new_task_id:
+        response.delete_cookie("new_task_id")
 
     if plan_notice and db_user is not None:
         db_user.plan_notice = None

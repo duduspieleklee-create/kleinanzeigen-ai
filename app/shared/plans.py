@@ -64,7 +64,12 @@ def ensure_weekly_credits(db, user) -> None:
     Commits when a refill happens; otherwise leaves the session untouched.
     """
     now = datetime.now(timezone.utc)
-    if user.credits_reset_at is None or now >= user.credits_reset_at:
+    reset = user.credits_reset_at
+    # SQLite stores tz-naive datetimes; normalize so the comparison below
+    # never mixes offset-aware and offset-naive values.
+    if reset is not None and reset.tzinfo is None:
+        reset = reset.replace(tzinfo=timezone.utc)
+    if reset is None or now >= reset:
         cfg = plan_config(user.plan)
         user.credits = cfg["credits_per_week"]
         user.credits_reset_at = now + timedelta(days=7)
