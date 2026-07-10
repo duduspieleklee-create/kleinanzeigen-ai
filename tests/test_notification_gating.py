@@ -33,10 +33,21 @@ _pywebpush = types.ModuleType("pywebpush")
 def _webpush_stub(subscription_info=None, data=None, vapid_private_key=None,
                   vapid_claims=None):
     _webpush_stub.calls.append(data)
+    if _webpush_stub.raise_410:
+        # Simulate an expired/unsubscribed push endpoint (HTTP 410 Gone).
+        # pywebpush raises WebPushException with a `.response` carrying the
+        # status code; we emulate that shape (the retry wrapper and the
+        # outer handler both need to see a 410).
+        class _Resp:
+            status_code = 410
+        exc = Exception("Push failed: 410 Gone")
+        exc.response = _Resp()
+        raise exc
     return None
 
 
 _webpush_stub.calls = []
+_webpush_stub.raise_410 = False
 _pywebpush.webpush = _webpush_stub
 _pywebpush.WebPushException = Exception
 sys.modules["pywebpush"] = _pywebpush
@@ -275,3 +286,36 @@ def test_push_delivery_row_has_task_id(db_session, monkeypatch):
     assert row is not None
     assert row.task_id == 7
     assert row.status == "sent"
+
+
+def test_expired_subscription_is_pruned_on_410(db_session, monkeypatch):
+    """Issue #194: a 410 Gone endpoint must be deleted, not left to fail forever.
+
+    Regression guard: the retry wrapper previously swallowed WebPushException,
+    so the outer `except WebPushException` (which prunes stale subs) never ran
+    and expired subscriptions lingered, failing every future test silently.
+    """
+    u = _make_user(db_session, push_enabled=True)
+    sub = PushSubscription(
+        user_id=u.id, endpoint="https://fcm.googleapis.com/expired",
+        p256dh="p256dh", auth="auth")
+    db_session.add(sub)
+    db_session.commit()
+    sub_id = sub.id
+
+    _webpush_stub.calls.clear()
+    _webpush_stub.raise_410 = True
+    try:
+        monkeypatch.setattr(worker_tasks.settings, "vapid_private_key", "x")
+        monkeypatch.setattr(worker_tasks.settings, "vapid_public_key", "x")
+        summary = worker_tasks._send_push_notifications(
+            db_session, user_id=u.id, result_count=1, keywords="tisch",
+            task_id=1,
+        )
+    finally:
+        _webpush_stub.raise_410 = False
+
+    assert summary["removed"] == 1, "expired sub must be pruned"
+    assert summary["sent"] == 0
+    still = db_session.query(PushSubscription).filter_by(id=sub_id).first()
+    assert still is None, "stale subscription must be deleted from the DB"

@@ -154,7 +154,7 @@ def send_test_push(
         keywords="Test Search",
         highlight="✓ Test notification working!",
         location="Everywhere",
-        task_id=0,
+        task_id=None,
         bypass_preferences=True,
         tag=f"test-{int(time.time() * 1000)}",
         title="TEST - kleeblatt.space",
