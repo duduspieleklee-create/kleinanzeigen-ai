@@ -767,6 +767,9 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     else:
                         task.status = "completed"
                         task.error_message = None
+                # Stamp every run (success or partial) so the dashboard can show
+                # "zuletzt geprüft vor X" even when no new listing was found.
+                task.last_run_at = datetime.now(timezone.utc)
                 # A successful run consumed the free baseline (a failed run
                 # keeps it — nothing was charged, so the retry is still free).
                 task.baseline_done = True

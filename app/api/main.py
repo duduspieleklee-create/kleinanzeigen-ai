@@ -240,6 +240,7 @@ async def _build_dashboard(
     tasks_with_counts = []
     for task, count in rows:
         task.result_count = count
+        task.last_checked_de = _relative_time_de(task.last_run_at)
         tasks_with_counts.append(task)
 
     is_admin = current_user["is_admin"]

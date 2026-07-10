@@ -1337,6 +1337,12 @@ tbody tr:hover td {
   color: var(--color-text-subtle);
 }
 
+.search-checked {
+  color: var(--color-text-subtle);
+  font-style: italic;
+  white-space: nowrap;
+}
+
 .search-result-count {
   text-align: right;
   font-weight: 700;

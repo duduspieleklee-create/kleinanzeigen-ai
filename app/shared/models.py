@@ -90,6 +90,12 @@ class ScrapeTask(Base):
     email_notifications = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True))
+    # Timestamp of the most recent execution (success OR partial), updated on
+    # every run regardless of whether new listings were found — drives the
+    # "zuletzt geprüft vor X" label on the dashboard. Distinct from
+    # completed_at (which the codebase does not currently set) and from
+    # result_count (which only moves when a genuinely new listing appears).
+    last_run_at = Column(DateTime(timezone=True))
 
     # Relationships
     user = relationship("User", back_populates="scrape_tasks")
