@@ -51,7 +51,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
 
   # Celery Worker
   worker:
