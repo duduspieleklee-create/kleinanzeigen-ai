@@ -206,19 +206,6 @@ def test_oneshot_search_has_no_interval(client_and_db):
         assert "interval_seconds" not in (task.parameters or {})
 
 
-# ── Preview endpoint (issue #156) ──────────────────────────────────────────
-
-def test_preview_returns_resolved_url(client_and_db):
-    c, _, _, _ = client_and_db
-    r = c.get("/scrapes/preview", params={"keywords": "sofa", "location": "berlin",
-                                          "location_id": 123})
-    assert r.status_code == 200
-    body = r.json()
-    assert "url" in body
-    assert "berlin" in body["url"]
-    assert "k0l123" in body["url"]
-
-
 # ── Admin validation + duplicate guard (issue #159) ────────────────────────
 
 def test_admin_interval_zero_rejected(client_and_db):

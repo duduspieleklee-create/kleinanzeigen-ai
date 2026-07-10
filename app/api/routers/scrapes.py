@@ -291,49 +291,6 @@ async def create_scrape(
     return response
 
 
-@router.get("/preview", response_model=None)
-async def preview_scrape_url(
-    keywords: Optional[str] = Query(None),
-    category: Optional[str] = Query(None),
-    location: Optional[str] = Query(None),
-    location_id: Optional[int] = Query(None),
-    price_min: Optional[int] = Query(None),
-    price_max: Optional[int] = Query(None),
-    radius: Optional[int] = Query(None),
-    ad_type: Optional[str] = Query(None),
-    poster_type: Optional[str] = Query(None),
-    condition: Optional[str] = Query(None),
-    shipping: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
-):
-    """Return the canonical kleinanzeigen.de URL a search would scrape.
-
-    Lets the wizard show users the resolved query before they commit, so a
-    mistyped/unsuggested location or an invalid category slug is visible
-    up front instead of surfacing as a silently empty result set.
-    """
-    from app.shared.url_builder import build_kleinanzeigen_url
-
-    params = {
-        k: v
-        for k, v in {
-            "keywords": _clean_str(keywords),
-            "category": _clean_str(category),
-            "location": _clean_str(location),
-            "location_id": location_id,
-            "price_min": price_min,
-            "price_max": price_max,
-            "radius": radius,
-            "ad_type": _clean_str(ad_type),
-            "poster_type": _clean_str(poster_type),
-            "condition": _clean_str(condition),
-            "shipping": _clean_str(shipping),
-        }.items()
-        if v is not None
-    }
-    return {"url": build_kleinanzeigen_url(**params)}
-
-
 def _flash_error(message: str) -> RedirectResponse:
     # Flash cookie values must stay ASCII — Starlette encodes Set-Cookie
     # headers as latin-1 and non-ASCII raises at response time.
