@@ -55,7 +55,9 @@
                 <button type="button" class="password-toggle" data-target="confirm_password" aria-label="Passwort bestätigen anzeigen">Anzeigen</button>
             </div>
             {% if turnstile_site_key %}
-            <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="auto"></div>
+            <div class="turnstile-wrap">
+                <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="auto"></div>
+            </div>
             {% endif %}
             <button type="submit" class="register-btn">Konto erstellen</button>
         </form>

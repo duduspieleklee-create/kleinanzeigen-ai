@@ -2,7 +2,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -459,3 +460,20 @@ async def logout():
     response = RedirectResponse(url="/")
     response.delete_cookie("access_token")
     return response
+
+
+# --- Dev-only quick-login (mobile QA / screenshotting without Turnstile) -------
+# Guarded to non-production environments. Lets a reviewer grab an authenticated
+# session (e.g. to screenshot the dashboard on a phone) without solving the
+# Cloudflare challenge, which can't load in headless/offline test setups.
+@router.get("/dev/login-as/{user_id}")
+async def dev_login_as(user_id: int, db: Session = Depends(get_db)):
+    if settings.environment in ("dev", "test"):
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="user not found")
+        return _issue_cookie(user.id, user.username)
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="not available in this environment",
+    )
