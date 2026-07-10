@@ -7,14 +7,12 @@ name = "kleinanzeigen-ai"
 version = "0.1.0"
 description = "AI-powered tooling for Kleinanzeigen"
 requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.111.0",
-    "uvicorn[standard]>=0.29.0",
-    "celery[redis]>=5.4.0",
-    "httpx>=0.27.0",
-    "pydantic>=2.7.0",
-    "pydantic-settings>=2.3.0",
-]
+# Runtime dependencies live in requirements.txt — it is the single source of
+# truth, consumed by every install path (app/api, app/worker, app/beat
+# Dockerfiles and the CI test job). This project is never pip-installed as a
+# package (no setup.py / editable install), so keeping a duplicate dependency
+# list here only drifted out of sync with requirements.txt. Dev tooling pins
+# (ruff/mypy/pytest) remain in [project.optional-dependencies] below.
 
 [project.optional-dependencies]
 dev = [
