@@ -13,6 +13,8 @@ import asyncio
 import json
 from unittest.mock import MagicMock, patch
 
+import stripe
+
 import pytest
 from fastapi import HTTPException
 
@@ -50,7 +52,7 @@ def test_webhook_400_on_bad_signature():
     try:
         with patch(
             "app.api.routers.billing.stripe.Webhook.construct_event",
-            side_effect=Exception("bad sig"),
+            side_effect=stripe.error.SignatureVerificationError("bad sig", "sig"),
         ):
             with pytest.raises(HTTPException) as exc:
                 asyncio.run(billing.stripe_webhook(_make_request({"type": "x"}), db=MagicMock()))
