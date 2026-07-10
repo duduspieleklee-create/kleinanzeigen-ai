@@ -42,18 +42,6 @@
                 <p id="push-subscriptions-empty" class="push-subscriptions-empty">Keine aktiven Geräte.</p>
             </div>
 
-            <div class="settings-item">
-                <div class="settings-label">
-                    <span>Nur bei großartigen Angeboten benachrichtigen</span>
-                    <small>Erhalte nur Benachrichtigungen für Top-Deals (🔥 Badge)</small>
-                </div>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="deals-only-toggle"
-                           {% if user_settings.deals_only_enabled %}checked{% endif %}>
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-
             <!-- Notification Status Banner -->
             {% if not user_settings.email_notifications_enabled %}
             <div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
@@ -337,9 +325,19 @@
                     if (!ok) {
                         pushToggle.checked = false;
                         alert('Benachrichtigungen konnten nicht aktiviert werden — bitte erneut versuchen.');
+                    } else {
+                        // The toggle is the single source of truth: tell the
+                        // server to set the DB flag so push actually fires
+                        // (issue #186). On failure, revert the UI.
+                        var saved = await setPushEnabled(true);
+                        if (!saved) {
+                            pushToggle.checked = false;
+                            await unsubscribeFromPush();
+                        }
                     }
                 } else {
                     await unsubscribeFromPush();
+                    await setPushEnabled(false);
                 }
             } catch (err) {
                 console.error('Push toggle error:', err);
@@ -350,6 +348,23 @@
             }
         });
 
+        // POST the notification-settings endpoint to drive push_enabled.
+        // Returns true on success. push_enabled is the ONLY field sent here,
+        // so it never implicitly touches other settings (issue #187).
+        async function setPushEnabled(enabled) {
+            try {
+                var resp = await fetch('/api/settings/notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ push_enabled: enabled })
+                });
+                return resp.ok;
+            } catch (err) {
+                console.error('Error setting push_enabled:', err);
+                return false;
+            }
+        }
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(function() {});
         }
@@ -359,7 +374,6 @@
         // Save notification settings
         function saveNotificationSettings() {
             var settings = {
-                deals_only: document.getElementById('deals-only-toggle').checked,
                 email_enabled: document.getElementById('email-notifications-toggle').checked
             };
             fetch('/api/settings/notifications', {
@@ -369,7 +383,6 @@
             }).catch(err => console.error('Error saving notification settings:', err));
         }
 
-        document.getElementById('deals-only-toggle').addEventListener('change', saveNotificationSettings);
         document.getElementById('email-notifications-toggle').addEventListener('change', saveNotificationSettings);
 
         // Send test notification

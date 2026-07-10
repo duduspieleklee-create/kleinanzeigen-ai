@@ -51,8 +51,6 @@ class User(Base):
     # Notification preferences, editable on /settings.
     push_notifications_enabled = Column(Boolean, nullable=False, server_default="false")
     email_notifications_enabled = Column(Boolean, nullable=False, server_default="true")
-    # Only push the "great deal" highlight, skip plain "N new listings" pushes.
-    deals_only_enabled = Column(Boolean, nullable=False, server_default="false")
 
     # Relationships
     scrape_tasks = relationship("ScrapeTask", back_populates="user")

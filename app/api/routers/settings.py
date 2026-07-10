@@ -24,8 +24,9 @@ register_globals(templates)
 
 
 class NotificationSettingsPayload(BaseModel):
-    push_enabled: bool = True
-    deals_only: bool = False
+    # Optional: when omitted, the server must NOT touch the push flag — this
+    # prevents unrelated settings saves from force-enabling push (issue #187).
+    push_enabled: bool | None = None
     email_enabled: bool = False
 
 
@@ -68,7 +69,6 @@ def settings_page(
             "user_settings": {
                 "push_notifications_enabled": db_user.push_notifications_enabled,
                 "email_notifications_enabled": db_user.email_notifications_enabled,
-                "deals_only_enabled": db_user.deals_only_enabled,
             },
         },
     )
@@ -84,8 +84,11 @@ def update_notification_settings(
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db_user.push_notifications_enabled = payload.push_enabled
-    db_user.deals_only_enabled = payload.deals_only
+    # push_enabled is optional: only update the DB flag when the client
+    # explicitly sends it (issue #187). This makes the settings POST a
+    # single source of truth that the push toggle drives (issue #186).
+    if payload.push_enabled is not None:
+        db_user.push_notifications_enabled = payload.push_enabled
     db_user.email_notifications_enabled = payload.email_enabled
     db.commit()
     return {"status": "saved"}
@@ -143,7 +146,6 @@ def export_account_data(
         "notification_settings": {
             "push_notifications_enabled": db_user.push_notifications_enabled,
             "email_notifications_enabled": db_user.email_notifications_enabled,
-            "deals_only_enabled": db_user.deals_only_enabled,
         },
         "searches": [
             {
