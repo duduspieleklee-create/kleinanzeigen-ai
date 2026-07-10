@@ -194,7 +194,8 @@ def _save_notification_delivery(db, user_id: int, task_id: int | None, channel: 
 def _send_push_notifications(
     db, user_id: int, result_count: int, keywords: str, highlight: str = None,
     location: str = None, price_range: str = None, best_price: str = None,
-    image_url: str = None, task_id: int = None, bypass_preferences: bool = False
+    image_url: str = None, task_id: int = None, bypass_preferences: bool = False,
+    tag: str = None, title: str = None,
 ) -> dict:
     """Send a web push to every subscription of a user.
 
@@ -205,6 +206,12 @@ def _send_push_notifications(
     Honors the user's notification preferences (push toggle) set on /settings,
     unless bypass_preferences is set — used by the explicit "send test
     notification" button, which should fire regardless of the current toggle state.
+
+    `tag` and `title` are optional overrides. Real notifications use tag =
+    "search-{task_id}" to group repeats of the same search into one toast;
+    tests pass a fresh per-click tag (e.g. a timestamp) so every click pops a
+    distinct, visible notification instead of silently replacing the previous
+    one. `title` lets tests label themselves clearly (e.g. "TEST").
     """
     summary = {
         "configured": True,
@@ -238,22 +245,30 @@ def _send_push_notifications(
         return summary
 
     # Build compelling notification title and body
-    if highlight:
+    if title:
+        title_text = title
+    elif highlight:
         # Highlight the best deal
-        title = "🎯 Great Deal Found!"
-        body = highlight
+        title_text = "🎯 Great Deal Found!"
     else:
         # Multiple new listings
-        title = f"✨ {result_count} new listing{'s' if result_count != 1 else ''}"
-        body = f"{keywords}"
+        title_text = f"✨ {result_count} new listing{'s' if result_count != 1 else ''}"
+
+    # Tag: tests pass an explicit, per-click unique tag so each click is a
+    # distinct, visible toast (browsers collapse same-tag notifications). Real
+    # runs group by search via "search-{task_id}".
+    effective_tag = tag if tag is not None else f"search-{task_id}"
 
     # Build rich notification payload with actions and metadata
+    # Body takes the highlight when present, otherwise the keywords.
+    body = highlight if highlight else f"{keywords}"
+
     payload = json.dumps({
-        "title": title,
+        "title": title_text,
         "body": body,
         "icon": "/static/icon-192x192.png",
         "badge": "/static/badge-72x72.png",
-        "tag": f"search-{task_id}",  # Group by search to avoid notification spam
+        "tag": effective_tag,  # Group by search, or unique per test click
         "requireInteraction": True,  # Keep notification visible
         "data": {
             "searchKeywords": keywords,
@@ -429,6 +444,8 @@ def run_test_push(db, user_id: int) -> dict:
         keywords="",
         highlight="Test notification - push is working!",
         bypass_preferences=True,
+        tag=f"test-{int(time.time() * 1000)}",
+        title="TEST - kleeblatt.space",
     )
 
 

@@ -1,4 +1,5 @@
 import logging
+import time
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -155,6 +156,8 @@ def send_test_push(
         location="Everywhere",
         task_id=0,
         bypass_preferences=True,
+        tag=f"test-{int(time.time() * 1000)}",
+        title="TEST - kleeblatt.space",
     )
     return {
         "status": "success" if summary["sent"] > 0 else "no_subscriptions",
