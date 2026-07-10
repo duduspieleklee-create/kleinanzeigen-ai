@@ -81,6 +81,83 @@ jobs:
           echo "Smoke test passed"
 
   # ─────────────────────────────────────────────
+  # 2b. Mobile viewport smoke — boots the API, logs in via the dev-only
+  #     quick-login route, loads /dashboard at 390px and asserts no
+  #     horizontal overflow. Catches responsive regressions the unit
+  #     suite and the 1280px browser pass can't see.
+  # ─────────────────────────────────────────────
+  mobile:
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: "***"
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: "postgresql://ci:***@localhost:ci"
+          SECRET_KEY: "ci-test-secret"
+          REDIS_URL: "redis://localhost:6379/0"
+        run: alembic upgrade heads
+
+      - name: Start API
+        env:
+          DATABASE_URL: "postgresql://ci:***@localhost/ci"
+          SECRET_KEY: "ci-test-secret"
+          REDIS_URL: "redis://localhost:6379/0"
+          ENVIRONMENT: "test"
+        run: |
+          uvicorn app.api.main:app --host 127.0.0.1 --port 8000 &
+          for i in $(seq 1 15); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/healthz || echo "000")
+            [ "$STATUS" = "200" ] && echo "API started (attempt $i)" && break
+            sleep 1
+          done
+
+      - name: Mobile viewport check (390px)
+        env:
+          DATABASE_URL: "postgresql://ci:***@localhost/ci"
+          SECRET_KEY: "ci-test-secret"
+          REDIS_URL: "redis://localhost:6379/0"
+          ENVIRONMENT: "test"
+          BASE_URL: "http://127.0.0.1:8000"
+        run: python tests/mobile_viewport_check.py --out "${{ github.workspace }}/dashboard-mobile.png"
+
+      - name: Upload screenshot artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-mobile-390px
+          path: ${{ github.workspace }}/dashboard-mobile.png
+
+  # ─────────────────────────────────────────────
   # 3. Deploy — SSH into the VPS, pull, migrate, restart.
   #    Only on a push to main (never on PRs); requires VPS_HOST,
   #    VPS_USER and VPS_SSH_PASSWORD secrets (see docs/vps-deployment.md).
