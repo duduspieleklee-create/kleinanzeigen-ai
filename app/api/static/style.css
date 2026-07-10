@@ -138,6 +138,22 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 
+/* Cloudflare Turnstile iframe is ~300px wide and can force horizontal scroll
+   on very narrow screens (<360px). Clip it and let it scroll internally. */
+.turnstile-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 4px 0 14px;
+}
+
+/* Field column used by the admin search form: flexes but is allowed to shrink
+   below its ideal width (unlike inline min-width:140px, which could overflow
+   on 320px screens before wrapping). */
+.field-col {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
 button {
   font-family: inherit;
 }
