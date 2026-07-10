@@ -254,62 +254,53 @@
                     carries data-label so the CSS ::before pseudo-element
                     can render a mobile field label without any JS.
                 -->
-                <table class="responsive-table">
+                <table class="responsive-table search-overview">
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>Stichwörter</th>
-                            <th>Ort</th>
-                            <th>Filter</th>
+                            <th>Suche</th>
                             <th>Intervall</th>
-                            <th>Status</th>
                             <th>Ergebnisse</th>
-                            <th>Token (24h)</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody id="tasks-tbody">
                         {% for task in tasks %}
                         <tr>
-                            <td class="row-title" data-label="#">
-                                #{{ task.id }} &middot; {{ task.parameters.get('keywords', '&mdash;') }}
-                            </td>
-                            <td data-label="Ort">{{ task.parameters.get('location', '&mdash;') }}</td>
-                            <td data-label="Filter" style="font-size:12px;color:#666">
-                                {% set parts = [] %}
-                                {% if task.parameters.get('ad_type') %}{% set _ = parts.append(task.parameters.get('ad_type')) %}{% endif %}
-                                {% if task.parameters.get('poster_type') %}{% set _ = parts.append(task.parameters.get('poster_type')) %}{% endif %}
-                                {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
-                                {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
-                                    {% set _ = parts.append(task.parameters.get('price_min', '0') ~ '–' ~ task.parameters.get('price_max', '∞') ~ ' €') %}
-                                {% endif %}
-                                {% if task.parameters.get('radius') %}{% set _ = parts.append(task.parameters.get('radius') ~ ' km') %}{% endif %}
-                                {{ parts | join(', ') if parts else '&mdash;' }}
-                            </td>
-                            <td data-label="Intervall">
-                                {% set iv = task.parameters.get('interval_seconds') %}
-                                {% if iv == 5 %}5 s
-                                {% elif iv == 60 %}Sofort
-                                {% elif iv == 300 %}5 Min.
-                                {% elif iv == 1800 %}30 Min.
-                                {% elif iv == 3600 %}60 Min.
-                                {% else %}einmalig{% endif %}
-                            </td>
-                            <td data-label="Status">
-                                <span class="badge badge-{{ task.status }}">{{ task.status }}</span>
+                            <td class="row-title" data-label="Suche">
+                                <div class="search-name">#{{ task.id }} · {{ task.parameters.get('keywords', '—') }}</div>
+                                <div class="search-meta">
+                                    {% set iv = task.parameters.get('interval_seconds') %}
+                                    {% set iv_label %}
+                                        {% if iv == 5 %}5 s
+                                        {% elif iv == 60 %}Sofort
+                                        {% elif iv == 300 %}5 Min.
+                                        {% elif iv == 1800 %}30 Min.
+                                        {% elif iv == 3600 %}60 Min.
+                                        {% else %}einmalig{% endif %}
+                                    {% endset %}
+                                    {%- set loc = task.parameters.get('location') -%}
+                                    {%- set parts = [] -%}
+                                    {% if loc %}{% set _ = parts.append(loc) %}{% endif %}
+                                    {% if task.parameters.get('ad_type') %}{% set _ = parts.append(task.parameters.get('ad_type')) %}{% endif %}
+                                    {% if task.parameters.get('poster_type') %}{% set _ = parts.append(task.parameters.get('poster_type')) %}{% endif %}
+                                    {% if task.parameters.get('condition') %}{% set _ = parts.append(task.parameters.get('condition').replace('_', ' ')) %}{% endif %}
+                                    {% if task.parameters.get('price_min') or task.parameters.get('price_max') %}
+                                        {% set _ = parts.append(task.parameters.get('price_min', '0') ~ '–' ~ task.parameters.get('price_max', '∞') ~ ' €') %}
+                                    {% endif %}
+                                    {% if task.parameters.get('radius') %}{% set _ = parts.append(task.parameters.get('radius') ~ ' km') %}{% endif %}
+                                    <span class="badge badge-{{ task.status }}">{{ task.status }}</span>
+                                    <span class="search-iv">{{ iv_label }}</span>
+                                    {% if parts %}<span class="search-filters">{{ parts | join(' · ') }}</span>{% endif %}
+                                </div>
                                 {% if task.status == 'failed' and task.error_message %}
                                 <div class="task-error-detail">{{ task.error_message }}</div>
                                 {% endif %}
                             </td>
-                            <td data-label="Ergebnisse">
+                            <td data-label="Intervall" class="search-result-count" data-iv="{{ task.parameters.get('interval_seconds', '') }}">
                                 <a href="/scrapes/{{ task.id }}/results" title="Alle gelieferten Ergebnisse anzeigen">{{ task.result_count }}</a>
                                 {% if task.last_summary %}
                                 <div class="task-smart-summary" title="Smart Alert der letzten Ausführung">✨ {{ task.last_summary }}</div>
                                 {% endif %}
-                            </td>
-                            <td data-label="Token (24h)" style="font-size:12px">
-                                {% set task_tokens = token_stats.by_task | selectattr('task_id', 'equalto', task.id) | first %}
-                                {{ task_tokens.total_tokens if task_tokens else 0 }}
                             </td>
                             <td data-label="" class="row-actions">
                                 <a href="/scrapes/{{ task.id }}/results" class="view-link">Anzeigen</a>
@@ -814,13 +805,13 @@
                         {% for s in admin_searches %}
                         <tr>
                             <td>{{ s.id }}{% if s.is_rotation_managed %} <span title="Automatische Kategorie-Rotation" style="font-size:11px;color:#888">🔄</span>{% endif %}</td>
-                            <td>{{ s.keywords or '&mdash;' }}</td>
-                            <td>{{ s.category or '&mdash;' }}</td>
+                            <td>{{ s.keywords or '—' }}</td>
+                            <td>{{ s.category or '—' }}</td>
                             <td>{{ s.location or 'deutschlandweit' }}</td>
                             <td style="font-size:12px;color:#666">
                                 {% if s.price_min or s.price_max %}
                                     {{ s.price_min or '0' }}–{{ s.price_max or '∞' }} €
-                                {% else %}&mdash;{% endif %}
+                                {% else %}—{% endif %}
                             </td>
                             <td>{{ s.interval_minutes }} Min.</td>
                             <td style="font-size:12px;color:#666">
