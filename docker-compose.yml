@@ -90,7 +90,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-    command: celery -A app.beat.celery_beat beat --loglevel=info
+    command: celery -A app.beat.celery_beat beat --loglevel=info --schedule /tmp/celerybeat-schedule
 
 volumes:
   postgres_data:
