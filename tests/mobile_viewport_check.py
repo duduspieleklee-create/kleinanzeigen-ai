@@ -42,8 +42,9 @@ def main() -> int:
     try:
         user = db.query(User).filter_by(username=args.username).first()
         if not user:
+            # is_active is an INTEGER column in Postgres; pass 1 not True.
             user = User(username=args.username, email=f"{args.username}@example.com",
-                        email_verified=True, is_active=True, hashed_password="x")
+                        email_verified=True, is_active=1, hashed_password="x")
             db.add(user)
             db.commit()
         uid = user.id
