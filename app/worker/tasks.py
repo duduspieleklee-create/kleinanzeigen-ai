@@ -30,20 +30,56 @@ from app.worker.seller_scraper import extract_seller_info
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
+_SELLER_PAGE_CACHE: dict[str, str] = {}
+
+
+def _clear_seller_page_cache() -> None:
+    _SELLER_PAGE_CACHE.clear()
+
+
+def _get_cached_seller_page(url: str) -> Optional[str]:
+    return _SELLER_PAGE_CACHE.get(url)
+
+
+def _set_cached_seller_page(url: str, html: str) -> None:
+    _SELLER_PAGE_CACHE[url] = html
+
 
 def extract_seller_info_from_listing(url: str) -> Optional[dict]:
     """Fetch listing detail page and extract seller information.
-    
-    This is a wrapper around seller_scraper that handles the HTTP request
-    and returns seller data or None if extraction fails.
+
+    Reuses fetched HTML within one task runtime so repeated identical URLs do
+    not hit kleinanzeigen.de multiple times. Failure mode is unchanged: log
+    the error and return ``None``.
     """
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
-        response = requests.get(url, headers=headers, timeout=6)
-        response.raise_for_status()
-        seller_info = extract_seller_info(response.text)
+        cached = _get_cached_seller_page(url)
+        if cached is None:
+            start = time.monotonic()
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            response = requests.get(url, headers=headers, timeout=6)
+            response.raise_for_status()
+            try:
+                sentry_metrics.distribution(
+                    "seller_extraction.request_duration_ms",
+                    (time.monotonic() - start) * 1000,
+                    unit="millisecond",
+                )
+                sentry_metrics.count("seller_extraction.request", 1, attributes={"cached": "false"})
+            except Exception:
+                pass
+            html = response.text
+            _set_cached_seller_page(url, html)
+        else:
+            html = cached
+            try:
+                sentry_metrics.count("seller_extraction.request", 1, attributes={"cached": "true"})
+            except Exception:
+                pass
+
+        seller_info = extract_seller_info(html)
         if seller_info is None:
             try:
                 sentry_metrics.count(
@@ -65,6 +101,27 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
         except Exception:
             pass
         return None
+
+
+def extract_seller_info_from_listing_with_retry(
+    url: str,
+    max_attempts: int = 2,
+    backoff_cap_s: int = 10,
+) -> Optional[dict]:
+    """Retry seller fetch within one task to improve hit rate under flaky DOM/timeouts."""
+    for attempt in range(1, max_attempts + 1):
+        info = extract_seller_info_from_listing(url)
+        if info is not None:
+            return info
+        logger.debug(
+            "Seller fetch returned no data (%s attempt %s/%s)",
+            url,
+            attempt,
+            max_attempts,
+        )
+        if attempt < max_attempts:
+            time.sleep(min(2 ** attempt, backoff_cap_s))
+    return None
 
 
 def _describe_scrape_error(exc: Exception) -> str:
@@ -440,6 +497,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     under settings.system_user_id so that ScrapeResult FK constraints are satisfied.
     """
     db = SessionLocal()
+    _clear_seller_page_cache()
     resolved_task_id = None
     task = None
     job_start = time.monotonic()
@@ -610,13 +668,9 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                         break
                 seen_keys.add(key)
 
-                # Extract seller information from the listing detail page
                 seller_info = None
                 if item_url:
-                    try:
-                        seller_info = extract_seller_info_from_listing(item_url)
-                    except Exception as e:
-                        logger.debug(f"Could not extract seller info from {item_url}: {e}")
+                    seller_info = extract_seller_info_from_listing_with_retry(item_url)
 
                 # Calculate trust score if seller info is available
                 trust_score = None
