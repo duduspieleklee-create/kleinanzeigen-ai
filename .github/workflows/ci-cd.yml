@@ -102,6 +102,12 @@ jobs:
           script: |
             set -e
             cd /opt/kleinanzeigen-ai
+            # Discard any uncommitted tracked changes on the VPS so the
+            # subsequent `git checkout main` can't abort on a dirty tree
+            # (e.g. a server-side edit left uncommitted). The VPS working
+            # tree must always reflect the committed SHA; real changes
+            # belong in a PR, not the deploy target.
+            git checkout -- .
             git checkout main
             git branch --set-upstream-to=origin/main main
             git pull

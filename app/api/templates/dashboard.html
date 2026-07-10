@@ -1403,7 +1403,7 @@
 
             function selectSuggestion(item) {
                 locInput.value = item.label;
-                locationIdInput.value = item.value || '';
+                locIdField.value = item.value || '';
                 clearSuggestions();
                 // Enable the radius dropdown
                 var radiusSelect = document.getElementById('radius');
@@ -1477,7 +1477,7 @@
             // Enable/disable radius based on location input
             locInput.addEventListener('input', function() {
                 if (this.value.trim() === '') {
-                    locationIdInput.value = '';
+                    locIdField.value = '';
                     var radiusSelect = document.getElementById('radius');
                     radiusSelect.disabled = true;
                     radiusSelect.selectedIndex = 0; // reset to placeholder
