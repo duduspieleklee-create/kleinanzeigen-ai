@@ -11,7 +11,6 @@ the globals (build_info, turnstile_site_key) are identical to production.
 """
 from unittest.mock import MagicMock
 
-import pytest
 
 import app.api.main as main
 
@@ -102,3 +101,11 @@ class TestDashboardRender:
         html = main.templates.get_template("dashboard.html").render(**_context(False))
         # {{ Undefined }}-style debug output would indicate a missing global.
         assert "Undefined" not in html
+
+    def test_wizard_step2_sells_automation(self):
+        """Step 2 must make the recurring/auto-search value prop explicit
+        (the differentiator vs kleinanzeigen.de's one-time search)."""
+        html = main.templates.get_template("dashboard.html").render(**_context(False))
+        assert "Automatisierung" in html          # step-2 indicator label
+        assert "Jetzt automatisieren" in html      # step-2 header title
+        assert "immer wieder automatisch" in html  # differentiator copy

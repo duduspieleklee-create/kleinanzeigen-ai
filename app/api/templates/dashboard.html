@@ -366,7 +366,7 @@
                     <div class="wizard-step-line"></div>
                     <div class="wizard-step-indicator" data-step="2">
                         <span class="wizard-step-num">2</span>
-                        <span class="wizard-step-label">Smart Enhancements</span>
+                        <span class="wizard-step-label">Automatisierung</span>
                     </div>
                   </div>
 
@@ -482,10 +482,18 @@
                       Bitte gib Stichwörter oder einen Ort ein &mdash; genau wie bei kleinanzeigen.de.
                   </div>
 
-                  <button type="button" class="wizard-next-btn" id="wizard-next-btn">Weiter zu Smart Enhancements &rarr;</button>
+                  <button type="button" class="wizard-next-btn" id="wizard-next-btn">Weiter: Intervall wählen &rarr;</button>
                 </div><!-- /wizard-step-1 -->
 
                   <div id="wizard-step-2" class="wizard-panel">
+                    <!-- The differentiator vs kleinanzeigen.de: kleinanzeigen
+                         searches once, we re-run the query automatically on a
+                         schedule. This step is the whole reason the app exists. -->
+                    <div class="wizard-automate-head">
+                        <h3 class="wizard-automate-title">Jetzt automatisieren</h3>
+                        <p class="wizard-automate-sub">kleinanzeigen.de durchsucht nur einmal. Wir durchsuchen deine Suche <strong>immer wieder automatisch</strong> &mdash; und benachrichtigen dich bei neuen Treffern.</p>
+                    </div>
+
                     <div class="wizard-summary" id="wizard-summary"></div>
 
                     <!-- Live URL preview (issue #156): shows the resolved
