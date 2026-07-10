@@ -18,5 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - test(coverage): add real test suite + wire `pytest` into the CI `test` job (#127). Previously CI only did an import-smoke + `/healthz` check, so regressions like the #122 dashboard breakage went uncaught. New tests: `tests/test_dashboard_render.py` renders `dashboard.html` with the exact `_build_dashboard` context contract (catches Jinja parse/structure regressions), and `tests/test_billing_webhook.py` covers the Stripe webhook 503/400/idempotent-replay paths without hitting Stripe. Added `tests/conftest.py` (registers template globals) and `pytest.ini`; pinned `pytest` in `requirements.txt`.
 
+### Fixed
+- fix(ci): resolve `ModuleNotFoundError: No module named 'app'` failing the CI `test` job on every run. The `test` job invokes `pytest -q` as a console script, which does not add the repo root to `sys.path` (unlike `python -m pytest`, which is why it passed locally). `tests/conftest.py` does `import app.api.main`, so the job aborted at conftest import. Added `pythonpath = .` to `pytest.ini` so the repo root is always on the path regardless of launcher. Verified: `pytest -q` now runs 21 passed (exit 0).
+
 ### Changed
 - Worker seller-info extraction now caches listing detail page HTML within one task runtime, reducing duplicate HTTP requests across repeated seller URLs. Added retry wrapper for flaky fetch/no-data paths and Sentry metrics for request count, cache hits, request duration, no-match occurrences, and fetch failures.
