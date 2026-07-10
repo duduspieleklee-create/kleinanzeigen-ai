@@ -227,7 +227,7 @@ def _send_push_notifications(
         summary["errors"].append("VAPID keys are not configured on the server.")
         return summary
     try:
-        from pywebpush import webpush, WebPushException
+        from pywebpush import webpush
     except ImportError:
         summary["configured"] = False
         summary["errors"].append("pywebpush is not installed.")
