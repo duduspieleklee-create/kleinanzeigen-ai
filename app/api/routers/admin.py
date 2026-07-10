@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_admin
+from app.shared.cookies import ascii_cookie
 from app.shared.database import get_db
 from app.shared.models import AdminSearch, Proxy
 from app.shared.proxy import (
@@ -34,9 +35,9 @@ def send_test_notification(
     response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
 
     def _flash(key: str, message: str) -> RedirectResponse:
-        # Cookie headers are latin-1 only; webpush errors can contain anything.
-        safe = message.encode("latin-1", "replace").decode("latin-1")
-        response.set_cookie(key, safe, max_age=15)
+        # Cookie headers are latin-1 only AND reject control chars; webpush
+        # errors can contain newlines/non-ASCII. ascii_cookie handles both.
+        response.set_cookie(key, ascii_cookie(message), max_age=15)
         return response
 
     result = run_test_push(db, current_user["id"])
