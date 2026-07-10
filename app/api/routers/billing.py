@@ -29,6 +29,7 @@ from app.api.config import settings
 from app.api.dependencies import get_current_user
 from app.api.version import register_globals
 from app.shared.database import SessionLocal, get_db
+from app.shared.cookies import ascii_cookie
 from app.shared.models import BillingEvent, User
 from app.shared.plans import (
     PLANS,
@@ -485,7 +486,7 @@ def _flash_redirect(url: str, success: str = None, error: str = None):
     # headers as latin-1 and non-ASCII raises at response time.
     response = RedirectResponse(url=url, status_code=303)
     if success:
-        response.set_cookie("flash_success", success, max_age=10)
+        response.set_cookie("flash_success", ascii_cookie(success), max_age=10)
     if error:
-        response.set_cookie("flash_error", error, max_age=10)
+        response.set_cookie("flash_error", ascii_cookie(error), max_age=10)
     return response
