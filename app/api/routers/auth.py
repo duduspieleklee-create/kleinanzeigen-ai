@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth.google import oauth
 from app.api.config import settings
+
 from app.api.dependencies import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
@@ -23,10 +25,13 @@ from app.api.turnstile import (
     turnstile_configured,
     verify_turnstile,
 )
+
 from app.api.version import register_globals
 from app.shared.database import get_db
 from app.shared.cookies import ascii_cookie
 from app.shared.models import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/api/templates")
@@ -378,6 +383,12 @@ async def google_login(request: Request):
     if not settings.google_client_id:
         return RedirectResponse(url="/")
     redirect_uri = request.url_for("google_callback")
+    # The app sits behind a TLS-terminating reverse proxy (Caddy). Uvicorn must
+    # be told to trust X-Forwarded-Proto (see docker-compose.yml) or it builds
+    # an http:// redirect_uri, which mis-scopes the OAuth state cookie and makes
+    # Google's callback fail with "mismatching_state". Force https regardless so
+    # the redirect_uri always matches the https authorised URI in Google Cloud.
+    redirect_uri = str(redirect_uri).replace("http://", "https://")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
@@ -385,10 +396,11 @@ async def google_login(request: Request):
 async def google_callback(request: Request, db: Session = Depends(get_db)):
     try:
         token = await oauth.google.authorize_access_token(request)
-    except Exception:
+    except Exception as exc:
+        logger.exception("Google OAuth callback failed: %s", exc)
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Google sign-in failed. Please try again.",
+            {"request": request, "error": f"Google sign-in failed: {exc}",
              "google_enabled": bool(settings.google_client_id)},
             status_code=401,
         )
