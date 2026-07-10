@@ -194,7 +194,7 @@ def _save_notification_delivery(db, user_id: int, task_id: int | None, channel: 
 def _send_push_notifications(
     db, user_id: int, result_count: int, keywords: str, highlight: str = None,
     location: str = None, price_range: str = None, best_price: str = None,
-    image_url: str = None, task_id: int = None, bypass_preferences: bool = False,
+    image_url: str = None, task_id: int | None = None, bypass_preferences: bool = False,
     tag: str = None, title: str = None,
 ) -> dict:
     """Send a web push to every subscription of a user.
@@ -316,38 +316,34 @@ def _send_push_notifications(
     stale = []
     push_policy = {"max_attempts": 3, "backoff_cap": 60}
     for sub in subs:
-        try:
-            def _do_push() -> None:
-                webpush(
-                    subscription_info={
-                        "endpoint": sub.endpoint,
-                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
-                    },
-                    data=payload,
-                    vapid_private_key=private_key,
-                    vapid_claims={"sub": sub_claim},
-                )
+        def _do_push() -> None:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                },
+                data=payload,
+                vapid_private_key=private_key,
+                vapid_claims={"sub": sub_claim},
+            )
 
-            ok, last = _retry_with_backoff(push_policy, f"webpush(subs={sub.id})", _do_push)
-            if ok:
-                summary["sent"] += 1
-            else:
-                summary["failed"] += 1
-                summary["errors"].append(str(last))
-                logger.warning(f"Push failed for sub {sub.id}: {last}")
-        except WebPushException as e:
-            # 404/410 means the subscription has expired — clean it up
-            if e.response is not None and e.response.status_code in (404, 410):
-                stale.append(sub.id)
-                summary["removed"] += 1
-            else:
-                summary["failed"] += 1
-                summary["errors"].append(str(e))
-                logger.warning(f"Push failed for sub {sub.id}: {e}")
-        except Exception as e:
+        ok, last = _retry_with_backoff(push_policy, f"webpush(subs={sub.id})", _do_push)
+        if ok:
+            summary["sent"] += 1
+            continue
+
+        # The retry wrapper swallows the exception and returns it as `last`,
+        # so we can't rely on the outer try/except to catch WebPushException.
+        # Detect a 404/410 (expired/unsubscribed endpoint) here and prune it;
+        # any other failure is a genuine send error.
+        status = getattr(getattr(last, "response", None), "status_code", None)
+        if status in (404, 410):
+            stale.append(sub.id)
+            summary["removed"] += 1
+        else:
             summary["failed"] += 1
-            summary["errors"].append(str(e))
-            logger.warning(f"Push failed for sub {sub.id}: {e}")
+            summary["errors"].append(str(last))
+            logger.warning(f"Push failed for sub {sub.id}: {last}")
 
     if stale:
         db.query(PushSubscription).filter(PushSubscription.id.in_(stale)).delete(synchronize_session=False)
@@ -443,6 +439,7 @@ def run_test_push(db, user_id: int) -> dict:
         result_count=0,
         keywords="",
         highlight="Test notification - push is working!",
+        task_id=None,
         bypass_preferences=True,
         tag=f"test-{int(time.time() * 1000)}",
         title="TEST - kleeblatt.space",
