@@ -109,12 +109,10 @@ def extract_seller_info_from_listing_with_retry(
     backoff_cap_s: int = 10,
 ) -> Optional[dict]:
     """Retry seller fetch within one task to improve hit rate under flaky DOM/timeouts."""
-    last = None
     for attempt in range(1, max_attempts + 1):
         info = extract_seller_info_from_listing(url)
         if info is not None:
             return info
-        last = None
         logger.debug(
             "Seller fetch returned no data (%s attempt %s/%s)",
             url,
