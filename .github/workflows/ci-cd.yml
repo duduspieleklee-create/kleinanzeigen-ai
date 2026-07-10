@@ -46,6 +46,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run test suite (pytest)
+        env:
+          DATABASE_URL: "sqlite:///file::memory:?cache=shared"
+          SECRET_KEY: "ci-test-secret"
+          REDIS_URL: "redis://localhost:6379/0"
+          ENVIRONMENT: "test"
+        run: pytest -q
+
       - name: Import check — all three services
         env:
           DATABASE_URL: "postgresql://ci:ci@localhost/ci"
