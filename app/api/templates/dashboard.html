@@ -30,72 +30,72 @@
        slugs only need to be maintained in one place. #}
     {% macro category_options(selected='') %}
         <option value="" {% if not selected %}selected{% endif %}>Alle Kategorien</option>
-        <optgroup label="Auto, Rad & Boot">
+        <optgroup label="Auto, Rad &amp; Boot">
             <option value="autos" {% if selected=='autos' %}selected{% endif %}>Autos</option>
-            <option value="fahrraeder" {% if selected=='fahrraeder' %}selected{% endif %}>Fahrräder & Zubehör</option>
-            <option value="autoteile-reifen" {% if selected=='autoteile-reifen' %}selected{% endif %}>Autoteile & Reifen</option>
-            <option value="boote-bootszubehoer" {% if selected=='boote-bootszubehoer' %}selected{% endif %}>Boote & Bootszubehör</option>
-            <option value="motorraeder-roller" {% if selected=='motorraeder-roller' %}selected{% endif %}>Motorräder & Motorroller</option>
-            <option value="motorraeder-roller-teile" {% if selected=='motorraeder-roller-teile' %}selected{% endif %}>Motorradteile & Zubehör</option>
-            <option value="anhaenger-nutzfahrzeuge" {% if selected=='anhaenger-nutzfahrzeuge' %}selected{% endif %}>Nutzfahrzeuge & Anhänger</option>
-            <option value="wohnwagen-mobile" {% if selected=='wohnwagen-mobile' %}selected{% endif %}>Wohnwagen & -mobile</option>
+            <option value="fahrraeder" {% if selected=='fahrraeder' %}selected{% endif %}>Fahrräder &amp; Zubehör</option>
+            <option value="autoteile-reifen" {% if selected=='autoteile-reifen' %}selected{% endif %}>Autoteile &amp; Reifen</option>
+            <option value="boote-bootszubehoer" {% if selected=='boote-bootszubehoer' %}selected{% endif %}>Boote &amp; Bootszubehör</option>
+            <option value="motorraeder-roller" {% if selected=='motorraeder-roller' %}selected{% endif %}>Motorräder &amp; Motorroller</option>
+            <option value="motorraeder-roller-teile" {% if selected=='motorraeder-roller-teile' %}selected{% endif %}>Motorradteile &amp; Zubehör</option>
+            <option value="anhaenger-nutzfahrzeuge" {% if selected=='anhaenger-nutzfahrzeuge' %}selected{% endif %}>Nutzfahrzeuge &amp; Anhänger</option>
+            <option value="wohnwagen-mobile" {% if selected=='wohnwagen-mobile' %}selected{% endif %}>Wohnwagen &amp; -mobile</option>
         </optgroup>
         <optgroup label="Immobilien">
             <option value="wohnung-mieten" {% if selected=='wohnung-mieten' %}selected{% endif %}>Mietwohnungen</option>
             <option value="wohnung-kaufen" {% if selected=='wohnung-kaufen' %}selected{% endif %}>Eigentumswohnungen</option>
             <option value="haus-mieten" {% if selected=='haus-mieten' %}selected{% endif %}>Häuser zur Miete</option>
             <option value="haus-kaufen" {% if selected=='haus-kaufen' %}selected{% endif %}>Häuser zum Kauf</option>
-            <option value="auf-zeit-wg" {% if selected=='auf-zeit-wg' %}selected{% endif %}>WG-Zimmer & Auf Zeit</option>
-            <option value="garage-lagerraum" {% if selected=='garage-lagerraum' %}selected{% endif %}>Garagen & Stellplätze</option>
-            <option value="grundstuecke-garten" {% if selected=='grundstuecke-garten' %}selected{% endif %}>Grundstücke & Gärten</option>
+            <option value="auf-zeit-wg" {% if selected=='auf-zeit-wg' %}selected{% endif %}>WG-Zimmer &amp; Auf Zeit</option>
+            <option value="garage-lagerraum" {% if selected=='garage-lagerraum' %}selected{% endif %}>Garagen &amp; Stellplätze</option>
+            <option value="grundstuecke-garten" {% if selected=='grundstuecke-garten' %}selected{% endif %}>Grundstücke &amp; Gärten</option>
             <option value="gewerbeimmobilien" {% if selected=='gewerbeimmobilien' %}selected{% endif %}>Gewerbeimmobilien</option>
-            <option value="ferienwohnung-ferienhaus" {% if selected=='ferienwohnung-ferienhaus' %}selected{% endif %}>Ferien- & Auslandsimmobilien</option>
+            <option value="ferienwohnung-ferienhaus" {% if selected=='ferienwohnung-ferienhaus' %}selected{% endif %}>Ferien- &amp; Auslandsimmobilien</option>
         </optgroup>
-        <optgroup label="Haus & Garten">
-            <option value="kueche-esszimmer" {% if selected=='kueche-esszimmer' %}selected{% endif %}>Küche & Esszimmer</option>
+        <optgroup label="Haus &amp; Garten">
+            <option value="kueche-esszimmer" {% if selected=='kueche-esszimmer' %}selected{% endif %}>Küche &amp; Esszimmer</option>
             <option value="wohnzimmer" {% if selected=='wohnzimmer' %}selected{% endif %}>Wohnzimmer</option>
             <option value="schlafzimmer" {% if selected=='schlafzimmer' %}selected{% endif %}>Schlafzimmer</option>
             <option value="badezimmer" {% if selected=='badezimmer' %}selected{% endif %}>Badezimmer</option>
             <option value="bueromoebel" {% if selected=='bueromoebel' %}selected{% endif %}>Büro</option>
             <option value="dekoration" {% if selected=='dekoration' %}selected{% endif %}>Dekoration</option>
-            <option value="garten-pflanzen" {% if selected=='garten-pflanzen' %}selected{% endif %}>Gartenzubehör & Pflanzen</option>
+            <option value="garten-pflanzen" {% if selected=='garten-pflanzen' %}selected{% endif %}>Gartenzubehör &amp; Pflanzen</option>
             <option value="heimtextilien" {% if selected=='heimtextilien' %}selected{% endif %}>Heimtextilien</option>
             <option value="heimwerken" {% if selected=='heimwerken' %}selected{% endif %}>Heimwerken</option>
-            <option value="lampen-licht" {% if selected=='lampen-licht' %}selected{% endif %}>Lampen & Licht</option>
+            <option value="lampen-licht" {% if selected=='lampen-licht' %}selected{% endif %}>Lampen &amp; Licht</option>
         </optgroup>
-        <optgroup label="Mode & Beauty">
+        <optgroup label="Mode &amp; Beauty">
             <option value="kleidung-damen" {% if selected=='kleidung-damen' %}selected{% endif %}>Damenbekleidung</option>
             <option value="kleidung-herren" {% if selected=='kleidung-herren' %}selected{% endif %}>Herrenbekleidung</option>
             <option value="schuhe-damen" {% if selected=='schuhe-damen' %}selected{% endif %}>Damenschuhe</option>
             <option value="schuhe-herren" {% if selected=='schuhe-herren' %}selected{% endif %}>Herrenschuhe</option>
-            <option value="beauty-gesundheit" {% if selected=='beauty-gesundheit' %}selected{% endif %}>Beauty & Gesundheit</option>
-            <option value="accessoires-schmuck" {% if selected=='accessoires-schmuck' %}selected{% endif %}>Taschen & Accessoires</option>
-            <option value="uhren-schmuck" {% if selected=='uhren-schmuck' %}selected{% endif %}>Uhren & Schmuck</option>
+            <option value="beauty-gesundheit" {% if selected=='beauty-gesundheit' %}selected{% endif %}>Beauty &amp; Gesundheit</option>
+            <option value="accessoires-schmuck" {% if selected=='accessoires-schmuck' %}selected{% endif %}>Taschen &amp; Accessoires</option>
+            <option value="uhren-schmuck" {% if selected=='uhren-schmuck' %}selected{% endif %}>Uhren &amp; Schmuck</option>
         </optgroup>
         <optgroup label="Elektronik">
             <option value="multimedia-elektronik" {% if selected=='multimedia-elektronik' %}selected{% endif %}>Elektronik (allgemein)</option>
-            <option value="handy-telekom" {% if selected=='handy-telekom' %}selected{% endif %}>Handy & Telefon</option>
+            <option value="handy-telekom" {% if selected=='handy-telekom' %}selected{% endif %}>Handy &amp; Telefon</option>
             <option value="haushaltsgeraete" {% if selected=='haushaltsgeraete' %}selected{% endif %}>Haushaltsgeräte</option>
-            <option value="audio-hifi" {% if selected=='audio-hifi' %}selected{% endif %}>Audio & Hifi</option>
+            <option value="audio-hifi" {% if selected=='audio-hifi' %}selected{% endif %}>Audio &amp; Hifi</option>
             <option value="foto" {% if selected=='foto' %}selected{% endif %}>Foto</option>
-            <option value="tv-video" {% if selected=='tv-video' %}selected{% endif %}>TV & Video</option>
+            <option value="tv-video" {% if selected=='tv-video' %}selected{% endif %}>TV &amp; Video</option>
             <option value="notebooks" {% if selected=='notebooks' %}selected{% endif %}>Notebooks</option>
             <option value="pcs" {% if selected=='pcs' %}selected{% endif %}>PCs</option>
-            <option value="pc-zubehoer-software" {% if selected=='pc-zubehoer-software' %}selected{% endif %}>PC-Zubehör & Software</option>
-            <option value="tablets-reader" {% if selected=='tablets-reader' %}selected{% endif %}>Tablets & Reader</option>
+            <option value="pc-zubehoer-software" {% if selected=='pc-zubehoer-software' %}selected{% endif %}>PC-Zubehör &amp; Software</option>
+            <option value="tablets-reader" {% if selected=='tablets-reader' %}selected{% endif %}>Tablets &amp; Reader</option>
             <option value="konsolen" {% if selected=='konsolen' %}selected{% endif %}>Konsolen</option>
             <option value="pc-videospiele" {% if selected=='pc-videospiele' %}selected{% endif %}>Videospiele</option>
             <option value="wearables" {% if selected=='wearables' %}selected{% endif %}>Wearables</option>
         </optgroup>
-        <optgroup label="Familie, Kind & Baby">
-            <option value="baby-kinderkleidung" {% if selected=='baby-kinderkleidung' %}selected{% endif %}>Baby- & Kinderkleidung</option>
-            <option value="baby-kinderschuhe" {% if selected=='baby-kinderschuhe' %}selected{% endif %}>Baby- & Kinderschuhe</option>
+        <optgroup label="Familie, Kind &amp; Baby">
+            <option value="baby-kinderkleidung" {% if selected=='baby-kinderkleidung' %}selected{% endif %}>Baby- &amp; Kinderkleidung</option>
+            <option value="baby-kinderschuhe" {% if selected=='baby-kinderschuhe' %}selected{% endif %}>Baby- &amp; Kinderschuhe</option>
             <option value="babyausstattung" {% if selected=='babyausstattung' %}selected{% endif %}>Baby-Ausstattung</option>
-            <option value="babyschalen-kindersitze" {% if selected=='babyschalen-kindersitze' %}selected{% endif %}>Babyschalen & Kindersitze</option>
-            <option value="kinderwagen-buggys" {% if selected=='kinderwagen-buggys' %}selected{% endif %}>Kinderwagen & Buggys</option>
+            <option value="babyschalen-kindersitze" {% if selected=='babyschalen-kindersitze' %}selected{% endif %}>Babyschalen &amp; Kindersitze</option>
+            <option value="kinderwagen-buggys" {% if selected=='kinderwagen-buggys' %}selected{% endif %}>Kinderwagen &amp; Buggys</option>
             <option value="kinderzimmermoebel" {% if selected=='kinderzimmermoebel' %}selected{% endif %}>Kinderzimmermöbel</option>
             <option value="spielzeug" {% if selected=='spielzeug' %}selected{% endif %}>Spielzeug</option>
-            <option value="babysitter-kinderbetreuung" {% if selected=='babysitter-kinderbetreuung' %}selected{% endif %}>Babysitter & Kinderbetreuung</option>
+            <option value="babysitter-kinderbetreuung" {% if selected=='babysitter-kinderbetreuung' %}selected{% endif %}>Babysitter &amp; Kinderbetreuung</option>
             <option value="altenpflege" {% if selected=='altenpflege' %}selected{% endif %}>Altenpflege</option>
         </optgroup>
         <optgroup label="Tiere">
@@ -106,54 +106,54 @@
             <option value="fische" {% if selected=='fische' %}selected{% endif %}>Fische</option>
             <option value="pferde" {% if selected=='pferde' %}selected{% endif %}>Pferde</option>
             <option value="nutztiere" {% if selected=='nutztiere' %}selected{% endif %}>Nutztiere</option>
-            <option value="tierbetreuung-training" {% if selected=='tierbetreuung-training' %}selected{% endif %}>Tierbetreuung & Training</option>
+            <option value="tierbetreuung-training" {% if selected=='tierbetreuung-training' %}selected{% endif %}>Tierbetreuung &amp; Training</option>
             <option value="zubehoer" {% if selected=='zubehoer' %}selected{% endif %}>Tierzubehör</option>
         </optgroup>
-        <optgroup label="Freizeit, Hobby & Nachbarschaft">
+        <optgroup label="Freizeit, Hobby &amp; Nachbarschaft">
             <option value="sammeln" {% if selected=='sammeln' %}selected{% endif %}>Sammeln</option>
-            <option value="kunst" {% if selected=='kunst' %}selected{% endif %}>Kunst & Antiquitäten</option>
-            <option value="sport-camping" {% if selected=='sport-camping' %}selected{% endif %}>Sport & Camping</option>
-            <option value="handarbeit-basteln-kunsthandwerk" {% if selected=='handarbeit-basteln-kunsthandwerk' %}selected{% endif %}>Handarbeit, Basteln & Kunsthandwerk</option>
+            <option value="kunst" {% if selected=='kunst' %}selected{% endif %}>Kunst &amp; Antiquitäten</option>
+            <option value="sport-camping" {% if selected=='sport-camping' %}selected{% endif %}>Sport &amp; Camping</option>
+            <option value="handarbeit-basteln-kunsthandwerk" {% if selected=='handarbeit-basteln-kunsthandwerk' %}selected{% endif %}>Handarbeit, Basteln &amp; Kunsthandwerk</option>
             <option value="modellbau" {% if selected=='modellbau' %}selected{% endif %}>Modellbau</option>
-            <option value="reise-eventservices" {% if selected=='reise-eventservices' %}selected{% endif %}>Reise & Eventservices</option>
+            <option value="reise-eventservices" {% if selected=='reise-eventservices' %}selected{% endif %}>Reise &amp; Eventservices</option>
             <option value="freizeitaktivitaeten" {% if selected=='freizeitaktivitaeten' %}selected{% endif %}>Freizeitaktivitäten</option>
             <option value="troedel-kistenweise" {% if selected=='troedel-kistenweise' %}selected{% endif %}>Trödel</option>
-            <option value="esoterik-spirituelles" {% if selected=='esoterik-spirituelles' %}selected{% endif %}>Esoterik & Spirituelles</option>
-            <option value="verloren-gefunden" {% if selected=='verloren-gefunden' %}selected{% endif %}>Verloren & Gefunden</option>
+            <option value="esoterik-spirituelles" {% if selected=='esoterik-spirituelles' %}selected{% endif %}>Esoterik &amp; Spirituelles</option>
+            <option value="verloren-gefunden" {% if selected=='verloren-gefunden' %}selected{% endif %}>Verloren &amp; Gefunden</option>
         </optgroup>
-        <optgroup label="Musik, Filme & Bücher">
-            <option value="buecher-zeitschriften" {% if selected=='buecher-zeitschriften' %}selected{% endif %}>Bücher & Zeitschriften</option>
-            <option value="fachbuecher-schule-studium" {% if selected=='fachbuecher-schule-studium' %}selected{% endif %}>Fachbücher, Schule & Studium</option>
-            <option value="film-dvd" {% if selected=='film-dvd' %}selected{% endif %}>Film & DVD</option>
-            <option value="musik-cds" {% if selected=='musik-cds' %}selected{% endif %}>Musik & CDs</option>
+        <optgroup label="Musik, Filme &amp; Bücher">
+            <option value="buecher-zeitschriften" {% if selected=='buecher-zeitschriften' %}selected{% endif %}>Bücher &amp; Zeitschriften</option>
+            <option value="fachbuecher-schule-studium" {% if selected=='fachbuecher-schule-studium' %}selected{% endif %}>Fachbücher, Schule &amp; Studium</option>
+            <option value="film-dvd" {% if selected=='film-dvd' %}selected{% endif %}>Film &amp; DVD</option>
+            <option value="musik-cds" {% if selected=='musik-cds' %}selected{% endif %}>Musik &amp; CDs</option>
             <option value="musikinstrumente" {% if selected=='musikinstrumente' %}selected{% endif %}>Musikinstrumente</option>
             <option value="comics" {% if selected=='comics' %}selected{% endif %}>Comics</option>
         </optgroup>
-        <optgroup label="Eintrittskarten & Tickets">
+        <optgroup label="Eintrittskarten &amp; Tickets">
             <option value="konzerte" {% if selected=='konzerte' %}selected{% endif %}>Konzerte</option>
-            <option value="klassik-kultur" {% if selected=='klassik-kultur' %}selected{% endif %}>Theater & Musical</option>
-            <option value="comedy-kabarett" {% if selected=='comedy-kabarett' %}selected{% endif %}>Comedy & Kabarett</option>
+            <option value="klassik-kultur" {% if selected=='klassik-kultur' %}selected{% endif %}>Theater &amp; Musical</option>
+            <option value="comedy-kabarett" {% if selected=='comedy-kabarett' %}selected{% endif %}>Comedy &amp; Kabarett</option>
             <option value="gutscheine" {% if selected=='gutscheine' %}selected{% endif %}>Gutscheine</option>
         </optgroup>
-        <optgroup label="Verschenken & Tauschen">
+        <optgroup label="Verschenken &amp; Tauschen">
             <option value="zu-verschenken" {% if selected=='zu-verschenken' %}selected{% endif %}>Zu verschenken</option>
-            <option value="zu-verschenken-tauschen" {% if selected=='zu-verschenken-tauschen' %}selected{% endif %}>Verschenken & Tauschen</option>
+            <option value="zu-verschenken-tauschen" {% if selected=='zu-verschenken-tauschen' %}selected{% endif %}>Verschenken &amp; Tauschen</option>
             <option value="verleihen" {% if selected=='verleihen' %}selected{% endif %}>Verleihen</option>
         </optgroup>
         <optgroup label="Jobs">
             <option value="jobs" {% if selected=='jobs' %}selected{% endif %}>Jobs (allgemein)</option>
             <option value="ausbildung" {% if selected=='ausbildung' %}selected{% endif %}>Ausbildung</option>
             <option value="praktika" {% if selected=='praktika' %}selected{% endif %}>Praktika</option>
-            <option value="heimarbeit-mini-nebenjobs" {% if selected=='heimarbeit-mini-nebenjobs' %}selected{% endif %}>Mini- & Nebenjobs</option>
-            <option value="bueroarbeit-verwaltung" {% if selected=='bueroarbeit-verwaltung' %}selected{% endif %}>Büroarbeit & Verwaltung</option>
-            <option value="gastronomie-tourismus" {% if selected=='gastronomie-tourismus' %}selected{% endif %}>Gastronomie & Tourismus</option>
-            <option value="bau-handwerk-produktion" {% if selected=='bau-handwerk-produktion' %}selected{% endif %}>Bau, Handwerk & Produktion</option>
-            <option value="vertrieb-einkauf-verkauf" {% if selected=='vertrieb-einkauf-verkauf' %}selected{% endif %}>Vertrieb, Einkauf & Verkauf</option>
+            <option value="heimarbeit-mini-nebenjobs" {% if selected=='heimarbeit-mini-nebenjobs' %}selected{% endif %}>Mini- &amp; Nebenjobs</option>
+            <option value="bueroarbeit-verwaltung" {% if selected=='bueroarbeit-verwaltung' %}selected{% endif %}>Büroarbeit &amp; Verwaltung</option>
+            <option value="gastronomie-tourismus" {% if selected=='gastronomie-tourismus' %}selected{% endif %}>Gastronomie &amp; Tourismus</option>
+            <option value="bau-handwerk-produktion" {% if selected=='bau-handwerk-produktion' %}selected{% endif %}>Bau, Handwerk &amp; Produktion</option>
+            <option value="vertrieb-einkauf-verkauf" {% if selected=='vertrieb-einkauf-verkauf' %}selected{% endif %}>Vertrieb, Einkauf &amp; Verkauf</option>
         </optgroup>
-        <optgroup label="Dienstleistungen & Unterricht">
+        <optgroup label="Dienstleistungen &amp; Unterricht">
             <option value="dienstleistungen" {% if selected=='dienstleistungen' %}selected{% endif %}>Dienstleistungen (allgemein)</option>
-            <option value="umzug-transport" {% if selected=='umzug-transport' %}selected{% endif %}>Umzug & Transport</option>
-            <option value="unterricht-kurse" {% if selected=='unterricht-kurse' %}selected{% endif %}>Unterricht & Kurse</option>
+            <option value="umzug-transport" {% if selected=='umzug-transport' %}selected{% endif %}>Umzug &amp; Transport</option>
+            <option value="unterricht-kurse" {% if selected=='unterricht-kurse' %}selected{% endif %}>Unterricht &amp; Kurse</option>
             <option value="nachhilfe" {% if selected=='nachhilfe' %}selected{% endif %}>Nachhilfe</option>
             <option value="sprachkurse" {% if selected=='sprachkurse' %}selected{% endif %}>Sprachkurse</option>
             <option value="nachbarschaftshilfe" {% if selected=='nachbarschaftshilfe' %}selected{% endif %}>Nachbarschaftshilfe</option>
@@ -173,76 +173,74 @@
                 <a class="logout-link" href="/auth/logout">Abmelden</a>
             </div>
         </div>
-    </div>
-    
-    {% if not is_admin and not email_verified %}
-    <div class="flash-error" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <span>Bitte bestätige deine E-Mail-Adresse ({{ user_email }}), um Suchen zu starten &mdash; überprüfe dein Postfach für den Link.</span>
-        <form method="post" action="/auth/resend-verification" style="margin:0">
-            <button type="submit" style="white-space:nowrap;padding:8px 12px;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer;font-size:0.85rem;min-height:40px">Bestätigungs-E-Mail erneut senden</button>
-        </form>
-    </div>
-    {% endif %}
-    
-    {% if plan_notice %}
-    <div class="flash-error">{{ plan_notice }}</div>
-    {% endif %}
-    
-    {% if flash_success %}
-    <div class="flash-success">{{ flash_success }}</div>
-    {% endif %}
-    
-    {% if flash_error %}
-    <div class="flash-error">{{ flash_error }}</div>
-    {% endif %}
-    
-    {% if is_admin %}
-    {% if admin_error %}
-    <div class="flash-warning">{{ admin_error }}</div>
-    {% endif %}
-    {% if proxy_error %}
-    <div class="flash-warning">{{ proxy_error }}</div>
-    {% endif %}
-    {% endif %}
-    
-    <!-- ── Main Tab Navigation (visible on tablet/desktop; hidden on
-         mobile in favor of the fixed bottom nav, see style.css) ── -->
-    <div class="tab-nav">
-        <button class="tab-btn active" data-tab="my-searches" onclick="showTab('my-searches', this)">Meine Suchen</button>
-        <button class="tab-btn" data-tab="new-search" onclick="showTab('new-search', this)">Neue Suche</button>
-        <button class="tab-btn" data-tab="my-results" onclick="showTab('my-results', this)">Meine Ergebnisse</button>
-        {% if is_admin %}
-        <button class="tab-btn" data-tab="admin" onclick="showTab('admin', this)">Admin</button>
+
+        {% if not is_admin and not email_verified %}
+        <div class="flash-error" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <span>Bitte bestätige deine E-Mail-Adresse ({{ user_email }}), um Suchen zu starten &mdash; überprüfe dein Postfach für den Link.</span>
+            <form method="post" action="/auth/resend-verification" style="margin:0">
+                <button type="submit" style="white-space:nowrap;padding:8px 12px;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer;font-size:0.85rem;min-height:40px">Bestätigungs-E-Mail erneut senden</button>
+            </form>
+        </div>
         {% endif %}
-    </div>
-    
-    <!-- ── TAB: My Searches ── -->
-    <div id="tab-my-searches" class="tab-pane active">
-        <div class="card">
-            <h3>Meine Suchen</h3>
-            
-            <!-- Token Usage Stats -->
-            {% if token_stats %}
-            <div class="token-stats">
-                <div class="token-stat">
-                    <span>Letzte 24h:</span>
-                    <span class="token-stat-value">{{ token_stats.last_24h }}</span>
-                    <span>Tokens</span>
-                </div>
-                <div class="token-stat">
-                    <span>Letzte 7 Tage:</span>
-                    <span class="token-stat-value">{{ token_stats.last_7d }}</span>
-                    <span>Tokens</span>
-                </div>
-                <div class="token-stat">
-                    <span>Gesamt:</span>
-                    <span class="token-stat-value">{{ token_stats.total }}</span>
-                    <span>Tokens</span>
-                </div>
-            </div>
+
+        {% if plan_notice %}
+        <div class="flash-error">{{ plan_notice }}</div>
+        {% endif %}
+
+        {% if flash_success %}
+        <div class="flash-success">{{ flash_success }}</div>
+        {% endif %}
+        {% if flash_error %}
+        <div class="flash-error">{{ flash_error }}</div>
+        {% endif %}
+
+        {% if is_admin %}
+        {% if admin_error %}
+        <div class="flash-warning">{{ admin_error }}</div>
+        {% endif %}
+        {% if proxy_error %}
+        <div class="flash-warning">{{ proxy_error }}</div>
+        {% endif %}
+        {% endif %}
+
+        <!-- ── Main Tab Navigation (visible on tablet/desktop; hidden on
+             mobile in favor of the fixed bottom nav, see style.css) ── -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="my-searches" onclick="showTab('my-searches', this)">Meine Suchen</button>
+            <button class="tab-btn" data-tab="new-search" onclick="showTab('new-search', this)">Neue Suche</button>
+            <button class="tab-btn" data-tab="my-results" onclick="showTab('my-results', this)">Meine Ergebnisse</button>
+            {% if is_admin %}
+            <button class="tab-btn" data-tab="admin" onclick="showTab('admin', this)">Admin</button>
             {% endif %}
-            
-            <div id="tasks-container">
+        </div>
+
+        <!-- ── TAB: My Searches ── -->
+        <div id="tab-my-searches" class="tab-pane active">
+            <div class="card">
+                <h3>Meine Suchen</h3>
+
+                <!-- Token Usage Stats -->
+                {% if token_stats %}
+                <div class="token-stats">
+                    <div class="token-stat">
+                        <span>Letzte 24h:</span>
+                        <span class="token-stat-value">{{ token_stats.last_24h }}</span>
+                        <span>Tokens</span>
+                    </div>
+                    <div class="token-stat">
+                        <span>Letzte 7 Tage:</span>
+                        <span class="token-stat-value">{{ token_stats.last_7d }}</span>
+                        <span>Tokens</span>
+                    </div>
+                    <div class="token-stat">
+                        <span>Gesamt:</span>
+                        <span class="token-stat-value">{{ token_stats.total }}</span>
+                        <span>Tokens</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div id="tasks-container">
                 {% if tasks %}
                 <!--
                     NOTE: `.responsive-table` triggers the table→card
@@ -345,6 +343,7 @@
                     </button>
                 </div>
                 {% endif %}
+                </div>
             </div>
         </div><!-- /tab-my-searches -->
 
@@ -578,107 +577,84 @@
             </a>
         </div>
         {% endmacro %}
-        <!-- ── TAB: My Results (redesigned — see #tab-my-results in style.css) ── -->
-                {% macro rc_card(r, is_favorite=False) %}
-        <div class="rc-card-wrapper result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords or '' }}" data-location="{{ r.location or '' }}">
-            <button class="favorite-btn rc-fav-btn{% if is_favorite %} favorited{% endif %}" onclick="toggleFavorite({{ r.id }}, this)" title="{% if is_favorite %}Aus Favoriten entfernen{% else %}Zu Favoriten hinzufügen{% endif %}">{% if is_favorite %}♥{% else %}♡{% endif %}</button>
-            <a class="rc-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
-                <div class="rc-thumb">
-                    {% if r.is_new %}<span class="rc-neu-badge">NEU</span>{% endif %}
-                    {% if r.image_url %}
-                    <img src="{{ r.image_url }}" alt="" loading="lazy"
-                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                    <div class="rc-thumb-placeholder" style="display:none"></div>
-                    {% else %}
-                    <div class="rc-thumb-placeholder"></div>
-                    {% endif %}
-                </div>
-                <div class="rc-body">
+        <div id="tab-my-results" class="tab-pane">
+            <div class="card">
+                <div class="rc-header">
                     <div>
-                        <h3 class="rc-title">{{ r.title }}</h3>
-                        <p class="rc-meta">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                            {{ r.location }}{% if r.relative_time %} · {{ r.relative_time }}{% endif %}
+                        <h3>Meine Ergebnisse</h3>
+                        <p>
+                            {% if recent_results %}<span class="rc-count">{{ recent_results|length }}</span> Treffer{% if recent_results[0].relative_time %} · zuletzt gescannt {{ recent_results[0].relative_time }}{% endif %}
+                            {% else %}Die neuesten Anzeigen, die deine Suchen gefunden haben.{% endif %}
                         </p>
-                        {% if r.description %}<p class="rc-description">{{ r.description|truncate(100) }}</p>{% endif %}
-                    </div>
-                    <div class="rc-footer">
-                        <div class="rc-price">
-                            <span class="rc-price-main">{{ r.price }}</span>
-                            {% if r.deal %}<span class="deal {{ r.deal.cls }}">{{ r.deal.label }}</span>{% endif %}
-                            {% if not is_favorite %}<span class="rc-search-tag">Suche: {{ r.search_keywords }}</span>{% endif %}
-                        </div>
-                        {% if r.trust_score %}
-                        <div class="rc-trust-pill {% if show_trust_scores %}{% if r.trust_score >= 70 %}trust-good{% elif r.trust_score >= 40 %}trust-medium{% else %}trust-low{% endif %}{% endif %}">
-                            Trust: {{ r.trust_score }}/100
-                        </div>
+                        {% if not show_deals %}
+                        <p class="rc-upsell-note">Angebots-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">Upgrade</a>, um sie freizuschalten.</p>
                         {% endif %}
                     </div>
                 </div>
-            </a>
-        </div>
-        {% endmacro %}
-    </div><!-- /tab-my-searches -->
-    
-    <!-- ── TAB: New Search (Wizard) ── -->
-    <div id="tab-new-search" class="tab-pane">
-        <div class="card">
-            <h3>Neue wiederkehrende Suche</h3>
-            <form action="/scrapes/" method="post" id="scrape-form" class="search-form">
-                <!-- Simplified Wizard: Combined Essential Fields -->
-                <div class="wizard-step-indicator active" data-step="1">
-                    <span class="wizard-step-num">1</span>
-                    <span class="wizard-step-label">Sucheinstellungen</span>
+
+                <!-- Sticky on mobile so filter + sort stay reachable while
+                     scrolling a long result list (see .results-toolbar) -->
+                <div class="results-toolbar">
+                    <!-- Sub-tabs for search filtering (horizontally scrollable on mobile, see style.css) -->
+                    {% if tasks %}
+                    <div class="sub-tab-bar">
+                        <button class="sub-tab-filter active" data-filter="all" onclick="filterResultsBySearch('all')">Alle Suchen</button>
+                        {% for task in tasks %}
+                        <button class="sub-tab-filter" data-filter="task-{{ task.id }}" onclick="filterResultsBySearch('task-{{ task.id }}')">
+                            {{ task.parameters.get('keywords', 'Search #' ~ task.id) | truncate(20) }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Sort, view density toggle & map -->
+                    <div class="rc-controls-row">
+                        <div class="rc-sort-wrap">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                            <select id="sort-by" onchange="sortResults(this.value)">
+                                <option value="newest">Neueste zuerst</option>
+                                <option value="oldest">Älteste zuerst</option>
+                                <option value="price-low">Preis: Niedrig → Hoch</option>
+                                <option value="price-high">Preis: Hoch → Niedrig</option>
+                                <option value="trust-high">Trust Score: Hoch → Niedrig</option>
+                            </select>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <div class="rc-view-toggle" role="group" aria-label="Ansicht">
+                                <button type="button" class="rc-view-btn active" data-view="cards" onclick="setResultsView('cards')" title="Karten">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="15" width="18" height="4" rx="1"/></svg>
+                                </button>
+                                <button type="button" class="rc-view-btn" data-view="compact" onclick="setResultsView('compact')" title="Liste">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                </button>
+                                <button type="button" class="rc-view-btn" data-view="grid" onclick="setResultsView('grid')" title="Raster">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                                </button>
+                            </div>
+                            <button id="map-toggle-btn" class="rc-map-btn" onclick="toggleMapView()" title="Kartenansicht">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="wizard-essentials">
-                    <!-- Core Search Fields -->
-                    <div class="form-field">
-                        <label for="keywords">Stichwörter</label>
-                        <input type="text" id="keywords" name="keywords" placeholder="z. B. handwerker" required>
+
+                <!-- Map Container (hidden by default) -->
+                <div id="map-container" class="map-container" style="display:none;">
+                    <div id="map" class="map-view"></div>
+                    <button class="close-map-btn" onclick="toggleMapView()">✕ Schließen</button>
+                </div>
+
+                {% if not show_trust_scores %}
+                <div class="rc-upsell-banner">
+                    <div class="rc-upsell-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </div>
-                    
-                    <div class="form-field">
-                        <label for="location-input">Ort oder PLZ</label>
-                        <div class="suggest-wrap">
-                            <input type="text" id="location-input" placeholder="z. B. 10115 oder Berlin" autocomplete="off">
-                            <ul id="location-suggestions" class="suggest-list"></ul>
-                        </div>
-                        <input type="hidden" id="location_id" name="location_id">
+                    <div class="rc-upsell-banner-text">
+                        <p class="rc-upsell-title">Trust Score freischalten</p>
+                        <p class="rc-upsell-desc">Sieh Verkäufer-Vertrauenswerte mit Core oder Pro.</p>
                     </div>
-                    
-                    <!-- Optional Filters (collapsible) -->
-                    <div class="form-field">
-                        <label for="category">Kategorie</label>
-                        <select id="category" name="category">
-                            {{ category_options() }}
-                        </select>
-                    </div>
-                    
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="price_min">Min. Preis (€)</label>
-                            <input type="number" id="price_min" name="price_min" placeholder="0">
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="price_max">Max. Preis (€)</label>
-                            <input type="number" id="price_max" name="price_max" placeholder="10000">
-                        </div>
-                    </div>
-                    
-                    <div class="form-field">
-                        <label for="radius">Umkreis (km)</label>
-                        <select id="radius" name="radius">
-                            <option value="">Standard (Ort)</option>
-                            <option value="5">5 km</option>
-                            <option value="10">10 km</option>
-                            <option value="20">20 km</option>
-                            <option value="30">30 km</option>
-                            <option value="50">50 km</option>
-                            <option value="100">100 km</option>
-                        </select>
-                    </div>
+                    <a href="/billing" class="rc-upsell-cta">Get Core</a>
                 </div>
                 {% endif %}
 
@@ -784,19 +760,17 @@
                                 <option value="gesuche">Gesucht</option>
                             </select>
                         </div>
-                        
-                        <div class="form-field">
-                            <label for="poster_type">Von</label>
-                            <select id="poster_type" name="poster_type">
+                        <div style="flex:1;min-width:140px">
+                            <label for="adm-poster_type">Von</label>
+                            <select id="adm-poster_type" name="poster_type">
                                 <option value="">Egal</option>
                                 <option value="privat">Privat</option>
                                 <option value="gewerblich">Gewerblich</option>
                             </select>
                         </div>
-                        
-                        <div class="form-field">
-                            <label for="condition">Zustand</label>
-                            <select id="condition" name="condition">
+                        <div style="flex:1;min-width:140px">
+                            <label for="adm-condition">Zustand</label>
+                            <select id="adm-condition" name="condition">
                                 <option value="">Egal</option>
                                 <option value="new_with_tag">Neu, mit Etikett</option>
                                 <option value="new">Neu</option>
@@ -806,428 +780,187 @@
                                 <option value="defect">Defekt</option>
                             </select>
                         </div>
-                        
-                        <div class="form-field">
-                            <label for="shipping">Versand</label>
-                            <select id="shipping" name="shipping">
+                        <div style="flex:1;min-width:140px">
+                            <label for="adm-shipping">Versand</label>
+                            <select id="adm-shipping" name="shipping">
                                 <option value="">Egal</option>
                                 <option value="ja">Versand möglich</option>
                                 <option value="nein">Nur Abholung</option>
                             </select>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Warning for missing required fields -->
-                <div class="wizard-inline-warning" id="step1-warning" style="display:none">
-                    Bitte gib Stichwörter oder einen Ort ein &mdash; genau wie bei kleinanzeigen.de.
-                </div>
-                
-                <!-- Frequency Selection -->
-                <label>Häufigkeit</label>
-                <div class="frequency-group frequency-group-compact">
-                    {% set min_iv = min_interval_seconds or 300 %}
-                    {% set default_iv = 300 if min_iv <= 300 else min_iv %}
-                    {% for val, lbl in [(60, 'Sofort'), (300, 'Alle 5 Minuten'), (1800, 'Alle 30 Minuten'), (3600, 'Alle 60 Minuten')] %}
-                    <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
-                        <input type="radio" name="interval_seconds" value="{{ val }}"{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
-                        {{ lbl }}
-                        {% if val < min_iv %}<a href="/billing" class="freq-upgrade">Upgrade</a>{% endif %}
-                    </label>
-                    {% endfor %}
-                </div>
-                
-                <!-- Notifications -->
-                <div class="notify-card">
-                    <div class="notify-card-title">🔔 Benachrichtigungen</div>
-                    <p class="notify-card-sub">Push- und E-Mail-Benachrichtigungen sind standardmäßig aktiviert. Du kannst sie jederzeit in den Einstellungen (⚙️ oben rechts) anpassen.</p>
-                </div>
-                
-                <!-- Smart Info -->
-                <details class="promo-box">
-                    <summary>
-                        <span class="promo-icon">&#10024;</span>
-                        <strong>Smart Alerts &mdash; jetzt aktiv</strong>
-                    </summary>
-                    <p>Angebotsbewertung gegen den Marktpreis und automatische Treffer-Zusammenfassungen sind bereits aktiv (Angebotsbewertung mit Core/Pro). Preissenkungs-Verfolgung für bereits gesehene Inserate ist als Nächstes geplant.</p>
-                </details>
-                
-                <!-- Form Actions -->
-                <div class="wizard-actions">
-                    <button type="button" class="wizard-back-btn" id="wizard-back-btn">&larr; Zurück</button>
-                    <button type="submit">Wiederkehrende Suche starten</button>
-                </div>
-            </form>
-        </div>
-    </div><!-- /tab-new-search -->
-    
-    <!-- ── TAB: My Results (redesigned — see #tab-my-results in style.css) ── -->
-    <div id="tab-my-results" class="tab-pane">
-        <div class="card">
-            <div class="rc-header">
-                <div>
-                    <h3>Meine Ergebnisse</h3>
-                    <p>
-                        {% if recent_results %}<span class="rc-count">{{ recent_results|length }}</span> Treffer{% if recent_results[0].relative_time %} · zuletzt gescannt {{ recent_results[0].relative_time }}{% endif %}
-                        {% else %}Die neuesten Anzeigen, die deine Suchen gefunden haben.{% endif %}
-                    </p>
-                    {% if not show_deals %}
-                    <p class="rc-upsell-note">Angebots-Badges sind ein Core/Pro-Feature &mdash; <a href="/billing">Upgrade</a>, um sie freizuschalten.</p>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Sticky on mobile so filter + sort stay reachable while
-                 scrolling a long result list (see .results-toolbar) -->
-            <div class="results-toolbar">
-                <!-- Sub-tabs for search filtering (horizontally scrollable on mobile, see style.css) -->
-                {% if tasks %}
-                <div class="sub-tab-bar">
-                    <button class="sub-tab-filter active" data-filter="all" onclick="filterResultsBySearch('all')">Alle Suchen</button>
-                    {% for task in tasks %}
-                    <button class="sub-tab-filter" data-filter="task-{{ task.id }}" onclick="filterResultsBySearch('task-{{ task.id }}')">
-                        {{ task.parameters.get('keywords', 'Search #' ~ task.id) | truncate(20) }}
-                    </button>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                
-                <!-- Sort, view density toggle & map -->
-                <div class="rc-controls-row">
-                    <div class="rc-sort-wrap">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
-                        <select id="sort-by" onchange="sortResults(this.value)">
-                            <option value="newest">Neueste zuerst</option>
-                            <option value="oldest">Älteste zuerst</option>
-                            <option value="price-low">Preis: Niedrig → Hoch</option>
-                            <option value="price-high">Preis: Hoch → Niedrig</option>
-                            <option value="trust-high">Trust Score: Hoch → Niedrig</option>
-                        </select>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px">
-                        <div class="rc-view-toggle" role="group" aria-label="Ansicht">
-                            <button type="button" class="rc-view-btn active" data-view="cards" onclick="setResultsView('cards')" title="Karten">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="15" width="18" height="4" rx="1"/></svg>
-                            </button>
-                            <button type="button" class="rc-view-btn" data-view="compact" onclick="setResultsView('compact')" title="Liste">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                            </button>
-                            <button type="button" class="rc-view-btn" data-view="grid" onclick="setResultsView('grid')" title="Raster">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                            </button>
+
+                    <div style="display:flex;gap:12px">
+                        <div style="flex:1">
+                            <label for="adm-radius">Umkreis (km)</label>
+                            <input type="number" id="adm-radius" name="radius" placeholder="50">
                         </div>
-                        <button id="map-toggle-btn" class="rc-map-btn" onclick="toggleMapView()" title="Kartenansicht">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Map Container (hidden by default) -->
-            <div id="map-container" class="map-container" style="display:none;">
-                <div id="map" class="map-view"></div>
-                <button class="close-map-btn" onclick="toggleMapView()">✕ Schließen</button>
-            </div>
-            
-            {% if not show_trust_scores %}
-            <div class="rc-upsell-banner">
-                <div class="rc-upsell-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                </div>
-                <div class="rc-upsell-banner-text">
-                    <p class="rc-upsell-title">Trust Score freischalten</p>
-                    <p class="rc-upsell-desc">Sieh Verkäufer-Vertrauenswerte mit Core oder Pro.</p>
-                </div>
-                <a href="/billing" class="rc-upsell-cta">Get Core</a>
-            </div>
-            {% endif %}
-            
-            {% if recent_results %}
-            <div class="rc-grid" id="results-grid" data-view="cards">
-                {% for r in recent_results %}
-                {{ rc_card(r) }}
-                {% endfor %}
-            </div>
-            
-            <!-- Pagination for Results -->
-            <div class="dashboard-pagination" id="results-pagination">
-                <!-- Wird via JavaScript gefüllt -->
-            </div>
-            {% else %}
-            {% set running_tasks = tasks | selectattr('status', 'in', ['pending', 'running']) | list %}
-            {% if running_tasks %}
-            <!-- A search is still in flight: show shimmering skeleton
-                 cards instead of a bare "no results" message -->
-            <p class="rc-skeleton-note">Deine Suche läuft &mdash; neue Ergebnisse erscheinen hier in Kürze.</p>
-            <div class="rc-grid" data-view="cards" aria-hidden="true">
-                {% for _ in range(3) %}
-                <div class="rc-card-wrapper">
-                    <div class="rc-card rc-skeleton">
-                        <div class="rc-thumb"></div>
-                        <div class="rc-body">
-                            <span class="skeleton skeleton-line" style="width:85%"></span>
-                            <span class="skeleton skeleton-line" style="width:35%;margin-top:6px"></span>
-                            <span class="skeleton skeleton-line" style="width:60%;margin-top:6px"></span>
+                        <div style="flex:1">
+                            <label for="adm-interval">Intervall (Minuten)</label>
+                            <select id="adm-interval" name="interval_minutes">
+                                <option value="15">Alle 15 Min.</option>
+                                <option value="30" selected>Alle 30 Min.</option>
+                                <option value="60">Alle 60 Min.</option>
+                                <option value="180">Alle 3 Stunden</option>
+                                <option value="720">Alle 12 Stunden</option>
+                            </select>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="rc-empty-state">Noch keine Ergebnisse &mdash; neue Anzeigen deiner Suchen erscheinen hier.</div>
-            {% endif %}
-            {% endif %}
-        </div>
-    </div><!-- /tab-my-results -->
-    
-    {% if is_admin %}
-    <div id="tab-admin" class="tab-pane">
-        <!-- Test push notification -->
-        <div class="card">
-            <h3>Benachrichtigungen testen</h3>
-            <p style="font-size:14px;color:#666;margin:0 0 14px">
-                Sende eine Test-Benachrichtigung an die Geräte dieses Kontos, um zu
-                prüfen, ob Benachrichtigungen einwandfrei funktionieren.
-            </p>
-            <form method="post" action="/admin/test-notification" style="margin:0">
-                <button type="submit">Test-Benachrichtigung senden</button>
-            </form>
-        </div>
-        
-        <!-- Add admin search -->
-        <div class="card">
-            <h3>Hintergrundsuche hinzufügen</h3>
-            <form action="/admin/searches" method="post">
-                <label for="adm-keywords">Stichwörter (optional bei gesetzter Kategorie)</label>
-                <input type="text" id="adm-keywords" name="keywords" placeholder="z. B. werkzeug">
-                
-                <label for="adm-category">Kategorie</label>
-                <select id="adm-category" name="category">
-                    {{ category_options() }}
-                </select>
-                
-                <label for="adm-location">Ort (leer = deutschlandweit)</label>
-                <input type="text" id="adm-location" name="location" placeholder="z. B. Berlin">
-                
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
-                        <label for="adm-price_min">Min. Preis (€)</label>
-                        <input type="number" id="adm-price_min" name="price_min" placeholder="0">
-                    </div>
-                    <div style="flex:1">
-                        <label for="adm-price_max">Max. Preis (€)</label>
-                        <input type="number" id="adm-price_max" name="price_max" placeholder="500">
-                    </div>
-                </div>
-                
-                <div style="display:flex;gap:12px;flex-wrap:wrap">
-                    <div style="flex:1;min-width:140px">
-                        <label for="adm-ad_type">Anzeigentyp</label>
-                        <select id="adm-ad_type" name="ad_type">
-                            <option value="">Egal</option>
-                            <option value="angebote">Angebot</option>
-                            <option value="gesuche">Gesucht</option>
-                        </select>
-                    </div>
-                    <div style="flex:1;min-width:140px">
-                        <label for="adm-poster_type">Von</label>
-                        <select id="adm-poster_type" name="poster_type">
-                            <option value="">Egal</option>
-                            <option value="privat">Privat</option>
-                            <option value="gewerblich">Gewerblich</option>
-                        </select>
-                    </div>
-                    <div style="flex:1;min-width:140px">
-                        <label for="adm-condition">Zustand</label>
-                        <select id="adm-condition" name="condition">
-                            <option value="">Egal</option>
-                            <option value="new_with_tag">Neu, mit Etikett</option>
-                            <option value="new">Neu</option>
-                            <option value="like_new">Wie neu</option>
-                            <option value="ok">Gut</option>
-                            <option value="alright">In Ordnung</option>
-                            <option value="defect">Defekt</option>
-                        </select>
-                    </div>
-                    <div style="flex:1;min-width:140px">
-                        <label for="adm-shipping">Versand</label>
-                        <select id="adm-shipping" name="shipping">
-                            <option value="">Egal</option>
-                            <option value="ja">Versand möglich</option>
-                            <option value="nein">Nur Abholung</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div style="display:flex;gap:12px">
-                    <div style="flex:1">
-                        <label for="adm-radius">Umkreis (km)</label>
-                        <input type="number" id="adm-radius" name="radius" placeholder="50">
-                    </div>
-                    <div style="flex:1">
-                        <label for="adm-interval">Intervall (Minuten)</label>
-                        <select id="adm-interval" name="interval_minutes">
-                            <option value="15">Alle 15 Min.</option>
-                            <option value="30" selected>Alle 30 Min.</option>
-                            <option value="60">Alle 60 Min.</option>
-                            <option value="180">Alle 3 Stunden</option>
-                            <option value="720">Alle 12 Stunden</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <button type="submit">Suche hinzufügen</button>
-            </form>
-        </div>
-        
-        <!-- List admin searches -->
-        <div class="card">
-            <h3>Hintergrundsuchen</h3>
-            {% if admin_searches %}
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Stichwörter</th>
-                        <th>Kategorie</th>
-                        <th>Ort</th>
-                        <th>Preis</th>
-                        <th>Intervall</th>
-                        <th>Letzter Lauf</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in admin_searches %}
-                    <tr>
-                        <td>{{ s.id }}{% if s.is_rotation_managed %} <span title="Automatische Kategorie-Rotation" style="font-size:11px;color:#888">🔄</span>{% endif %}</td>
-                        <td>{{ s.keywords or '&mdash;' }}</td>
-                        <td>{{ s.category or '&mdash;' }}</td>
-                        <td>{{ s.location or 'deutschlandweit' }}</td>
-                        <td style="font-size:12px;color:#666">
-                            {% if s.price_min or s.price_max %}
-                                {{ s.price_min or '0' }}–{{ s.price_max or '∞' }} €
-                            {% else %}&mdash;{% endif %}
-                        </td>
-                        <td>{{ s.interval_minutes }} Min.</td>
-                        <td style="font-size:12px;color:#666">
-                            {{ s.last_run_at.strftime('%d.%m %H:%M') if s.last_run_at else 'nie' }}
-                        </td>
-                        <td>
-                            {% if s.is_active %}
-                            <span class="toggle-on">● Aktiv</span>
-                            {% else %}
-                            <span class="toggle-off">○ Pausiert</span>
-                            {% endif %}
-                        </td>
-                        <td style="white-space:nowrap">
-                            <form method="post" action="/admin/searches/{{ s.id }}/toggle" style="display:inline">
-                                <button type="submit" class="action-btn muted">
-                                    {{ 'Pausieren' if s.is_active else 'Fortsetzen' }}
-                                </button>
-                            </form>
-                            &nbsp;
-                            <form method="post" action="/admin/searches/{{ s.id }}/delete" style="display:inline"
-                                  onsubmit="return confirm('Diese Suche löschen?')">
-                                <button type="submit" class="action-btn danger">Löschen</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state">Noch keine Hintergrundsuchen. Füge oben eine hinzu.</div>
-            {% endif %}
-        </div>
-        
-        <!-- Rotating proxy -->
-        <div class="card">
-            <h3>Rotierender Proxy</h3>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-                <div style="font-size:14px">
-                    Status:
-                    {% if rotating_proxy_enabled %}
-                    <span class="toggle-on">● Aktiviert</span>
-                    {% else %}
-                    <span class="toggle-off">○ Deaktiviert</span>
-                    {% endif %}
-                    <span style="color:#888;font-size:12px"> — der Scraper rotiert unten durch die aktiven Proxys</span>
-                </div>
-                <form method="post" action="/admin/proxy/toggle" style="margin:0">
-                    <button type="submit" class="action-btn muted">
-                        {{ 'Deaktivieren' if rotating_proxy_enabled else 'Aktivieren' }}
-                    </button>
+
+                    <button type="submit">Suche hinzufügen</button>
                 </form>
             </div>
-            
-            <form action="/admin/proxies" method="post" style="display:flex;gap:8px;align-items:flex-end">
-                <div style="flex:1">
-                    <label for="proxy-url">Proxy hinzufügen (wird vor dem Hinzufügen live getestet)</label>
-                    <input type="text" id="proxy-url" name="url"
-                           placeholder="http://user:pass@host:port" required
-                           style="margin-bottom:0">
+
+            <!-- List admin searches -->
+            <div class="card">
+                <h3>Hintergrundsuchen</h3>
+                {% if admin_searches %}
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Stichwörter</th>
+                            <th>Kategorie</th>
+                            <th>Ort</th>
+                            <th>Preis</th>
+                            <th>Intervall</th>
+                            <th>Letzter Lauf</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in admin_searches %}
+                        <tr>
+                            <td>{{ s.id }}{% if s.is_rotation_managed %} <span title="Automatische Kategorie-Rotation" style="font-size:11px;color:#888">🔄</span>{% endif %}</td>
+                            <td>{{ s.keywords or '&mdash;' }}</td>
+                            <td>{{ s.category or '&mdash;' }}</td>
+                            <td>{{ s.location or 'deutschlandweit' }}</td>
+                            <td style="font-size:12px;color:#666">
+                                {% if s.price_min or s.price_max %}
+                                    {{ s.price_min or '0' }}–{{ s.price_max or '∞' }} €
+                                {% else %}&mdash;{% endif %}
+                            </td>
+                            <td>{{ s.interval_minutes }} Min.</td>
+                            <td style="font-size:12px;color:#666">
+                                {{ s.last_run_at.strftime('%d.%m %H:%M') if s.last_run_at else 'nie' }}
+                            </td>
+                            <td>
+                                {% if s.is_active %}
+                                <span class="toggle-on">● Aktiv</span>
+                                {% else %}
+                                <span class="toggle-off">○ Pausiert</span>
+                                {% endif %}
+                            </td>
+                            <td style="white-space:nowrap">
+                                <form method="post" action="/admin/searches/{{ s.id }}/toggle" style="display:inline">
+                                    <button type="submit" class="action-btn muted">
+                                        {{ 'Pausieren' if s.is_active else 'Fortsetzen' }}
+                                    </button>
+                                </form>
+                                &nbsp;
+                                <form method="post" action="/admin/searches/{{ s.id }}/delete" style="display:inline"
+                                      onsubmit="return confirm('Diese Suche löschen?')">
+                                    <button type="submit" class="action-btn danger">Löschen</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">Noch keine Hintergrundsuchen. Füge oben eine hinzu.</div>
+                {% endif %}
+            </div>
+
+            <!-- Rotating proxy -->
+            <div class="card">
+                <h3>Rotierender Proxy</h3>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                    <div style="font-size:14px">
+                        Status:
+                        {% if rotating_proxy_enabled %}
+                        <span class="toggle-on">● Aktiviert</span>
+                        {% else %}
+                        <span class="toggle-off">○ Deaktiviert</span>
+                        {% endif %}
+                        <span style="color:#888;font-size:12px"> — der Scraper rotiert unten durch die aktiven Proxys</span>
+                    </div>
+                    <form method="post" action="/admin/proxy/toggle" style="margin:0">
+                        <button type="submit" class="action-btn muted">
+                            {{ 'Deaktivieren' if rotating_proxy_enabled else 'Aktivieren' }}
+                        </button>
+                    </form>
                 </div>
-                <button type="submit" style="width:auto;padding:10px 18px;margin:0">Testen & hinzufügen</button>
-            </form>
-            
-            {% if proxies %}
-            <table class="admin-table" style="margin-top:18px">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Proxy</th>
-                        <th>Status</th>
-                        <th>Zuletzt getestet</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in proxies %}
-                    <tr>
-                        <td>{{ p.id }}</td>
-                        <td style="font-size:12px;word-break:break-all">{{ p.url }}</td>
-                        <td>
-                            {% if p.is_active %}
-                            <span class="toggle-on">● Aktiv</span>
-                            {% else %}
-                            <span class="toggle-off">○ Fehlgeschlagen</span>
-                            {% endif %}
-                        </td>
-                        <td style="font-size:12px;color:#666">
-                            {{ p.last_tested_at.strftime('%d.%m %H:%M') if p.last_tested_at else 'nie' }}
-                        </td>
-                        <td style="white-space:nowrap">
-                            <form method="post" action="/admin/proxies/{{ p.id }}/retest" style="display:inline">
-                                <button type="submit" class="action-btn muted">Erneut testen</button>
-                            </form>
-                            &nbsp;
-                            <form method="post" action="/admin/proxies/{{ p.id }}/delete" style="display:inline"
-                                  onsubmit="return confirm('Diesen Proxy entfernen?')">
-                                <button type="submit" class="action-btn danger">Entfernen</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state" style="margin-top:12px">Noch keine Proxys. Füge oben einen hinzu — er muss einen Live-Test bestehen.</div>
-            {% endif %}
-        </div>
-    </div><!-- /tab-admin -->
-    {% endif %}
-    
-    <div></div>
-    
-    <!-- Fixed bottom navigation, mobile only (hidden above 560px via
-         style.css, where the .tab-nav at the top takes over instead).
-         Three core destinations only — Admin is intentionally excluded
-         here and reachable via the header link instead, since it's a rare
-         destination for a tiny fraction of users and doesn't deserve equal
-         weight with Suchen/Neu/Ergebnisse in the thumb zone. -->
+
+                <form action="/admin/proxies" method="post" style="display:flex;gap:8px;align-items:flex-end">
+                    <div style="flex:1">
+                        <label for="proxy-url">Proxy hinzufügen (wird vor dem Hinzufügen live getestet)</label>
+                        <input type="text" id="proxy-url" name="url"
+                               placeholder="http://user:pass@host:port" required
+                               style="margin-bottom:0">
+                    </div>
+                    <button type="submit" style="width:auto;padding:10px 18px;margin:0">Testen &amp; hinzufügen</button>
+                </form>
+
+                {% if proxies %}
+                <table class="admin-table" style="margin-top:18px">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Proxy</th>
+                            <th>Status</th>
+                            <th>Zuletzt getestet</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in proxies %}
+                        <tr>
+                            <td>{{ p.id }}</td>
+                            <td style="font-size:12px;word-break:break-all">{{ p.url }}</td>
+                            <td>
+                                {% if p.is_active %}
+                                <span class="toggle-on">● Aktiv</span>
+                                {% else %}
+                                <span class="toggle-off">○ Fehlgeschlagen</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:12px;color:#666">
+                                {{ p.last_tested_at.strftime('%d.%m %H:%M') if p.last_tested_at else 'nie' }}
+                            </td>
+                            <td style="white-space:nowrap">
+                                <form method="post" action="/admin/proxies/{{ p.id }}/retest" style="display:inline">
+                                    <button type="submit" class="action-btn muted">Erneut testen</button>
+                                </form>
+                                &nbsp;
+                                <form method="post" action="/admin/proxies/{{ p.id }}/delete" style="display:inline"
+                                      onsubmit="return confirm('Diesen Proxy entfernen?')">
+                                    <button type="submit" class="action-btn danger">Entfernen</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state" style="margin-top:12px">Noch keine Proxys. Füge oben einen hinzu — er muss einen Live-Test bestehen.</div>
+                {% endif %}
+            </div>
+
+        </div><!-- /tab-admin -->
+        {% endif %}
+
+    </div>
+
+    <!--
+        NEW: fixed bottom navigation, mobile only (hidden above 560px via
+        style.css, where the .tab-nav at the top takes over instead).
+        Three core destinations only — Admin is intentionally excluded
+        here and reachable via the header link instead, since it's a rare
+        destination for a tiny fraction of users and doesn't deserve equal
+        weight with Suchen/Neu/Ergebnisse in the thumb zone.
+    -->
     <nav class="bottom-nav" aria-label="Hauptnavigation">
         <button class="bottom-nav-item active" data-tab="my-searches" onclick="showTab('my-searches', this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
@@ -1243,10 +976,10 @@
             Ergebnisse
         </button>
     </nav>
-    
+
     <!-- Pull-to-refresh spinner (standalone PWA only, driven by JS) -->
     <div class="ptr-indicator" id="ptr" aria-hidden="true"><span class="ptr-spinner"></span></div>
-    
+
     <!-- Confirm action sheet: in-design replacement for native confirm() -->
     <div class="sheet-backdrop" id="sheet-backdrop"></div>
     <div class="action-sheet" id="action-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -1257,7 +990,7 @@
             <button type="button" class="sheet-btn sheet-btn-cancel" id="sheet-cancel">Zurück</button>
         </div>
     </div>
-    
+
     <!-- First-login guided tutorial (see show_tutorial in app/api/main.py) -->
     <div class="sheet-backdrop" id="tutorial-backdrop"></div>
     <div class="tutorial-modal" id="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
@@ -1271,7 +1004,7 @@
             <button type="button" class="sheet-btn tutorial-next-btn" id="tutorial-next">Weiter</button>
         </div>
     </div>
-    
+
     <!-- First-search notification prompt -->
     <div class="sheet-backdrop" id="notification-prompt-backdrop"></div>
     <div class="tutorial-modal" id="notification-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="notification-prompt-title">
@@ -1286,13 +1019,15 @@
             <button type="button" class="sheet-btn tutorial-next-btn" onclick="window.location.href='/settings'">Einstellungen öffnen</button>
         </div>
     </div>
-    
+
+
+
     <script>
         // ── First-login guided tutorial ──
         (function() {
             var showTutorial = {{ 'true' if show_tutorial else 'false' }};
             if (!showTutorial) return;
-            
+
             var steps = [
                 {
                     icon: '👋',
@@ -1319,13 +1054,14 @@
                     title: '4. Benachrichtigungen einrichten',
                     body: 'Push- und E-Mail-Benachrichtigungen sind standardmäßig aktiviert. Du kannst sie jederzeit in den Einstellungen (Zahnrad-Symbol) anpassen oder deaktivieren.'
                 },
+
                 {
                     icon: '⚙️',
                     title: '5. Einstellungen & Plan',
                     body: 'Über das Zahnrad-Symbol oben rechts verwaltest du deinen Plan, passt Benachrichtigungen an und exportierst deine Daten. Los geht’s!'
                 }
             ];
-            
+
             var backdrop = document.getElementById('tutorial-backdrop');
             var modal = document.getElementById('tutorial-modal');
             var iconEl = document.getElementById('tutorial-icon');
@@ -1336,9 +1072,12 @@
             var nextBtn = document.getElementById('tutorial-next');
             var skipBtn = document.getElementById('tutorial-skip');
             var current = 0;
-            
+
             steps.forEach(function(_, i) {
                 var dot = document.createElement('span');
+                dot.className = 'tutorial-dot';
+                dotsEl.appendChild(dot);
+            });
 
             function render() {
                 var step = steps[current];
@@ -1402,7 +1141,12 @@
                 modal.classList.remove('open');
             };
         })();
+    </script>
 
+        })();
+    </script>
+    <script>
+        // ── Tab Navigation ──
         // CHANGED: now keeps both the top .tab-btn set and the bottom-nav
         // set in sync, since either one can be tapped depending on
         // viewport width. Also updates the URL hash so state survives a
