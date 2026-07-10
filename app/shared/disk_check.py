@@ -13,6 +13,7 @@ import sys
 
 import sentry_sdk
 
+from app.shared.logging_config import logger
 from app.shared.sentry import init_sentry
 
 DEFAULT_THRESHOLD_PERCENT = 85.0
@@ -32,8 +33,10 @@ def main() -> None:
             f"Disk usage at {pct_used:.1f}% on {path} (threshold {threshold:.0f}%)",
             level="warning",
         )
+        logger.warning("Disk usage alert sent: %.1f%% used (threshold %.0f%%)", pct_used, threshold)
         print(f"ALERT sent: {pct_used:.1f}% used (threshold {threshold:.0f}%)")
     else:
+        logger.info("Disk usage OK: %.1f%% used (threshold %.0f%%)", pct_used, threshold)
         print(f"OK: {pct_used:.1f}% used (threshold {threshold:.0f}%)")
 
 
