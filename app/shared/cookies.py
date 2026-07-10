@@ -12,9 +12,10 @@ def ascii_cookie(value: str) -> str:
     """Return ``value`` safe to put in a Set-Cookie header.
 
     Transliterates common German characters (ä→ae, ö→oe, ü→ue, ß→ss,
-    en/em dash → hyphen) then drops any remaining non-latin-1 bytes. This
-    keeps the message readable in the browser while guaranteeing the cookie
-    never raises at response time.
+    en/em dash → hyphen), strips control characters (newlines, tabs — which
+    the stdlib cookie module rejects with CookieError), then drops any
+    remaining non-latin-1 bytes. This keeps the message readable in the
+    browser while guaranteeing the cookie never raises at response time.
     """
     if value is None:
         return ""
@@ -26,4 +27,8 @@ def ascii_cookie(value: str) -> str:
     }
     for k, v in repl.items():
         value = value.replace(k, v)
+    # Collapse any control character (newline, tab, CR, etc.) to a space —
+    # http.cookies raises CookieError on these even though they are valid
+    # latin-1 bytes.
+    value = "".join(" " if ord(c) < 0x20 or ord(c) == 0x7f else c for c in value)
     return value.encode("latin-1", "ignore").decode("latin-1")

@@ -29,6 +29,17 @@ def test_ascii_cookie_drops_unmappable_bytes():
     assert ascii_cookie("emoji 🚀 boom") == "emoji  boom"
 
 
+def test_ascii_cookie_strips_control_chars():
+    # http.cookies rejects control chars (e.g. the newlines in a WebPush 410
+    # error body) with CookieError even though they are valid latin-1 bytes.
+    from http.cookies import SimpleCookie
+
+    s = "Push failed: 410 Gone\nResponse body:unsubscribed.\r\n\ttab"
+    out = ascii_cookie(s)
+    assert "\n" not in out and "\r" not in out and "\t" not in out
+    SimpleCookie()["flash_error"] = out  # must not raise CookieError
+
+
 @pytest.fixture
 def client():
     # Tables are created on the app's already-bound engine (in-memory test DB
