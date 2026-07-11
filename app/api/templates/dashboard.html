@@ -381,6 +381,17 @@
                       </div>
                     </div>
 
+                    {% if show_smart_search %}
+                    <div class="form-field" style="border-top:1px solid #eee;padding-top:16px;margin-top:8px;">
+                      <label for="ai-search-input">🤖 KI-Suche — Beschreibe was du suchst</label>
+                      <div style="display:flex;gap:8px;">
+                        <input type="text" id="ai-search-input" placeholder="z. B. gebrauchtes Eichensofa unter 200€ in Berlin" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;">
+                        <button id="ai-search-btn" style="padding:10px 16px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">🔍 KI-Suche</button>
+                      </div>
+                      <div id="ai-search-results" style="margin-top:12px;"></div>
+                    </div>
+                    {% endif %}
+
                     <div class="form-field">
                       <label for="location-input">Ort oder PLZ</label>
                       <div class="suggest-wrap">
@@ -2340,6 +2351,147 @@
         setTimeout(function() { list.style.display = 'none'; }, 150);
     });
     window.addEventListener('scroll', function() { list.style.display = 'none'; });
+})();
+</script>
+{% endif %}
+
+{% if show_smart_search %}
+<script>
+// ── KI-Assisted Search (Backend: POST /api/ai-search) ──
+(function() {
+    var btn = document.getElementById('ai-search-btn');
+    var input = document.getElementById('ai-search-input');
+    var resultsEl = document.getElementById('ai-search-results');
+    var liked = [];
+    var disliked = [];
+    var lastQuery = '';
+
+    if (!btn || !input || !resultsEl) return;
+
+    function renderResults(data) {
+        resultsEl.innerHTML = '';
+        if (!data.results || !data.results.length) {
+            resultsEl.innerHTML = '<p style="padding:12px;color:#666;">Keine passenden Ergebnisse gefunden.</p>';
+            return;
+        }
+        var info = document.createElement('p');
+        info.style.cssText = 'padding:8px 0;font-size:13px;color:#666;';
+        info.textContent = data.total + ' Treffer gefunden' + (data.removed ? ' (' + data.removed + ' ausgeblendet)' : '');
+        resultsEl.appendChild(info);
+
+        if (data.parsed) {
+            var parsedInfo = document.createElement('p');
+            parsedInfo.style.cssText = 'padding:4px 0 8px;font-size:12px;color:#888;';
+            parsedInfo.textContent = 'Erkannt: ' + (data.search_text || '—');
+            resultsEl.appendChild(parsedInfo);
+        }
+
+        data.results.forEach(function(r) {
+            var card = document.createElement('div');
+            card.style.cssText = 'border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;';
+
+            var imgDiv = document.createElement('div');
+            imgDiv.style.cssText = 'width:80px;height:80px;background:#f5f5f5;border-radius:6px;overflow:hidden;flex-shrink:0;';
+            if (r.image_url) {
+                var img = document.createElement('img');
+                img.src = r.image_url;
+                img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                imgDiv.appendChild(img);
+            } else {
+                imgDiv.textContent = '📷';
+                imgDiv.style.cssText += 'display:flex;align-items:center;justify-content:center;font-size:28px;color:#ccc;';
+            }
+            card.appendChild(imgDiv);
+
+            var infoDiv = document.createElement('div');
+            infoDiv.style.cssText = 'flex:1;min-width:0;';
+
+            var title = document.createElement('a');
+            title.href = r.url || '#';
+            title.target = '_blank';
+            title.textContent = r.title || '—';
+            title.style.cssText = 'font-weight:600;color:#333;text-decoration:none;display:block;margin-bottom:4px;';
+            infoDiv.appendChild(title);
+
+            var price = document.createElement('span');
+            price.style.cssText = 'font-weight:bold;color:#007bff;font-size:16px;';
+            price.textContent = r.price || (r.price_value ? r.price_value + '€' : '—');
+            infoDiv.appendChild(price);
+
+            if (r.location) {
+                var loc = document.createElement('span');
+                loc.style.cssText = 'margin-left:12px;color:#888;font-size:13px;';
+                loc.textContent = '📍 ' + r.location;
+                infoDiv.appendChild(loc);
+            }
+
+            // Like/Dislike Buttons
+            var actions = document.createElement('div');
+            actions.style.cssText = 'margin-top:8px;display:flex;gap:8px;';
+
+            var likeBtn = document.createElement('button');
+            likeBtn.textContent = liked.indexOf(r.id) !== -1 ? '👍 Aktiv' : '👍 Mehr davon';
+            likeBtn.style.cssText = 'padding:4px 12px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:' + (liked.indexOf(r.id) !== -1 ? '#d4edda' : '#fff') + ';font-size:12px;';
+            likeBtn.onclick = function() {
+                if (liked.indexOf(r.id) === -1) liked.push(r.id);
+                disliked = disliked.filter(function(d) { return d !== r.id; });
+                refineSearch();
+            };
+            actions.appendChild(likeBtn);
+
+            var dislikeBtn = document.createElement('button');
+            dislikeBtn.textContent = disliked.indexOf(r.id) !== -1 ? '👎 Ausgeblendet' : '👎 Nicht das';
+            dislikeBtn.style.cssText = 'padding:4px 12px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:' + (disliked.indexOf(r.id) !== -1 ? '#f8d7da' : '#fff') + ';font-size:12px;';
+            dislikeBtn.onclick = function() {
+                if (disliked.indexOf(r.id) === -1) disliked.push(r.id);
+                liked = liked.filter(function(l) { return l !== r.id; });
+                refineSearch();
+            };
+            actions.appendChild(dislikeBtn);
+
+            infoDiv.appendChild(actions);
+            card.appendChild(infoDiv);
+            resultsEl.appendChild(card);
+        });
+    }
+
+    function refineSearch() {
+        if (!lastQuery) return;
+        btn.disabled = true;
+        btn.textContent = 'Optimiere…';
+        fetch('/api/ai-search/feedback', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ query: lastQuery, liked: liked, disliked: disliked })
+        })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) { if (data) renderResults(data); })
+            .catch(function() {})
+            .finally(function() { btn.disabled = false; btn.textContent = '🔍 KI-Suche'; });
+    }
+
+    function doSearch() {
+        var q = input.value.trim();
+        if (q.length < 3) return;
+        lastQuery = q;
+        liked = [];
+        disliked = [];
+        btn.disabled = true;
+        btn.textContent = 'Suche…';
+        resultsEl.innerHTML = '<p style="padding:12px;color:#666;">Suche läuft…</p>';
+        fetch('/api/ai-search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ query: q })
+        })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) { if (data) renderResults(data); })
+            .catch(function() { resultsEl.innerHTML = '<p style="padding:12px;color:#c00;">Fehler bei der Suche.</p>'; })
+            .finally(function() { btn.disabled = false; btn.textContent = '🔍 KI-Suche'; });
+    }
+
+    btn.addEventListener('click', doSearch);
+    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') doSearch(); });
 })();
 </script>
 {% endif %}

@@ -32,8 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Link-Phishing-Prüfung: Scam-Domains, verdächtige TLDs, IP-Adressen
   - Bild-Duplikat-Erkennung via URL-Pattern-Analyse
   - POST/GET `/api/fraud-check` Endpoints mit DB-Persistenz
-  - FraudAlert Modell + Trust-Score 0–100
-  - **Update: Fraud Detection ist jetzt Core-Feature** (Basic sieht keine Ergebnisse)
+  - **Plan-Gating: KI-Suche → Pro, Fraud Detection → Core** (Issue #267)
+    - Update: Fraud Detection ist jetzt Core-Feature (Basic sieht keine Ergebnisse)
+  - **KI-Assisted Search** (Feature)
+    - Natürlichsprachliche Beschreibung → automatische Suche
+    - `POST /api/ai-search` parsed Query, findet passende Ergebnisse
+    - `POST /api/ai-search/feedback` verfeinert mit Like/Dislike
+    - Dashboard-Widget: Beschreiben, Ergebnisse sehen, Feedback geben
 
 ### Changed
 - Smart Search Cache um 1h-TTL ergänzt, abgelaufene Einträge werden verworfen (Issue #260)

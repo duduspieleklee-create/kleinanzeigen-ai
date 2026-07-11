@@ -16,7 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.config import settings
 from app.api.routers import (
     admin, auth, billing, scrapes, push, locations, geocode, settings as settings_router,
-    smart_search,
+    smart_search, ai_search,
 )
 from app.api.dependencies import get_current_user
 from app.api.security import limiter
@@ -190,6 +190,7 @@ app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(billing.router, prefix="/billing", tags=["Billing"])
 app.include_router(settings_router.router, tags=["Settings"])
 app.include_router(smart_search.router, tags=["Smart Search"])
+app.include_router(ai_search.router, tags=["AI Search"])
 
 
 @app.get("/healthz", tags=["Ops"], include_in_schema=False)
