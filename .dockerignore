@@ -19,6 +19,11 @@ venv/
 # Node/frontend artifacts
 node_modules
 dist
+# Built assets — generated fresh inside the Docker image via `npm run build`
+frontend/app/api/static/main.js
+frontend/app/api/static/style.css
+app/api/static/main.js
+app/api/static/style.css
 
 # OS/editor junk
 .DS_Store
