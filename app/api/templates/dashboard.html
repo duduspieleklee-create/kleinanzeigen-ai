@@ -176,6 +176,8 @@
             </div>
         </div>
 
+        {% include "email_status_banner.html" %}
+
         {% if not is_admin and not email_verified %}
         <div class="flash-error" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <span>Bitte bestätige deine E-Mail-Adresse ({{ user_email }}), um Suchen zu starten &mdash; überprüfe dein Postfach für den Link.</span>

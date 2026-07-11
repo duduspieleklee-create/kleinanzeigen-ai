@@ -459,10 +459,13 @@ def _send_email_notifications(
     summary["sent"] = bool(ok)
     if summary["sent"]:
         metric("notifications.email_sent", 1)
-
+        from app.shared.email_status import clear_email_failed
+        clear_email_failed()
     else:
         summary["errors"].append(f"Email send failed: {last}")
         metric("notifications.email_failed", 1)
+        from app.shared.email_status import mark_email_failed
+        mark_email_failed()
 
     _save_notification_delivery(db, user_id, task_id, "email", summary)
     return summary

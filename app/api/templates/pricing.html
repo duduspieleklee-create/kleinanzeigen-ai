@@ -35,6 +35,8 @@
             {% endif %}
         </div>
 
+        {% include "email_status_banner.html" %}
+
         {% if flash_success %}
         <div class="flash-success">{{ flash_success }}</div>
         {% endif %}

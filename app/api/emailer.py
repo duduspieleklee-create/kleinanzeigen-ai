@@ -72,6 +72,8 @@ def send_verification_email(to_email: str, username: str, verify_url: str) -> tu
             "Verification email to %s rejected (%s): %s",
             to_email, resp.status_code, resp.text[:500],
         )
+        from app.shared.email_status import mark_email_failed
+        mark_email_failed()
         return False, "The email service rejected the message"
 
     return True, ""

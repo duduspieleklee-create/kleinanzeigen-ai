@@ -62,9 +62,19 @@ def send_email_notification(notification: EmailNotification) -> bool:
         return False
 
     if resp.status_code >= 400:
+        # Surface Resend's machine-readable error name (e.g. suspended_api_key,
+        # invalid_api_key) so incidents are self-diagnosing in logs/Sentry.
+        detail = resp.text[:500]
+        try:
+            j = resp.json()
+            name = j.get("name")
+            if name:
+                detail = f"{name}: {j.get('message', detail)}"
+        except Exception:
+            pass
         logger.error(
             "New-results email to %s rejected (%s): %s",
-            notification.recipient, resp.status_code, resp.text[:500],
+            notification.recipient, resp.status_code, detail,
         )
         return False
 

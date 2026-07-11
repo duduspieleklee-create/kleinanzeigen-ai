@@ -25,6 +25,14 @@ def register_globals(templates) -> None:
     - `build_info`: version/commit metadata for the footer and cache-busting.
     - `turnstile_site_key`: public Cloudflare Turnstile site key; empty when
       Turnstile is disabled, so templates render the widget only when set.
+    - `email_degraded` / `email_degraded_since`: drive the temporary
+      "E-Mail-Versand vorübergehend nicht verfügbar" banner during a Resend
+      outage (see app/shared/email_status.py). Imported lazily to avoid a
+      circular import at module load (config -> version -> email_status).
     """
     templates.env.globals["build_info"] = BUILD_INFO
     templates.env.globals["turnstile_site_key"] = settings.turnstile_site_key
+
+    from app.shared.email_status import email_degraded, email_degraded_since
+    templates.env.globals["email_degraded"] = email_degraded
+    templates.env.globals["email_degraded_since"] = email_degraded_since

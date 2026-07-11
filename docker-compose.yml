@@ -44,6 +44,13 @@ services:
       ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
+      # Email (Resend). Key is read from .env — if suspended/rotated at
+      # resend.com, edit .env and `docker compose up -d` to reload the process.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      # From-address MUST be a Resend-verified domain for external recipients.
+      # Default onboarding@resend.dev is the sandbox sender and only reaches the
+      # Resend account owner's inbox — set a verified domain in .env for prod.
+      EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
     depends_on:
       db:
         condition: service_healthy
@@ -65,6 +72,10 @@ services:
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
+      # Email (Resend) — same key/domain as the api service (worker sends
+      # new-results notifications). Rotate via .env + `docker compose up -d`.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
       PROMETHEUS_MULTIPROC_DIR: /tmp/prom_multiproc
     depends_on:
       db:
