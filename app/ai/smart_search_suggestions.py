@@ -3,7 +3,7 @@ Smart Search Suggestions – KI-Modul für kleinanzeigen-ai
 Zweck: Generiert Suchvorschläge basierend auf Nutzeranfragen.
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
 class SmartSearchSuggestions:
