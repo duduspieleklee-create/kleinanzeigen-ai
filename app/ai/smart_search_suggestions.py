@@ -62,16 +62,24 @@ class SmartSearchSuggestions:
     def get_synonyms(self, keyword: str) -> List[str]:
         """Holt Synonyme von Datamuse-API (Fallback zu Mock-Daten)."""
         try:
-            response = requests.get(
-                "https://api.datamuse.com/words",
-                params={"rel_syn": keyword, "max": 10},
-                timeout=5,
-            )
-            response.raise_for_status()
-            return [item["word"] for item in response.json()]
+            return self._fetch_synonyms_from_datamuse(keyword)
         except Exception as e:
-            logger.error(f"Datamuse-API-Fehler: {e}")
+            logger.warning("Datamuse-API-Fehler (Fallback genutzt): %s", e)
             return self.synonyms.get(keyword, [])
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=0.1, max=0.5),
+        reraise=True,
+    )
+    def _fetch_synonyms_from_datamuse(self, keyword: str) -> List[str]:
+        response = requests.get(
+            "https://api.datamuse.com/words",
+            params={"rel_syn": keyword, "max": 10},
+            timeout=5,
+        )
+        response.raise_for_status()
+        return [item["word"] for item in response.json()]
 
     def get_related_terms(self, keyword: str) -> List[str]:
         """Holt verwandte Begriffe von Wikipedia-API (Fallback zu Mock-Daten)."""

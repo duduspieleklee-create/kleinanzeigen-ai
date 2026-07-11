@@ -46,6 +46,29 @@ def test_get_synonyms_falls_back_to_mock_on_error(sss, monkeypatch):
     assert sss.get_synonyms("UnbekanntesWort123") == []
 
 
+def test_get_synonyms_retries_transient_failures_then_succeeds(sss, monkeypatch):
+    calls = {"n": 0}
+
+    def fake_get(url, *a, **k):
+        calls["n"] += 1
+        if "datamuse" not in str(url):
+            return SimpleNamespace(
+                raise_for_status=lambda: None,
+                json=lambda: [],
+            )
+        if calls["n"] < 3:
+            raise RuntimeError("transient datamuse failure")
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: [{"word": "PKW"}, {"word": "Wagen"}],
+        )
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", fake_get)
+    result = sss.get_synonyms("Auto")
+    assert result == ["PKW", "Wagen"]
+    assert calls["n"] == 3
+
+
 # ── Verwandte Begriffe (Wikipedia) ────────────────────────────────────────
 def test_get_related_terms_uses_wikipedia(sss, monkeypatch):
     fake = SimpleNamespace(
