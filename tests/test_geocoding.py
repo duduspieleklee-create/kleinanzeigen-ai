@@ -1,16 +1,5 @@
-"""Tests für das serverseitige Geocoding mit DB-Cache (app/shared/geocoding.py).
-
-Deckt ab:
-- normalize_location: Lowercasing + Whitespace-Collapse (damit Schreibvarianten
-  desselben Orts eine Cache-Zeile / einen Nominatim-Lookup teilen);
-- geocode(): Cache-Miss ruft Nominatim genau einmal und speichert das Ergebnis;
-  ein zweiter Aufruf trifft den Cache und geht NICHT ins Netz;
-- Negativ-Cache: "nicht gefunden" wird als NULL/NULL-Zeile gemerkt und nicht
-  erneut angefragt;
-- Netzwerkfehler poisont den Cache nicht (kein Eintrag, gibt None zurück).
-
-Der Nominatim-Aufruf (_query_nominatim) wird gestubbt, damit kein Netz nötig ist;
-ein Zähler belegt, dass der Cache echte Lookups einspart.
+"""
+Tests für das Geocoding-Modul (app/shared/geocoding.py).
 """
 import pytest
 from sqlalchemy import create_engine

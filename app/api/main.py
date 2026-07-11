@@ -361,6 +361,8 @@ async def _build_dashboard(
     # The results map view is a Pro-only feature — non-Pro see the map button
     # with a Pro upsell, and POST /api/geocode rejects them (app/api/routers/geocode.py).
     show_map = bool(is_admin or (cfg and cfg.get("map_view", False)))
+    # Smart Search Suggestions sind ein Pro-Feature.
+    show_smart_search = bool(is_admin or (cfg and cfg.get("smart_search", False)))
     recent_results = []
     if recent_rows:
         medians = {}
@@ -400,10 +402,11 @@ async def _build_dashboard(
             "request": request,
             "tasks": tasks_with_counts,
             "recent_results": recent_results,
-            "show_deals": show_deals,
-            "show_trust_scores": show_trust_scores,
-            "show_advanced_filters": show_advanced_filters,
-            "show_map": show_map,
+            'show_deals': show_deals,
+            'show_trust_scores': show_trust_scores,
+            'show_advanced_filters': show_advanced_filters,
+            'show_map': show_map,
+            'show_smart_search': show_smart_search,
             "flash_success": flash_success,
             "flash_error": flash_error,
             "new_task_id": new_task_id,
