@@ -18,6 +18,7 @@ from app.shared.email_notifications import (
     send_email_notification,
 )
 from app.shared.metrics import track_job
+from app.shared.observability import track_job_decorator
 from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary, build_push_notification
 from app.shared.plans import ensure_weekly_credits, plan_config
@@ -191,6 +192,7 @@ def _save_notification_delivery(db, user_id: int, task_id: int | None, channel: 
     )
 
 
+@track_job_decorator("notifications.send_push")
 def _send_push_notifications(
     db, user_id: int, result_count: int, keywords: str = "", highlight: str = None,
     location: str = None, price_range: str = None, best_price: str = None,
@@ -373,6 +375,7 @@ def _send_push_notifications(
     return summary
 
 
+@track_job_decorator("notifications.send_email")
 def _send_email_notifications(
     db, user_id: int, result_count: int, keywords: str,
     new_results: list, highlight: str = None, bypass_preferences: bool = False,
@@ -441,6 +444,7 @@ def _send_email_notifications(
     return summary
 
 
+@track_job_decorator("notifications.run_test_push")
 def run_test_push(db, user_id: int) -> dict:
     """Send a one-off test push synchronously and return a result summary.
 
@@ -930,17 +934,16 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         db.rollback()
 
         # Full context for debugging, independent of the short message shown to users.
-        sentry_sdk.capture_exception(
-            exc,
-            tags={"task_id": str(update_id), "attempt": str(attempt)},
-            contexts={
-                "scrape": {
-                    "task_id": update_id,
-                    "attempt": attempt,
-                    "keywords": parameters.get("keywords"),
-                    "location": parameters.get("location"),
-                    "url": locals().get("url"),
-                }
+        # The SentryLogHandler bridge already captures this exception (exc_info=True);
+        # attach the structured scrape context here so it's queryable in Sentry.
+        sentry_sdk.set_context(
+            "scrape",
+            {
+                "task_id": update_id,
+                "attempt": attempt,
+                "keywords": parameters.get("keywords"),
+                "location": parameters.get("location"),
+                "url": locals().get("url"),
             },
         )
         sentry_metrics.count("job.failed", 1, attributes={"job": "scrape.kleinanzeigen"})
@@ -1020,6 +1023,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         db.close()
 
 
+@track_job_decorator("scrape.dispatch_admin_searches")
 @celery_app.task(name="scrape.dispatch_admin_searches", bind=False)
 def dispatch_admin_searches():
     """Dispatches scrape tasks for all due admin-configured searches.
@@ -1105,6 +1109,7 @@ def dispatch_admin_searches():
         db.close()
 
 
+@track_job_decorator("scrape.reap_stale_recurring_searches")
 @celery_app.task(name="scrape.reap_stale_recurring_searches", bind=False)
 def reap_stale_recurring_searches():
     """Restart user recurring searches whose self-rescheduling chain died.

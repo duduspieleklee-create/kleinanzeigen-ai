@@ -101,6 +101,9 @@ class Settings(BaseSettings):
     sentry_enable_in_dev: bool = False
     # Fraction of requests/tasks traced for performance monitoring (0 = errors only).
     sentry_traces_sample_rate: float = 0.0
+    # Fraction of traced transactions profiled (0 = off). Only meaningful when
+    # traces_sample_rate > 0.
+    sentry_profiles_sample_rate: float = 0.0
 
     @property
     def turnstile_enabled(self) -> bool:
