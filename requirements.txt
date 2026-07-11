@@ -57,5 +57,8 @@ pyrate-limiter==4.4.0
 # Retry logic (smart search Wikipedia hardening)
 tenacity==9.1.4
 
+# Google Trends integration (smart search trends)
+pytrends==4.9.2
+
 # Testing
 pytest==8.3.4
