@@ -1,0 +1,61 @@
+{# Shared PWA install widget.
+   Chrome/Edge/Android fire `beforeinstallprompt`; we capture it and show a
+   real "Install app" button (the native omnibox icon is easy to miss).
+   iOS Safari never fires that event and shows no native prompt, so we detect
+   iOS and surface a manual "Add to Home Screen" hint instead. #}
+<button id="pwa-install-btn" class="pwa-install-btn" type="button" hidden>
+    <svg class="pwa-install-icon" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+        <path fill="currentColor" d="M12 3v11.17l2.59-2.58L16 13l-4 4-4-4 1.41-1.41L11 14.17V3h2z"/>
+        <path fill="currentColor" d="M5 19h14v2H5z"/>
+    </svg>
+    <span>App installieren</span>
+</button>
+
+<div id="pwa-ios-hint" class="pwa-ios-hint" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+        <path fill="currentColor" d="M12 3v11.17l2.59-2.58L16 13l-4 4-4-4 1.41-1.41L11 14.17V3h2z"/>
+        <path fill="currentColor" d="M5 19h14v2H5z"/>
+    </svg>
+    <span>Tippe auf <strong>&#x1F4CC; Teilen</strong> &rarr; <strong>&#x2795; Zum Home-Bildschirm</strong>, um die App hinzuzufügen.</span>
+</div>
+
+<script>
+(function () {
+    var btn = document.getElementById('pwa-install-btn');
+    var iosHint = document.getElementById('pwa-ios-hint');
+    if (!btn) return;
+
+    // Capture the native install prompt so we can trigger it from our button.
+    var deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+        // Don't preventDefault immediately so the browser stays happy; we
+        // still capture the event for our button click.
+        deferredPrompt = e;
+        btn.hidden = false;
+    });
+
+    window.addEventListener('appinstalled', function () {
+        btn.hidden = true;
+        iosHint.hidden = true;
+        deferredPrompt = null;
+    });
+
+    btn.addEventListener('click', function () {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function () {
+            deferredPrompt = null;
+            btn.hidden = true;
+        });
+    });
+
+    // iOS detection: no beforeinstallprompt, so offer the manual path.
+    var isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+        (navigator.userAgent.includes('Macintosh') && 'ontouchend' in document);
+    var standalone = window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true;
+    if (isIOS && !standalone) {
+        iosHint.hidden = false;
+    }
+})();
+</script>

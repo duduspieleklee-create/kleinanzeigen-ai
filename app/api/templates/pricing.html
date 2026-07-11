@@ -9,6 +9,7 @@
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
     <meta name="theme-color" content="#007bff">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
 
     <!-- Open Graph / Facebook -->
@@ -122,5 +123,6 @@
             {% endif %}
         </div>
     </div>
+    {% include "pwa_install.html" %}
 </body>
 </html>
