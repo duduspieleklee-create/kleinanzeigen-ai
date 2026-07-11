@@ -308,7 +308,7 @@
                                 {% endif %}
                             </td>
                             <td data-label="" class="row-actions">
-                                <a href="/scrapes/{{ task.id }}/results" class="view-link">Anzeigen</a>
+                                <a href="#" class="view-link" onclick="showTab('my-results', this); filterResultsBySearch('task-{{ task.id }}'); event.preventDefault();">Anzeigen</a>
                                 <!-- data-confirm-* forms are intercepted by JS and ask via the
                                      in-design action sheet instead of the native confirm() -->
                                 <form method="post" action="/scrapes/{{ task.id }}/delete"
