@@ -3,11 +3,14 @@ from celery.schedules import crontab
 
 from app.worker.celery_app import celery_app
 from app.shared.observability import install_log_bridge
+from app.shared.metrics_prom import start_exporter
 
 # celery_app.py already calls init_sentry("worker") on import; retag as
 # "beat" since this process dispatches schedules rather than running tasks.
 sentry_sdk.set_tag("component", "beat")
 install_log_bridge()
+# Prometheus exporter für diesen Prozess (scrape target beat:8002).
+start_exporter(8002)
 
 # Beat dispatches all active AdminSearch entries every 60 seconds.
 # The task itself skips entries whose next_run_at is still in the future,

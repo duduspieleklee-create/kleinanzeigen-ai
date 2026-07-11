@@ -65,6 +65,7 @@ services:
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prom_multiproc
     depends_on:
       db:
         condition: service_healthy
@@ -92,5 +93,39 @@ services:
       - .:/app
     command: celery -A app.beat.celery_beat beat --loglevel=info --schedule /tmp/celerybeat-schedule
 
+  # Prometheus (Metriken-Sammlung, scrapt api/worker/beat)
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Grafana (Dashboards, "Wie läuft das System? Wo sind Trends?")
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:

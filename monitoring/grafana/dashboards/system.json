@@ -1,0 +1,112 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 0,
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "30s",
+  "title": "kleinanzeigen-ai · System",
+  "uid": "ka-ai-system",
+  "schemaVersion": 39,
+  "tags": ["kleinanzeigen-ai"],
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "row",
+      "title": "System Health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "stat",
+      "title": "Prozesse up (api/worker/beat)",
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }] } },
+      "targets": [{ "expr": "up", "legendFormat": "{{job}}" }]
+    },
+    {
+      "type": "stat",
+      "title": "Aktive Suchen",
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 1 },
+      "targets": [{ "expr": "searches_active", "legendFormat": "aktiv" }]
+    },
+    {
+      "type": "stat",
+      "title": "Job-Fehlerrate (5m)",
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.05 }, { "color": "red", "value": 0.2 }] } } },
+      "targets": [{ "expr": "sum(rate(job_failed_total[5m])) / clamp_min(sum(rate(job_started_total[5m])), 1)", "legendFormat": "fehlerrate" }]
+    },
+    {
+      "type": "row",
+      "title": "Scraping",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Jobs completed vs failed (rate/5m)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "targets": [
+        { "expr": "sum by (task) (rate(job_completed_total[5m]))", "legendFormat": "ok · {{task}}" },
+        { "expr": "sum by (task) (rate(job_failed_total[5m]))", "legendFormat": "fail · {{task}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Job-Dauer p50/p95 (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum by (le, task) (rate(job_duration_seconds_bucket[5m])))", "legendFormat": "p50 · {{task}}" },
+        { "expr": "histogram_quantile(0.95, sum by (le, task) (rate(job_duration_seconds_bucket[5m])))", "legendFormat": "p95 · {{task}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Neue Listings gefunden (rate/5m)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "targets": [{ "expr": "sum(rate(scrape_listings_found_total[5m]))", "legendFormat": "listings/s" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Admin-Dispatch & Reaper (rate/5m)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "targets": [
+        { "expr": "sum(rate(admin_search_dispatched_total[5m]))", "legendFormat": "dispatched/s" },
+        { "expr": "sum(rate(scrape_recurring_reaped_total[5m]))", "legendFormat": "reaped/s" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Notifications",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Push sent vs failed (rate/5m)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "sum(rate(notifications_push_sent_total[5m]))", "legendFormat": "sent/s" },
+        { "expr": "sum(rate(notifications_push_failed_total[5m]))", "legendFormat": "failed/s" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Email sent vs failed (rate/5m)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        { "expr": "sum(rate(notifications_email_sent_total[5m]))", "legendFormat": "sent/s" },
+        { "expr": "sum(rate(notifications_email_failed_total[5m]))", "legendFormat": "failed/s" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Seller / Trust",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Seller-Extraction cached vs uncached (rate/5m)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "targets": [{ "expr": "sum by (cached) (rate(seller_extraction_requests_total[5m]))", "legendFormat": "cached={{cached}}" }]
+    }
+  ]
+}

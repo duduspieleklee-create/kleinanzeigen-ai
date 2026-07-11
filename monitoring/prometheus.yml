@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: api
+    static_configs:
+      - targets: ["api:8000"]
+        labels: { component: api }
+
+  - job_name: worker
+    static_configs:
+      - targets: ["worker:8001"]
+        labels: { component: worker }
+
+  - job_name: beat
+    static_configs:
+      - targets: ["beat:8002"]
+        labels: { component: beat }
