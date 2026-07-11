@@ -81,6 +81,18 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </a>
                 </div>
+
+                {# ── Smart Search Demo Widget ────────────────────────────────────── #}
+                <div class="lp-smart-search-demo">
+                    <label for="smart-search-input" class="lp-demo-label">Probiere die KI-Suche:</label>
+                    <div class="suggest-wrap">
+                        <input type="text" id="smart-search-input"
+                               placeholder="z. B. Auto, Gartenmöbel, iPhone…"
+                               autocomplete="off" />
+                        <ul id="smart-search-suggestions" class="suggest-list"></ul>
+                    </div>
+                    <small class="lp-demo-hint">Vorschläge von Datamuse, Wikipedia &amp; KI-Modell</small>
+                </div>
             </header>
 
             <section class="lp-benefits">
@@ -120,6 +132,7 @@
     </div>
 
     {% include "_version_footer.html" %}
+    {% include "_smart_search_suggestions.html" %}
     {% include "pwa_install.html" %}
 </body>
 </html>
