@@ -40,7 +40,11 @@ _STOPWORDS = {
     "nicht", "kein", "keine", "einen", "dem", "den", "des",
     "dass", "weil", "wenn", "dann", "dort", "hier", "da",
     "neu", "gebraucht", "zu", "zum", "zur",
+    "hallo", "hi", "hey", "guten", "tag", "moin", "servus", "tschüss", "hallo", "danke",
 }
+
+# Wörter die nach Preis-Extraktion aus Keywords entfernt werden
+_PRICE_CONSUMED = {"unter", "bis", "max", "ab", "über", "unter", "maximal", "mindestens", "höchstens"}
 
 # Wörter die auf eine Kategorie hindeuten
 _CATEGORY_HINTS: dict[str, list[str]] = {
@@ -98,16 +102,21 @@ def parse_query(text: str) -> dict:
                 result["price_min"] = int(match.group(1)) * 0.8
             break
 
-    # Ort extrahieren
+    # Location extrahieren (darf keine Preis-Wörter enthalten)
     for pattern in _LOCATION_PATTERNS:
         match = re.search(pattern, cleaned, re.IGNORECASE)
         if match:
-            result["location"] = match.group(1)
-            break
+            loc = match.group(1)
+            # Verwerfen falls Preis-Wörter enhalten sind
+            price_words = {"unter", "bis", "ab", "über", "max", "min"}
+            loc_tokens = set(re.findall(r"[a-zäöüß]+", loc.lower()))
+            if not price_words & loc_tokens:
+                result["location"] = loc
+                break
 
     # Keywords extrahieren (remove stopwords, filter meaningful words)
     tokens = re.findall(r"[a-zäöüß]+", cleaned)
-    keywords = [t for t in tokens if t not in _STOPWORDS and len(t) > 2]
+    keywords = [t for t in tokens if t not in _STOPWORDS and len(t) > 2 and t not in _PRICE_CONSUMED]
 
     # Kategorie erkennen (exakte Token-Matches + Compound-Substrings)
     token_set = set(re.findall(r"[a-zäöüß]+", cleaned))
