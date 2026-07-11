@@ -158,6 +158,7 @@ def test_custom_model_smoke_against_real_endpoint(monkeypatch):
     result = inst.get_custom_model_suggestions("Auto kaufen")
     assert isinstance(result, list)
     assert all(not t[0].isdigit() for t in result), "Nummerierung sollte bereinigt sein"
+    assert len(result) >= 1, "Modell sollte mindestens einen Vorschlag liefern"
 
 
 # ── get_suggestions (Kombination) ─────────────────────────────────────────

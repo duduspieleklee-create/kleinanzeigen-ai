@@ -118,11 +118,15 @@ class SmartSearchSuggestions:
                 {
                     "role": "system",
                     "content": (
-                        "Du bist ein Such-Assistent für eine Kleinanzeigen-Plattform. "
-                        "Gib ausschließlich relevante Suchbegriffe zurück. "
+                        "Du bist ein Such-Assistent für die Plattform kleinanzeigen.de. "
+                        "Gib ausschließlich reale Suchbegriffe zurück, wie sie Nutzer "
+                        "dort eingeben würden – auch Synonyme und verwandte Begriffe "
+                        "zum Suchbegriff. "
                         "Regeln: GENAU ein Suchbegriff pro Zeile. KEINE Nummerierung "
                         "(kein '1.', '2.' oder '1)'), KEINE Aufzählungszeichen, "
-                        "KEIN erklärender Text, KEINE Einleitung. "
+                        "KEIN erklärender Text, KEINE Einleitung, KEINE Anführungszeichen. "
+                        "Nur konkrete, verkaufsrelevante Begriffe (z.B. 'Gebrauchtwagen', "
+                        "'PKW kaufen', 'Auto gebraucht'). Liefere mindestens 5 Begriffe. "
                         "Beispielausgabe:\n"
                         "Gebrauchtwagen\n"
                         "PKW kaufen\n"
@@ -143,13 +147,22 @@ class SmartSearchSuggestions:
             raw = re.split(r"[\n\r]+", content)
             suggestions = []
             for line in raw:
-                line = line.strip()
-                # Entferne führende Nummerierung wie "1." "2)" "3 -" und Symbole
-                line = re.sub(r"^\s*\d+[\.\)\-\•\*\u2022]?\s*", "", line).strip(" -\u2022\u2023")
-                line = line.strip()
-                if line:
+                # Entferne umschließende Satzzeichen/Symbole (kein Backslash-Escaping)
+                line = line.strip().strip("\"'`*•–—- ")
+                # Entferne führende Nummerierung wie "1." "2)" "3 -"
+                line = re.sub(r"^\s*\d+[.)•-]?\s*", "", line).strip()
+                line = line.strip("\"'`*•–—- ")
+                # Mindestens 2 Zeichen, maximal 60 (keine reinen Satzzeichen)
+                if line and 1 < len(line) <= 60:
                     suggestions.append(line)
-            return suggestions[:10]
+            # Dedupe (case-insensitive), Reihenfolge bewahren
+            seen = set()
+            unique = []
+            for s in suggestions:
+                if s.lower() not in seen:
+                    seen.add(s.lower())
+                    unique.append(s)
+            return unique[:10]
         except Exception as e:
             logger.error(f"Custom-Model-Endpoint-Fehler: {e}")
             return []
