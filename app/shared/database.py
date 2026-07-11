@@ -26,7 +26,13 @@ _SYNC_URL = (
     .replace("postgres+asyncpg://", "postgresql://")
 )
 
-engine = create_engine(_SYNC_URL, echo=False)
+# pool_pre_ping validates a connection before it's handed out and transparently
+# reconnects on a stale one; pool_recycle recycles connections before the server/
+# proxy idle-timeout drops them. Without these, long-lived sessions in the 60s/120s
+# beat tasks (dispatch_admin_searches, reap_stale_recurring_searches) die on commit
+# with "server closed the connection unexpectedly" whenever Postgres reclaims an
+# idle connection. See issue #212.
+engine = create_engine(_SYNC_URL, echo=False, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
