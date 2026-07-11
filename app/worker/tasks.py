@@ -22,6 +22,7 @@ from app.shared.observability import track_job_decorator, metric
 from app.shared.metrics_prom import job_duration
 from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary, build_push_notification
+from app.shared.category_profiles import NO_PRICE_PROFILES, resolve_profile
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
 from app.shared.proxy import proxies_for_requests
@@ -199,6 +200,7 @@ def _send_push_notifications(
     location: str = None, price_range: str = None, best_price: str = None,
     image_url: str = None, task_id: int | None = None, bypass_preferences: bool = False,
     tag: str = None, title: str = None, deal: dict = None, cheapest_price: str = None,
+    profile: str = "item", trust_score: int | None = None, sample_title: str | None = None,
 ) -> dict:
     """Send a web push to every subscription of a user.
 
@@ -215,6 +217,14 @@ def _send_push_notifications(
     tests pass a fresh per-click tag (e.g. a timestamp) so every click pops a
     distinct, visible notification instead of silently replacing the previous
     one. `title` lets tests label themselves clearly (e.g. "TEST").
+
+    `profile`, `trust_score` and `sample_title` are forwarded to
+    build_push_notification (see app/shared/smart_alerts.py) to shape the
+    body for non-item searches (Jobs, Immobilien, Dienstleistungen, Tiere,
+    Verschenken, Gesuche) — see app/shared/category_profiles.py for how a
+    search's category maps to a profile. Both `trust_score` and
+    `sample_title` are expected to already be plan-gated / count-gated by
+    the caller; this function just displays what it's given.
     """
     summary = {
         "configured": True,
@@ -266,6 +276,9 @@ def _send_push_notifications(
             cheapest_price=cheapest_price,
             location=location,
             deal=deal,
+            profile=profile,
+            trust_score=trust_score,
+            sample_title=sample_title,
         )
         title_text = built["title"]
         body = built["body"]
@@ -789,16 +802,33 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         # setting up a search is noise, and none of it is genuinely new.
         if task and new_count > 0 and not is_baseline:
             keywords = parameters.get("keywords", "") or ""
-            # Deal-Highlight nur, wenn konkret nach einem Gegenstand gesucht
-            # wird (keywords gesetzt) — bei reinem Kategorie-/Service-Stöbern
-            # ist ein "unter Marktpreis" sinnlos. Zusätzlich Core/Pro-gated.
+            category = parameters.get("category")
+            ad_type = parameters.get("ad_type")
+            # What kind of search this is (Job/Immobilie/Dienstleistung/Tier/
+            # Verschenken/Gesuch/…) — decides whether price/"deal" framing
+            # applies at all. See app/shared/category_profiles.py.
+            profile = resolve_profile(category, ad_type)
+
+            # Trust score is its OWN Core/Pro plan flag (app/shared/plans.py:
+            # "trust_scores"), separate from "deal_badges" below. Gate it on
+            # its own flag rather than piggybacking on deal_gated — the two
+            # flags happen to be identical per plan today, but nothing
+            # enforces that, and piggybacking would silently leak Trust
+            # Scores to Basic users the moment that changes.
+            show_trust = bool(owner and (owner.is_admin or plan_config(owner.plan).get("trust_scores")))
+
+            # Deal-Highlight nur bei preisvergleichbaren Profilen (item /
+            # ticket / vehicle-mit-Keyword) — bei Jobs, Immobilien,
+            # Dienstleistungen, Verschenken, Tieren und Gesuchen ist ein
+            # "unter Marktpreis" sinnlos oder unpassend, unabhängig vom Plan.
+            # Zusätzlich für die verbleibenden Profile Core/Pro-gated.
             highlight = None
             best_price_str = None
             best_image_url = None
             best_title = None
             deal = None
             deal_gated = owner and (owner.is_admin or plan_config(owner.plan).get("deal_badges"))
-            if keywords and deal_gated:
+            if profile not in NO_PRICE_PROFILES and keywords and deal_gated:
                 all_values = [
                     v for (v,) in db.query(ScrapeResult.price_value)
                     .filter(ScrapeResult.task_id == resolved_task_id).all()
@@ -819,7 +849,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                         "title": best[1],
                         "price": "geschenkt" if best[0] == 0 else f"{best[0]} €",
                         "saving_eur": int(round(med - best[0])) if med else None,
-                        "trust_score": best[4],
+                        "trust_score": best[4] if show_trust else None,
                     }
 
             # Smart Alerts: one deterministic sentence for the dashboard, reusing
@@ -849,6 +879,16 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 cheapest_price = "geschenkt" if cheapest.price_value == 0 \
                     else f"{cheapest.price_value} €"
 
+            # No-price profiles (Jobs, Immobilien, Dienstleistungen, …) show
+            # the single new listing's title instead of a bare count when
+            # there's exactly one match — and its seller's trust score, but
+            # only for profiles where that's useful (service/animal) and only
+            # when show_trust allows it (see build_push_notification).
+            sample_title = new_results[0].title if new_count == 1 and new_results else None
+            profile_trust_score = None
+            if profile in NO_PRICE_PROFILES and new_count == 1 and new_results and show_trust:
+                profile_trust_score = new_results[0].trust_score
+
             _send_push_notifications(
                 db,
                 user_id=task.user_id,
@@ -861,6 +901,9 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 task_id=resolved_task_id,
                 deal=deal,
                 cheapest_price=cheapest_price,
+                profile=profile,
+                trust_score=profile_trust_score,
+                sample_title=sample_title,
             )
             _send_email_notifications(
                 db,
