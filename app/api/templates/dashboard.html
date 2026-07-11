@@ -6,7 +6,7 @@
     <title>Dashboard - kleinanzeigen-ai</title>
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#2fbf71">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -163,8 +163,16 @@
     {% endmacro %}
     <div class="container">
         <div class="header-row">
-            <h2 style="margin:0">kleinanzeigen-ai</h2>
+            <div class="brand-block">
+                <h2 style="margin:0">kleinanzeigen-ai</h2>
+                <span class="plan-badge plan-{{ plan_name|lower }}">{{ plan_label }}</span>
+            </div>
             <div style="display:flex;align-items:center;gap:16px">
+                <div class="credit-pill" title="Verbleibende Credits diese Woche">
+                    <span class="credit-icon">⚡</span>
+                    <span class="credit-count">{{ credits }}</span>
+                    <span class="credit-label">Credits</span>
+                </div>
                 <div id="notification-badge" class="notif-badge" title="Neue Benachrichtigungen">
                     <span id="notif-count" style="display:none">0</span>
                     <a href="/settings" class="notif-icon">⚙️</a>
@@ -226,6 +234,40 @@
 
         <!-- ── TAB: My Searches ── -->
         <div id="tab-my-searches" class="tab-pane active">
+            <!-- Overview stats -->
+            <div class="overview-grid">
+                <div class="overview-card">
+                    <span class="overview-value">{{ active_searches }}<span class="overview-sub">/ {{ max_active_searches }}</span></span>
+                    <span class="overview-label">Aktive Suchen</span>
+                </div>
+                <div class="overview-card">
+                    <span class="overview-value">{{ recent_results|length if recent_results else 0 }}</span>
+                    <span class="overview-label">Neue Treffer</span>
+                </div>
+                <div class="overview-card">
+                    <span class="overview-value">{{ credits }}</span>
+                    <span class="overview-label">Credits übrig</span>
+                </div>
+            </div>
+
+            <!-- Feature info card -->
+            <div class="feature-info-card">
+                <div class="feature-info-head">
+                    <h3 style="margin:0">Was kleinanzeigen-ai für dich tut</h3>
+                    <span class="plan-badge plan-{{ plan_name|lower }}">{{ plan_label }}</span>
+                </div>
+                <ul class="feature-list">
+                    <li><span class="feature-icon">🔍</span> Automatische Suche auf Kleinanzeigen.de — rund um die Uhr, ohne dass du manuell nachschauen musst.</li>
+                    <li><span class="feature-icon">🔔</span> Sofortige Benachrichtigungen per Push & E-Mail, sobald ein passendes Angebot erscheint.</li>
+                    <li><span class="feature-icon">🤖</span> KI-Preis-Check: Fairness-Bewertung und Median-Preis für jedes Ergebnis.</li>
+                    <li><span class="feature-icon">⭐</span> Favoriten speichern und geteilte Suchen für Freunde oder Familie erstellen.</li>
+                </ul>
+                <div class="feature-info-footer">
+                    <span class="feature-limit">Limit: {{ max_active_searches }} aktive Suchen · Intervall {{ min_interval_seconds }}s</span>
+                    <a href="/billing" class="feature-upgrade-btn">Plan upgraden →</a>
+                </div>
+            </div>
+
             <div class="card">
                 <h3>Meine Suchen</h3>
 
