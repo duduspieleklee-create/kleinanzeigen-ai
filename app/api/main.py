@@ -356,6 +356,9 @@ async def _build_dashboard(
     # a Core/Pro feature — the wizard shows the fields enabled only for eligible
     # plans (Basic sees them disabled with an upsell).
     show_advanced_filters = bool(is_admin or (cfg and cfg.get("advanced_filters", False)))
+    # The results map view is a Pro-only feature — non-Pro see the map button
+    # with a Pro upsell, and POST /api/geocode rejects them (app/api/routers/geocode.py).
+    show_map = bool(is_admin or (cfg and cfg.get("map_view", False)))
     recent_results = []
     if recent_rows:
         medians = {}
@@ -398,6 +401,7 @@ async def _build_dashboard(
             "show_deals": show_deals,
             "show_trust_scores": show_trust_scores,
             "show_advanced_filters": show_advanced_filters,
+            "show_map": show_map,
             "flash_success": flash_success,
             "flash_error": flash_error,
             "new_task_id": new_task_id,

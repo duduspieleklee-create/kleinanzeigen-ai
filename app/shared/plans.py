@@ -19,6 +19,10 @@ Basic users get plain results.
 Advanced result filters (require/exclude keywords + exclude locations, applied
 post-scrape in the worker — see app/shared/result_filters.py) are likewise a
 Core/Pro feature, gated by the ``advanced_filters`` flag.
+
+The results map view ("Kartenansicht" on the dashboard) is a Pro-only feature,
+gated by the ``map_view`` flag — Basic/Core see the map button with a Pro
+upsell, and the geocoding endpoint (POST /api/geocode) rejects non-Pro callers.
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -34,6 +38,7 @@ PLANS = {
         "deal_badges": False,
         "trust_scores": False,
         "advanced_filters": False,
+        "map_view": False,
     },
     "core": {
         "label": "Core",
@@ -43,6 +48,7 @@ PLANS = {
         "deal_badges": True,
         "trust_scores": True,
         "advanced_filters": True,
+        "map_view": False,
     },
     "pro": {
         "label": "Pro",
@@ -53,6 +59,7 @@ PLANS = {
         "deal_badges": True,
         "trust_scores": True,
         "advanced_filters": True,
+        "map_view": True,
     },
 }
 

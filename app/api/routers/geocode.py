@@ -7,7 +7,7 @@ immediately; a bounded number of cache misses are geocoded inline per request
 (Nominatim is rate-limited to ~1 req/s), and anything past that budget comes
 back null and is filled on a later open once the cache has warmed.
 """
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,8 @@ from app.api.dependencies import get_current_user
 from app.api.security import limiter
 from app.shared.database import get_db
 from app.shared.geocoding import geocode, normalize_location
-from app.shared.models import GeocodeCache
+from app.shared.models import GeocodeCache, User
+from app.shared.plans import plan_config
 
 router = APIRouter()
 
@@ -44,6 +45,12 @@ def geocode_locations(
     to its cards. Distinct places are resolved once (normalised key); cache hits
     are free, misses are geocoded up to a per-request budget.
     """
+    # The map is a Pro-only feature — gate the endpoint too (defense in depth:
+    # the UI already hides it for non-Pro, see dashboard.html show_map).
+    user = db.query(User).filter(User.id == current_user["id"]).first()
+    if not (user and (user.is_admin or plan_config(user.plan).get("map_view"))):
+        raise HTTPException(status_code=403, detail="Die Kartenansicht ist ein Pro-Feature.")
+
     # Distinct normalised keys → the original strings that map to them.
     originals_by_key: dict[str, list[str]] = {}
     for raw in payload.locations[:_MAX_LOCATIONS]:
