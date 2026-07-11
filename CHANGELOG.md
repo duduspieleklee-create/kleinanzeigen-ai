@@ -44,6 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - KI fragt nach, was fehlt (Artikel → Preis → Ort → Suche)
     - Ergebnisse als Karten im Chat mit Like/Dislike
     - `POST /api/ai-search/chat` — Chat-Endpoint mit Konversationsverlauf
+  - **Google Trends Integration** (Feature)
+    - `app/ai/smart_search_trends.py` holt aktuelle Trend-Daten zu Suchbegriffen
+    - 10-Minuten-Cache, Fallback bei Netzwerkfehlern
+    - Erscheint als "Google Trends zu 'keyword'" in den Smart Search Vorschlägen
+    - Nutzt pytrends (kein API-Key nötig)
 
 ### Changed
 - Smart Search Cache um 1h-TTL ergänzt, abgelaufene Einträge werden verworfen (Issue #260)

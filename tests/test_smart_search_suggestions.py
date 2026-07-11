@@ -306,6 +306,8 @@ def test_get_suggestions_cache_hit(sss, monkeypatch):
         )
 
     monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", fake_get)
+    # Google Trends mocken (damit kein extra Call)
+    monkeypatch.setattr("app.ai.smart_search_trends.get_trending_searches_batch", lambda *a, **k: {})
 
     first = sss.get_suggestions("Auto")
     second = sss.get_suggestions("Auto")
