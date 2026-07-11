@@ -15,7 +15,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.config import settings
 from app.api.routers import (
-    admin, auth, billing, scrapes, push, locations, settings as settings_router
+    admin, auth, billing, scrapes, push, locations, geocode, settings as settings_router
 )
 from app.api.dependencies import get_current_user
 from app.api.security import limiter
@@ -151,10 +151,10 @@ async def security_middleware(request: Request, call_next):
     # Cloudflare Turnstile loads its widget script and renders an iframe from
     # challenges.cloudflare.com, so it must be allowed in script-src/frame-src.
     # The results map view (dashboard "Kartenansicht") loads the Leaflet lib
-    # (JS+CSS) from cdnjs.cloudflare.com, geocodes result locations against
-    # nominatim.openstreetmap.org, and renders OpenStreetMap tiles — the tiles
-    # are covered by img-src 'https:', but the script/style/fetch hosts must be
-    # allowed explicitly.
+    # (JS+CSS) from cdnjs.cloudflare.com and renders OpenStreetMap tiles (covered
+    # by img-src 'https:'). Geocoding is done server-side (POST /api/geocode →
+    # app/shared/geocoding.py), so the browser only ever calls our own origin —
+    # connect-src does NOT need nominatim.openstreetmap.org.
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "img-src 'self' data: https:; "
@@ -162,8 +162,7 @@ async def security_middleware(request: Request, call_next):
         "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com "
         "https://cdnjs.cloudflare.com; "
         "frame-src https://challenges.cloudflare.com; "
-        "connect-src 'self' https://challenges.cloudflare.com "
-        "https://nominatim.openstreetmap.org; "
+        "connect-src 'self' https://challenges.cloudflare.com; "
         "frame-ancestors 'none'; "
         "base-uri 'self'"
     )
@@ -185,6 +184,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(scrapes.router, prefix="/scrapes", tags=["Scrapes"])
 app.include_router(push.router, prefix="/push", tags=["Push"])
 app.include_router(locations.router, prefix="/locations", tags=["Locations"])
+app.include_router(geocode.router, tags=["Geocode"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(billing.router, prefix="/billing", tags=["Billing"])
 app.include_router(settings_router.router, tags=["Settings"])

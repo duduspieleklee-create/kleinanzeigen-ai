@@ -1902,60 +1902,72 @@
                 (byLocation[location] = byLocation[location] || []).push(wrapper);
             });
 
-            var bounds = L.latLngBounds();
             var locations = Object.keys(byLocation);
-            var i = 0;
+            if (locations.length === 0) return;
 
-            // Nominatim's usage policy allows at most ~1 request/second — firing
-            // all lookups at once (the old behaviour) risks a 403/429 IP block.
-            // Walk the distinct locations one at a time, spacing only the calls
-            // that actually hit the network (cached ones continue immediately).
-            (function next() {
-                if (!mapInstance || i >= locations.length) return;
-                var loc = locations[i++];
-                geocodeLocation(loc).then(function(res) {
-                    if (res.coords && mapInstance) {
-                        byLocation[loc].forEach(function(wrapper) {
-                            var marker = L.marker([res.coords.lat, res.coords.lon]).addTo(mapInstance);
-                            var title = (wrapper.querySelector('.rc-title')?.textContent || 'Item').trim();
-                            var price = (wrapper.querySelector('.rc-price-main')?.textContent || 'N/A').trim();
-                            marker.bindPopup(title + ' – ' + price);
-                            mapMarkers.push(marker);
-                            bounds.extend([res.coords.lat, res.coords.lon]);
-                        });
-                        // Re-fit as markers arrive, so the map zooms to the
-                        // results instead of staying on the Germany overview
-                        // (the old code fitBounds()'d before any async lookup
-                        // had resolved, so bounds was always still empty).
-                        if (bounds.isValid()) {
-                            mapInstance.fitBounds(bounds, { padding: [50, 50] });
-                        }
-                    }
-                    setTimeout(next, res.fromCache ? 0 : 1100);
+            // Geocoding is done server-side (POST /api/geocode) with a DB cache
+            // and rate limiting, so the browser makes ONE request for all the
+            // distinct locations instead of hitting Nominatim per card (the old
+            // behaviour, which violated Nominatim's usage policy). The server
+            // returns {location: {lat,lon}|null}; unresolved ones (not found, or
+            // past the per-request geocode budget) come back null and fill in on
+            // a later open as the cache warms.
+            resolveLocations(locations).then(function(coordsByLocation) {
+                if (!mapInstance) return;
+                var bounds = L.latLngBounds();
+                locations.forEach(function(loc) {
+                    var coords = coordsByLocation[loc];
+                    if (!coords) return;
+                    byLocation[loc].forEach(function(wrapper) {
+                        var marker = L.marker([coords.lat, coords.lon]).addTo(mapInstance);
+                        var title = (wrapper.querySelector('.rc-title')?.textContent || 'Item').trim();
+                        var price = (wrapper.querySelector('.rc-price-main')?.textContent || 'N/A').trim();
+                        marker.bindPopup(title + ' – ' + price);
+                        mapMarkers.push(marker);
+                        bounds.extend([coords.lat, coords.lon]);
+                    });
                 });
-            })();
+                // Fit only after markers exist — the old code fitBounds()'d
+                // before the async lookups resolved, so it never zoomed in.
+                if (bounds.isValid()) {
+                    mapInstance.fitBounds(bounds, { padding: [50, 50] });
+                }
+            });
         }
 
-        // Resolves a location string to {coords: {lat, lon}|null, fromCache: bool}.
-        // Never rejects — a failed/failed-to-find lookup resolves with null coords
-        // so the sequential walk in initializeMap keeps going.
-        function geocodeLocation(location) {
-            if (Object.prototype.hasOwnProperty.call(geocodeCache, location)) {
-                return Promise.resolve({ coords: geocodeCache[location], fromCache: true });
-            }
-            var query = encodeURIComponent(location + ', Germany');
-            return fetch('https://nominatim.openstreetmap.org/search?q=' + query + '&format=json&limit=1')
+        // Resolves an array of location strings to {location: {lat,lon}|null}
+        // via the server, using the in-page cache to skip already-known ones.
+        // Never rejects — on error it resolves with whatever the cache holds so
+        // the map still renders its known markers.
+        function resolveLocations(locations) {
+            var out = {};
+            var uncached = [];
+            locations.forEach(function(loc) {
+                if (Object.prototype.hasOwnProperty.call(geocodeCache, loc)) {
+                    out[loc] = geocodeCache[loc];
+                } else {
+                    uncached.push(loc);
+                }
+            });
+            if (uncached.length === 0) return Promise.resolve(out);
+
+            return fetch('/api/geocode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locations: uncached })
+            })
                 .then(r => r.json())
                 .then(function(data) {
-                    var coords = (data && data.length > 0)
-                        ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) }
-                        : null;
-                    geocodeCache[location] = coords;
-                    return { coords: coords, fromCache: false };
+                    uncached.forEach(function(loc) {
+                        var coords = data[loc] || null;
+                        geocodeCache[loc] = coords;  // cache positive AND negative
+                        out[loc] = coords;
+                    });
+                    return out;
                 })
                 .catch(function(err) {
                     console.error('Geocoding error:', err);
-                    return { coords: null, fromCache: false };
+                    return out;  // render whatever we already had cached
                 });
         }
 
