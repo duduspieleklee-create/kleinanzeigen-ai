@@ -39,6 +39,8 @@ PLANS = {
         "trust_scores": False,
         "advanced_filters": False,
         "map_view": False,
+        "smart_search": False,
+        "fraud_detection": False,
     },
     "core": {
         "label": "Core",
@@ -49,6 +51,8 @@ PLANS = {
         "trust_scores": True,
         "advanced_filters": True,
         "map_view": False,
+        "smart_search": False,
+        "fraud_detection": True,
     },
     "pro": {
         "label": "Pro",
@@ -60,6 +64,8 @@ PLANS = {
         "trust_scores": True,
         "advanced_filters": True,
         "map_view": True,
+        "smart_search": True,
+        "fraud_detection": True,
     },
 }
 

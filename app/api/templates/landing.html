@@ -82,16 +82,17 @@
                     </a>
                 </div>
 
-                {# ── Smart Search Demo Widget ────────────────────────────────────── #}
+                {# KI-Suche ist Pro-Feature — Demo auf Landing zeigt Pro-Upsell #}
                 <div class="lp-smart-search-demo">
-                    <label for="smart-search-input" class="lp-demo-label">Probiere die KI-Suche:</label>
-                    <div class="suggest-wrap">
-                        <input type="text" id="smart-search-input"
-                               placeholder="z. B. Auto, Gartenmöbel, iPhone…"
-                               autocomplete="off" />
-                        <ul id="smart-search-suggestions" class="suggest-list"></ul>
+                    <label class="lp-demo-label">✨ KI-Suche</label>
+                    <div class="lp-pro-upsell-box" style="background:#fef7e6;border:1px solid #f0c040;border-radius:10px;padding:16px;text-align:center;">
+                        <strong>🔒 Pro-Feature</strong>
+                        <p style="margin:8px 0 0;font-size:14px;">
+                            KI-gestützte Suchvorschläge, die deine Trefferquote erhöhen.<br>
+                            <a href="/billing" style="font-weight:bold;">Upgrade zu Pro →</a>
+                        </p>
                     </div>
-                    <small class="lp-demo-hint">Vorschläge von Datamuse, Wikipedia &amp; KI-Modell</small>
+                    <small class="lp-demo-hint">Synonyme, verwandte Begriffe &amp; KI-Vorschläge in Echtzeit</small>
                 </div>
             </header>
 
@@ -132,7 +133,6 @@
     </div>
 
     {% include "_version_footer.html" %}
-    {% include "_smart_search_suggestions.html" %}
     {% include "pwa_install.html" %}
 </body>
 </html>

@@ -33,10 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bild-Duplikat-Erkennung via URL-Pattern-Analyse
   - POST/GET `/api/fraud-check` Endpoints mit DB-Persistenz
   - FraudAlert Modell + Trust-Score 0–100
+  - **Update: Fraud Detection ist jetzt Core-Feature** (Basic sieht keine Ergebnisse)
 
 ### Changed
 - Smart Search Cache um 1h-TTL ergänzt, abgelaufene Einträge werden verworfen (Issue #260)
 - `/api/search-suggestions` erhält Client-Rate-Limit über fastapi-limiter
+- **KI-Suche (Smart Search) ist jetzt Pro-Feature** — Demo auf Landing durch Upsell ersetzt
 - Keine Änderungen
 
 ### Fixed

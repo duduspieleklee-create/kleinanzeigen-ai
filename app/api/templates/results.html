@@ -151,7 +151,9 @@
         </div>
         {% endif %}
     </div>
+    {% if show_smart_search %}
     {% include "_smart_search_suggestions.html" %}
+    {% endif %}
     {% include "pwa_install.html" %}
 </body>
 </html>

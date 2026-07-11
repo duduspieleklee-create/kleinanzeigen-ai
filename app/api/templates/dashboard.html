@@ -2251,6 +2251,7 @@
 })();
 </script>
 
+{% if show_smart_search %}
 <script>
 // ── Smart Search Suggestions (Backend: GET /api/search-suggestions) ──
 // Folgt exakt dem vorhandenen location-suggestions-Pattern (Vanilla JS, keine
@@ -2341,6 +2342,7 @@
     window.addEventListener('scroll', function() { list.style.display = 'none'; });
 })();
 </script>
+{% endif %}
 
     {% include "pwa_install.html" %}
 </body>
