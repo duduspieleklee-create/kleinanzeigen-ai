@@ -11,6 +11,7 @@ API-Integration:
 from typing import List, Dict
 import requests
 import logging
+from pytrends.request import TrendReq
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
@@ -71,27 +72,50 @@ class SmartSearchSuggestions:
             logger.error(f"Wikipedia-API-Fehler: {e}")
             return self.related_terms.get(keyword, [])
 
+    def get_trending_terms(self, keyword: str) -> List[str]:
+        """Holt Trends von Google Trends (Scraping)."""
+        try:
+            pytrends = TrendReq(hl='de-DE', tz=360)
+            pytrends.build_payload(kw_list=[keyword])
+            related = pytrends.related_queries()
+            top_queries = related.get(keyword, {}).get("top", [])
+            if isinstance(top_queries, list):
+                return [query["query"] for query in top_queries[:10]]
+            elif isinstance(top_queries, str):
+                # Falls die Daten als String zurückgegeben werden, parsen wir sie
+                top_queries = eval(top_queries)
+                return [query["query"] for query in top_queries[:10]]
+            else:
+                # Falls die Daten als DataFrame zurückgegeben werden
+                return top_queries["query"].tolist()[:10]
+        except Exception as e:
+            logger.error(f"Google Trends-Scraping-Fehler: {e}")
+            return []
+
     def get_suggestions(self, query: str) -> Dict[str, List[str]]:
         """Generiert Suchvorschläge für eine Nutzeranfrage."""
         if query in self.cache:
             return self.cache[query]
 
-        # Keywords aus der Suchanfrage extrahieren
         keywords = query.split()
         suggestions = {}
 
         for keyword in keywords:
             synonyms = self.get_synonyms(keyword)
             related_terms = self.get_related_terms(keyword)
+            trending_terms = self.get_trending_terms(keyword)
 
             if synonyms:
                 suggestions[f"Synonyme für '{keyword}'"] = synonyms
             if related_terms:
                 suggestions[f"Verwandte Begriffe für '{keyword}'"] = related_terms
+            if trending_terms:
+                suggestions[f"Aktuelle Trends für '{keyword}'"] = trending_terms
 
         self.cache[query] = suggestions
         return suggestions
 
 
 # Instanz des Moduls
+smart_search = SmartSearchSuggestions()
 smart_search = SmartSearchSuggestions()
