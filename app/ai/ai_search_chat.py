@@ -6,8 +6,7 @@ erfragt und dann passende Ergebnisse liefert — iterativ verfeinerbar.
 """
 
 import logging
-import re
-from app.ai.ai_search import parse_query, extract_keywords_for_search, rank_results
+from app.ai.ai_search import parse_query
 
 logger = logging.getLogger("kleinanzeigen-ai")
 

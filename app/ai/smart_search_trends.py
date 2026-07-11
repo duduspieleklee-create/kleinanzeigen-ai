@@ -8,7 +8,6 @@ Fallback: leere Liste bei Fehlern.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from pytrends.request import TrendReq
 
 logger = logging.getLogger("kleinanzeigen-ai")
