@@ -102,13 +102,13 @@ class SmartSearchSuggestions:
         Erfordert settings.custom_model_endpoint und settings.custom_model_name.
         Bei Fehlern oder fehlender Konfiguration → leere Liste (kein Abbruch).
         """
-        if not (settings.custom_model_endpoint and settings.custom_model_name):
+        if not (settings.custom_model_endpoint_resolved and settings.custom_model_name):
             return []
 
-        url = settings.custom_model_endpoint.rstrip("/") + "/chat/completions"
+        url = settings.custom_model_endpoint_resolved.rstrip("/") + "/chat/completions"
         headers = {"Content-Type": "application/json"}
-        if settings.custom_model_api_key:
-            headers["Authorization"] = f"Bearer {settings.custom_model_api_key}"
+        if settings.custom_model_api_key_resolved:
+            headers["Authorization"] = f"Bearer {settings.custom_model_api_key_resolved}"
 
         payload = {
             "model": settings.custom_model_name,
