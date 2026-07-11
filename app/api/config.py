@@ -105,6 +105,23 @@ class Settings(BaseSettings):
     # traces_sample_rate > 0.
     sentry_profiles_sample_rate: float = 0.0
 
+    # ── Custom model endpoint (OpenAI-compatible) ─────────────────────────────
+    # Lets Smart Search Suggestions query any OpenAI-compatible Chat Completions
+    # API (OpenAI, vLLM, Ollama, llama.cpp, Together, etc.) for higher-quality,
+    # context-aware suggestions. Leave CUSTOM_MODEL_ENDPOINT empty to disable.
+    # Example: http://localhost:11434/v1  (Ollama) or https://api.openai.com/v1
+    custom_model_endpoint: str = ""
+    custom_model_api_key: str = ""
+    custom_model_name: str = ""
+    # Optional temperature / max tokens for the suggestion call.
+    custom_model_temperature: float = 0.3
+    custom_model_max_tokens: int = 256
+
+    @property
+    def custom_model_enabled(self) -> bool:
+        """True only when both endpoint and model name are configured."""
+        return bool(self.custom_model_endpoint and self.custom_model_name)
+
     @property
     def turnstile_enabled(self) -> bool:
         """True only when both Turnstile keys are configured.

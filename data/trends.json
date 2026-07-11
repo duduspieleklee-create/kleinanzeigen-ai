@@ -1,0 +1,7 @@
+{
+  "Gartenmöbel": ["IKEA", "JYSK", "Outdoor-Sofa", "Holzliegestuhl", "Gartenstuhl"],
+  "Auto": ["PKW", "Gebrauchtwagen", "Elektroauto", "SUV", "Cabrio"],
+  "Haus": ["Immobilie", "Wohnung", "Haus kaufen", "Mietwohnung", "Einfamilienhaus"],
+  "Handy": ["Smartphone", "iPhone", "Samsung Galaxy", "Android", "5G-Handy"],
+  "Schuhe": ["Sneaker", "Stiefel", "Sandalen", "Laufschuhe", "Winterstiefel"]
+}

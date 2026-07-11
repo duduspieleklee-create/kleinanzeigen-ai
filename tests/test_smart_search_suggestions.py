@@ -1,67 +1,205 @@
 """
-Tests für Smart Search Suggestions.
+Tests für Smart Search Suggestions (app/ai/smart_search_suggestions.py).
 
-Die Synonym-/Verwandten-Suche läuft live gegen externe APIs (Datamuse,
-Wikipedia). Für deterministische Unit-Tests mocken wir `requests.get`,
-sodass der dokumentierte Fallback auf die deutschen Mock-Daten geprüft wird.
+Alle externen Aufrufe (Datamuse, Wikipedia, Custom Model Endpoint) werden
+gemockt, damit die Tests ohne Netz laufen und deterministisch sind.
+Konvention des Repos: monkeypatch auf das externe Call-Target.
 """
 
-from unittest.mock import patch, MagicMock
+import json
+from types import SimpleNamespace
 
-from app.ai.smart_search_suggestions import smart_search
-
-
-def _mock_requests_get(payload):
-    """Baut einen gefakten requests.get, der payload zurückliefert."""
-    resp = MagicMock()
-    resp.raise_for_status.return_value = None
-    resp.json.return_value = payload
-    return resp
+import pytest
 
 
-def test_get_synonyms():
-    """Synonyme kommen aus dem Fallback, wenn die API nicht erreichbar ist."""
-    with patch("app.ai.smart_search_suggestions.requests.get") as mock_get:
-        mock_get.side_effect = RuntimeError("offline")
-        synonyms = smart_search.get_synonyms("Auto")
-    assert "PKW" in synonyms
-    assert "Wagen" in synonyms
-    assert "Fahrzeug" in synonyms
+@pytest.fixture
+def sss():
+    """Frische Instanz mit geleertem Cache pro Test."""
+    from app.ai import smart_search_suggestions as mod
+
+    inst = mod.SmartSearchSuggestions()
+    inst.cache = {}
+    return inst
 
 
-def test_get_related_terms():
-    """Verwandte Begriffe kommen aus dem Fallback bei API-Fehler."""
-    with patch("app.ai.smart_search_suggestions.requests.get") as mock_get:
-        mock_get.side_effect = RuntimeError("offline")
-        terms = smart_search.get_related_terms("Auto")
-    assert "Reifen" in terms
-    assert "Motor" in terms
-    assert "Fahrer" in terms
+# ── Synonyme (Datamuse) ────────────────────────────────────────────────────
+def test_get_synonyms_uses_datamuse(sss, monkeypatch):
+    fake = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: [
+            {"word": "PKW"},
+            {"word": "Wagen"},
+            {"word": "Fahrzeug"},
+        ],
+    )
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", lambda *a, **k: fake)
+    assert sss.get_synonyms("Auto") == ["PKW", "Wagen", "Fahrzeug"]
 
 
-def test_get_synonyms_live_shape():
-    """Bei erreichbarer API liefert get_synonyms eine Liste von Wörtern."""
-    with patch("app.ai.smart_search_suggestions.requests.get") as mock_get:
-        mock_get.return_value = _mock_requests_get(
-            [{"word": "automobile"}, {"word": "car"}]
+def test_get_synonyms_falls_back_to_mock_on_error(sss, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", boom)
+    assert sss.get_synonyms("Auto") == ["PKW", "Wagen", "Fahrzeug", "Pkw", "Kfz"]
+    # Unbekanntes Wort → leere Liste, kein Crash
+    assert sss.get_synonyms("UnbekanntesWort123") == []
+
+
+# ── Verwandte Begriffe (Wikipedia) ────────────────────────────────────────
+def test_get_related_terms_uses_wikipedia(sss, monkeypatch):
+    fake = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "query": {
+                "search": [
+                    {"title": "Reifen – Wikipedia"},
+                    {"title": "Motor"},
+                    {"title": "Fahrer"},
+                ]
+            }
+        },
+    )
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", lambda *a, **k: fake)
+    result = sss.get_related_terms("Auto")
+    assert "Reifen" in result
+    assert "Motor" in result
+    assert "Fahrer" in result
+
+
+def test_get_related_terms_falls_back_to_mock_on_error(sss, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", boom)
+    assert sss.get_related_terms("Auto") == ["Reifen", "Motor", "Fahrer", "Bremse", "Getriebe"]
+
+
+# ── Lokale Trends ──────────────────────────────────────────────────────────
+def test_get_local_trends_known_keyword(sss):
+    assert "IKEA" in sss.get_local_trends("Gartenmöbel")
+
+
+def test_get_local_trends_unknown_keyword_empty(sss):
+    assert sss.get_local_trends("UnbekanntesWort123") == []
+
+
+# ── Custom Model Endpoint (OpenAI-kompatibel) ─────────────────────────────
+def test_custom_model_disabled_returns_empty(sss, monkeypatch):
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_endpoint", "")
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_name", "")
+    assert sss.get_custom_model_suggestions("Auto kaufen") == []
+
+
+def test_custom_model_enabled_returns_parsed_lines(sss, monkeypatch):
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_endpoint", "http://localhost:11434/v1")
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_name", "llama3")
+    # health-check property
+    from app.api import config as cfg
+
+    assert cfg.settings.custom_model_enabled is True
+
+    fake_resp = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "choices": [
+                {"message": {"content": "Gebrauchtwagen\nPKW\nWagen\nKfz"}}
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        "app.ai.smart_search_suggestions.requests.post", lambda *a, **k: fake_resp
+    )
+    result = sss.get_custom_model_suggestions("Auto kaufen")
+    assert result == ["Gebrauchtwagen", "PKW", "Wagen", "Kfz"]
+
+
+def test_custom_model_handles_network_error(sss, monkeypatch):
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_endpoint", "http://localhost:11434/v1")
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_name", "llama3")
+
+    def boom(*a, **k):
+        raise RuntimeError("model down")
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.post", boom)
+    assert sss.get_custom_model_suggestions("Auto kaufen") == []
+
+
+# ── get_suggestions (Kombination) ─────────────────────────────────────────
+def test_get_suggestions_combines_sources(sss, monkeypatch):
+    datamuse = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: [{"word": "PKW"}, {"word": "Wagen"}],
+    )
+
+    def fake_get(url, *a, **k):
+        if "datamuse" in url:
+            return datamuse
+        # Wikipedia
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"query": {"search": [{"title": "Reifen"}, {"title": "Motor"}]}},
         )
-        synonyms = smart_search.get_synonyms("Auto")
-    assert synonyms == ["automobile", "car"]
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", fake_get)
+
+    result = sss.get_suggestions("Auto kaufen")
+    assert "Synonyme für 'Auto'" in result
+    assert "Verwandte Begriffe für 'Auto'" in result
+    assert "Verwandte Begriffe für 'kaufen'" in result
+    assert "Aktuelle Trends für 'Auto'" in result  # aus data/trends.json
 
 
-def test_get_suggestions():
-    """Generiert Suchvorschläge für eine Nutzeranfrage (Fallback-Pfad)."""
-    with patch("app.ai.smart_search_suggestions.requests.get") as mock_get:
-        mock_get.side_effect = RuntimeError("offline")
-        suggestions = smart_search.get_suggestions("Auto kaufen")
-    assert "Synonyme für 'Auto'" in suggestions
-    assert "Verwandte Begriffe für 'Auto'" in suggestions
+def test_get_suggestions_includes_custom_model_when_enabled(sss, monkeypatch):
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_endpoint", "http://localhost:11434/v1")
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_name", "llama3")
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", lambda *a, **k: SimpleNamespace(
+        raise_for_status=lambda: None, json=lambda: []
+    ))
+    monkeypatch.setattr(
+        "app.ai.smart_search_suggestions.requests.post",
+        lambda *a, **k: SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"choices": [{"message": {"content": "E-Auto\nGebrauchtwagen"}}]},
+        ),
+    )
+    result = sss.get_suggestions("Auto")
+    assert "KI-Vorschläge (Custom Model)" in result
+    assert result["KI-Vorschläge (Custom Model)"] == ["E-Auto", "Gebrauchtwagen"]
 
 
-def test_get_suggestions_cache():
-    """Der Cache funktioniert."""
-    with patch("app.ai.smart_search_suggestions.requests.get") as mock_get:
-        mock_get.side_effect = RuntimeError("offline")
-        suggestions1 = smart_search.get_suggestions("Auto")
-        suggestions2 = smart_search.get_suggestions("Auto")
-    assert suggestions1 == suggestions2  # Cache sollte funktionieren
+# ── Cache ──────────────────────────────────────────────────────────────────
+def test_get_suggestions_cache_hit(sss, monkeypatch):
+    calls = {"n": 0}
+
+    def fake_get(url, *a, **k):
+        calls["n"] += 1
+        if "datamuse" in url:
+            return SimpleNamespace(raise_for_status=lambda: None, json=lambda: [{"word": "PKW"}])
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"query": {"search": [{"title": "Reifen"}]}},
+        )
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", fake_get)
+
+    first = sss.get_suggestions("Auto")
+    second = sss.get_suggestions("Auto")
+    assert first == second
+    # Zweiter Aufruf darf keinen neuen Netz-Call auslösen
+    assert calls["n"] == 2  # exakt die Calls des ersten Aufrufs (Auto → synonym + related)
+
+
+# ── API-Endpoint ───────────────────────────────────────────────────────────
+def test_api_endpoint_returns_suggestions(monkeypatch):
+    from app.api.routers.smart_search import get_search_suggestions
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", lambda *a, **k: SimpleNamespace(
+        raise_for_status=lambda: None, json=lambda: []
+    ))
+    resp = get_search_suggestions("Auto kaufen")
+    assert resp["query"] == "Auto kaufen"
+    assert isinstance(resp["suggestions"], dict)
+    # data/trends.json liefert Trends für "Auto" ohne Netz
+    assert "Aktuelle Trends für 'Auto'" in resp["suggestions"]
