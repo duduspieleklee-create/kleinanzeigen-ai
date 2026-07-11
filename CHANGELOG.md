@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - API-Endpunkt für Suchvorschläge (`GET /api/search-suggestions`)
   - Frontend-Komponente für Suchvorschläge
   - Datenbank-Tabelle für Suchvorschläge und deren Nutzungshäufigkeit
+  - Custom Model Endpoint (OpenAI-kompatibel) für KI-Vorschläge
+    (`CUSTOM_MODEL_ENDPOINT`/`CUSTOM_MODEL_NAME`, optional, mit Fallback)
 
 ### Changed
 - Keine Änderungen

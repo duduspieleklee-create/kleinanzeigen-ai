@@ -3,8 +3,10 @@ Smart Search Suggestions – KI-Modul für kleinanzeigen-ai
 Zweck: Generiert Suchvorschläge basierend auf Nutzeranfragen.
 
 API-Integration:
-- Datamuse (kostenlos, Englisch/Deutsch)
-- Wikipedia (kostenlos, Deutsch)
+- Datamuse (kostenlos, Englisch/Deutsch) für Synonyme
+- Wikipedia (kostenlos, Deutsch) für verwandte Begriffe
+- Lokale Trends-Datenbank (data/trends.json) für aktuelle Trends
+- Optional: Custom Model Endpoint (OpenAI-kompatibel) für KI-Vorschläge
 - Fallback zu Mock-Daten bei API-Fehlern
 """
 
@@ -13,6 +15,8 @@ import requests
 import logging
 import json
 from pathlib import Path
+
+from app.api.config import settings
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
@@ -54,12 +58,12 @@ class SmartSearchSuggestions:
         return self.trends.get(keyword, [])
 
     def get_synonyms(self, keyword: str) -> List[str]:
-        """Holt Synonyme von Datamuse-API."""
+        """Holt Synonyme von Datamuse-API (Fallback zu Mock-Daten)."""
         try:
             response = requests.get(
                 "https://api.datamuse.com/words",
                 params={"rel_syn": keyword, "max": 10},
-                timeout=5
+                timeout=5,
             )
             response.raise_for_status()
             return [item["word"] for item in response.json()]
@@ -68,7 +72,7 @@ class SmartSearchSuggestions:
             return self.synonyms.get(keyword, [])
 
     def get_related_terms(self, keyword: str) -> List[str]:
-        """Holt verwandte Begriffe von Wikipedia-API."""
+        """Holt verwandte Begriffe von Wikipedia-API (Fallback zu Mock-Daten)."""
         try:
             response = requests.get(
                 "https://de.wikipedia.org/w/api.php",
@@ -76,17 +80,68 @@ class SmartSearchSuggestions:
                     "action": "query",
                     "list": "search",
                     "srsearch": keyword,
-                    "format": "json"
+                    "format": "json",
                 },
                 headers={"User-Agent": "kleinanzeigen-ai/1.0"},
-                timeout=5
+                timeout=5,
             )
             response.raise_for_status()
-            titles = [item["title"] for item in response.json().get("query", {}).get("search", [])]
-            return [title.split("–")[0] for title in titles]
+            titles = [
+                item["title"]
+                for item in response.json().get("query", {}).get("search", [])
+            ]
+            return [title.split("–")[0].strip() for title in titles]
         except Exception as e:
             logger.error(f"Wikipedia-API-Fehler: {e}")
             return self.related_terms.get(keyword, [])
+
+    def get_custom_model_suggestions(self, query: str) -> List[str]:
+        """Fragt einen OpenAI-kompatiblen Custom-Model-Endpoint nach Vorschlägen.
+
+        Erfordert settings.custom_model_endpoint und settings.custom_model_name.
+        Bei Fehlern oder fehlender Konfiguration → leere Liste (kein Abbruch).
+        """
+        if not (settings.custom_model_endpoint and settings.custom_model_name):
+            return []
+
+        url = settings.custom_model_endpoint.rstrip("/") + "/chat/completions"
+        headers = {"Content-Type": "application/json"}
+        if settings.custom_model_api_key:
+            headers["Authorization"] = f"Bearer {settings.custom_model_api_key}"
+
+        payload = {
+            "model": settings.custom_model_name,
+            "temperature": settings.custom_model_temperature,
+            "max_tokens": settings.custom_model_max_tokens,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Du bist ein Such-Assistent für eine Kleinanzeigen-Plattform. "
+                        "Gib ausschließlich relevante Suchbegriffe zurück, einen pro "
+                        "Zeile, ohne Nummerierung und ohne erklärenden Text."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Schlage passende Suchbegriffe für: {query}",
+                },
+            ],
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"]
+            suggestions = [
+                line.strip("-•* ").strip()
+                for line in content.splitlines()
+                if line.strip()
+            ]
+            return [s for s in suggestions if s][:10]
+        except Exception as e:
+            logger.error(f"Custom-Model-Endpoint-Fehler: {e}")
+            return []
 
     def get_suggestions(self, query: str) -> Dict[str, List[str]]:
         """Generiert Suchvorschläge für eine Nutzeranfrage."""
@@ -94,7 +149,7 @@ class SmartSearchSuggestions:
             return self.cache[query]
 
         keywords = query.split()
-        suggestions = {}
+        suggestions: Dict[str, List[str]] = {}
 
         for keyword in keywords:
             synonyms = self.get_synonyms(keyword)
@@ -108,10 +163,14 @@ class SmartSearchSuggestions:
             if local_trends:
                 suggestions[f"Aktuelle Trends für '{keyword}'"] = local_trends
 
+        if settings.custom_model_enabled:
+            custom = self.get_custom_model_suggestions(query)
+            if custom:
+                suggestions["KI-Vorschläge (Custom Model)"] = custom
+
         self.cache[query] = suggestions
         return suggestions
 
 
 # Instanz des Moduls
-smart_search = SmartSearchSuggestions()
 smart_search = SmartSearchSuggestions()
