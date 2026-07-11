@@ -1,0 +1,37 @@
+<mjml>
+  <mj-head>
+    <mj-title>Dein Free-Test endet in 24h — sichere dir jetzt Core!</mj-title>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
+    <mj-style>
+      .body { font-family: 'Inter', sans-serif; }
+      .btn { background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; }
+      .btn:hover { background: #1d4ed8; }
+      .code { background: #f3f4f6; padding: 8px 16px; border-radius: 6px; font-family: monospace; font-size: 18px; }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body">
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="600" color="#111827">Dein Free-Test endet in 24h — sichere dir jetzt Core!</mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Hallo [Nutzer],
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Deine 7-tägige kostenlose Testphase endet morgen um 23:59 Uhr. Danach kannst du nur noch <strong>5 Suchen/Tag</strong> durchführen.
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Nutze den exklusiven Rabattcode <span class="code">CORE20</span> für <strong>20% Rabatt</strong> auf deinen ersten Core-Monat!
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          <strong>Upgrade jetzt und spare Zeit:</strong>
+        </mj-text>
+        <mj-button href="https://kleeblatt.space/upgrade?code=CORE20" class="btn">
+          Jetzt mit CORE20 upgraden
+        </mj-button>
+        <mj-text font-size="14px" color="#6b7280" padding-top="20px">
+          Keine Kreditkarte nötig. Du kannst jederzeit kündigen.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

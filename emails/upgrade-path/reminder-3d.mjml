@@ -1,0 +1,36 @@
+<mjml>
+  <mj-head>
+    <mj-title>Deine Suchen werden langsamer — upgrade jetzt!</mj-title>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
+    <mj-style>
+      .body { font-family: 'Inter', sans-serif; }
+      .btn { background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; }
+      .btn:hover { background: #1d4ed8; }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body">
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="600" color="#111827">Deine Suchen werden langsamer — upgrade jetzt!</mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Hallo [Nutzer],
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Du hast heute bereits <strong>15 Suchen</strong> genutzt. Mit dem Free-Plan sind nur <strong>5 Suchen/Tag</strong> möglich.
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Mit Core hättest du <strong>unbegrenzte Suchen</strong> und könntest sofort weiter suchen, ohne zu warten!
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          <strong>Upgrade jetzt und spare Zeit:</strong>
+        </mj-text>
+        <mj-button href="https://kleeblatt.space/upgrade" class="btn">
+          Jetzt zu Core wechseln
+        </mj-button>
+        <mj-text font-size="14px" color="#6b7280" padding-top="20px">
+          Keine Kreditkarte nötig. Du kannst jederzeit kündigen.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

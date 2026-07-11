@@ -1,0 +1,38 @@
+<mjml>
+  <mj-head>
+    <mj-title>Willkommen bei kleinanzeigen-ai! So nutzt du Core am besten</mj-title>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
+    <mj-style>
+      .body { font-family: 'Inter', sans-serif; }
+      .btn { background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; }
+      .btn:hover { background: #1d4ed8; }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body">
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="600" color="#111827">Willkommen bei kleinanzeigen-ai!</mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Hallo [Nutzer],
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Dein Core-Plan ist aktiviert! Hier sind ein paar Tipps, wie du Core optimal nutzt:
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          <ul>
+            <li><strong>Unbegrenzte Suchen:</strong> Nutze so viele Suchen, wie du brauchst — ohne Limits!</li>
+            <li><strong>Echtzeit-Benachrichtigungen:</strong> Erhalte sofortige Updates, wenn neue Anzeigen passen.</li>
+            <li><strong>Werbefrei:</strong> Keine Ablenkung mehr durch Werbung.</li>
+            <li><strong>API-Zugriff (Core Pro/Business):</strong> Automatisiere deine Suchen und integriere sie in deine Tools.</li>
+          </ul>
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563">
+          Viel Spaß beim Entdecken!
+        </mj-text>
+        <mj-button href="https://kleeblatt.space/dashboard" class="btn">
+          Zurück zum Dashboard
+        </mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
