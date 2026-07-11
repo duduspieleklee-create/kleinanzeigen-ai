@@ -211,6 +211,16 @@ class SmartSearchSuggestions:
             if local_trends:
                 suggestions[f"Aktuelle Trends für '{keyword}'"] = local_trends
 
+        # Google Trends — immer aktiv, Fallback bei Fehlern
+        try:
+            from app.ai.smart_search_trends import get_trending_searches_batch
+            trends = get_trending_searches_batch(keywords)
+            for keyword, items in trends.items():
+                if items:
+                    suggestions[f"Google Trends zu '{keyword}'"] = items
+        except Exception:
+            pass
+
         if settings.custom_model_enabled:
             custom = self.get_custom_model_suggestions(query)
             if custom:

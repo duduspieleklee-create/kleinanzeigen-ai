@@ -116,5 +116,5 @@ def format_results_as_chat(results: list[dict], count: int) -> str:
             text += f" 📍 {loc}"
     if len(results) > 5:
         text += f"\n\n… und {len(results) - 5} weitere Treffer"
-    text += "\n\n👍 \*Mehr davon\* / 👎 \*Nicht das\* — klick einfach auf die Buttons unter den Ergebnissen!"
+    text += "\n\n👍 Mehr davon / 👎 Nicht das — klick einfach auf die Buttons unter den Ergebnissen!"
     return text
