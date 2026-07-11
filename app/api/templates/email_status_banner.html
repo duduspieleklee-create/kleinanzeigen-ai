@@ -1,0 +1,21 @@
+{# Global, non-blocking banner shown when the email service is failing.
+ # Used during the temporary Resend suspension/outage so users understand why
+ # no verification or notification emails are arriving. Renders nothing when the
+ # service is healthy (email_degraded() == False), so it's safe to include
+ # unconditionally on every page.
+ #
+ # NOTE: email_degraded / email_degraded_since are registered as Jinja globals
+ # *functions* (so they re-evaluate per request) — they MUST be called with ()
+ # in the template, otherwise Jinja sees a truthy function object and the
+ # banner would show permanently.
+ #}
+{% if email_degraded() %}
+<div class="flash-warning" role="status" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <span>
+    ⚠️ <strong>E-Mail-Versand vorübergehend nicht verfügbar.</strong>
+    Verifizierungs- und Benachrichtigungs-Mails können aktuell nicht zugestellt werden.
+    {% if email_degraded_since() %}Betroffen seit {{ email_degraded_since() }} Uhr.{% endif %}
+    Wir arbeiten an der Wiederherstellung — Push-Benachrichtigungen funktionieren weiterhin.
+  </span>
+</div>
+{% endif %}
