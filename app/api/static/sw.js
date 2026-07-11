@@ -1,4 +1,4 @@
-const CACHE = 'ka-ai-v2';
+const CACHE = 'ka-ai-v3';
 const PRECACHE = ['/offline', '/static/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -99,6 +99,7 @@ self.addEventListener('push', e => {
       body: data.body || '',
       icon: data.icon || '/static/icons/icon-192.png',
       badge: data.badge || '/static/icons/icon-72.png',
+      image: data.image || undefined,
       tag: data.tag || `search-${Date.now()}`,
       requireInteraction: data.requireInteraction !== false,
       actions: data.actions || [],
