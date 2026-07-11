@@ -5,11 +5,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Prometheus multiprocess-dir (prefork-Worker) vor dem metrics_prom-Import
+# vorbereiten: Verzeichnis anlegen und Altbestände leeren, damit tote PIDs
+# keine Geister-Serien hinterlassen.
+_PROM_DIR = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+if _PROM_DIR:
+    import glob
+    os.makedirs(_PROM_DIR, exist_ok=True)
+    for _f in glob.glob(os.path.join(_PROM_DIR, "*.db")):
+        try:
+            os.remove(_f)
+        except OSError:
+            pass
+
 from app.shared.sentry import init_sentry  # noqa: E402 — must follow load_dotenv()
 from app.shared.observability import install_log_bridge  # noqa: E402
+from app.shared.metrics_prom import start_exporter  # noqa: E402
 
 init_sentry("worker")
 install_log_bridge()
+# Prometheus exporter für diesen Prozess (scrape target worker:8001).
+start_exporter(8001)
 
 # Redis connection from environment variable
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -43,3 +59,13 @@ celery_app.conf.update(
     broker_use_ssl=_SSL_OPTS or None,
     redis_backend_use_ssl=_SSL_OPTS or None,
 )
+
+# Prometheus multiprocess: wenn ein prefork-Child recycelt wird, seine mmap-
+# Counter-Dateien für die Aggregation markieren (sonst verschwinden die Werte).
+if _PROM_DIR:
+    from celery.signals import worker_process_shutdown
+
+    @worker_process_shutdown.connect
+    def _prom_mark_dead(pid=None, **_):
+        from prometheus_client import multiprocess
+        multiprocess.mark_process_dead(pid or os.getpid())

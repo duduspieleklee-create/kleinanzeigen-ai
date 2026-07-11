@@ -17,6 +17,7 @@ from sqlalchemy import and_
 from app.api.config import settings
 from app.shared.database import SessionLocal
 from app.shared.metrics import track_job
+from app.shared.observability import metric
 from app.shared.models import ScrapeResult, ScrapeTask
 from app.worker.celery_app import celery_app
 
@@ -74,7 +75,7 @@ def cleanup_old_results():
                 logger.info("No old results to archive")
 
             sentry_metrics.count("archival.results_purged", count)
-
+            metric("archival.results_purged", count)
             return {
                 "archived_count": count,
                 "cutoff_date": cutoff_date.isoformat(),
@@ -118,6 +119,7 @@ def cleanup_old_token_usage():
                 logger.info("No old token usage records to archive")
 
             sentry_metrics.count("archival.token_usage_purged", count)
+            metric("archival.token_usage_purged", count)
 
             return {
                 "archived_count": count,

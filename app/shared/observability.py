@@ -22,6 +22,7 @@ import sentry_sdk.metrics as sentry_metrics
 
 from app.api.config import settings
 from app.shared.logging_config import logger
+from app.shared.metrics_prom import prom_counter, job_duration
 
 # Felder, die wir nie in Sentry-Events leaken wollen (DSGVO + Secret-Hygiene).
 _REDACT_KEYS = (
@@ -126,9 +127,12 @@ def track_job(job_name: str, tags: Optional[dict] = None):
 
     job.started / job.completed / job.failed (counters, tag: job)
     job.duration_ms (distribution, tag: job)
+    Spiegelt dieselben Metriken nach Prometheus (job_started_total etc.).
+
     On failure, captures the exception with the supplied tags as context.
     """
     sentry_metrics.count("job.started", 1, attributes={"job": job_name})
+    prom_counter("job.started", task=job_name)
     start = time.monotonic()
     failed = False
     try:
@@ -143,12 +147,15 @@ def track_job(job_name: str, tags: Optional[dict] = None):
         sentry_metrics.count(
             "job.failed" if failed else "job.completed", 1, attributes={"job": job_name}
         )
+        prom_counter("job.failed" if failed else "job.completed", task=job_name)
+        duration_s = time.monotonic() - start
         sentry_metrics.distribution(
             "job.duration_ms",
-            (time.monotonic() - start) * 1000,
+            duration_s * 1000,
             unit="millisecond",
             attributes={"job": job_name},
         )
+        job_duration.labels(task=job_name).observe(duration_s)
 
 
 def track_job_decorator(job_name: Optional[str] = None, *, tags_fn=None):
@@ -179,13 +186,17 @@ def set_request_context(user_id: Optional[int], path: str, method: str) -> None:
 
 
 def metric(name: str, value: float = 1, unit: Optional[str] = None, **tags) -> None:
-    """Dünner Counter-Wrapper mit automatischem component/env-Tag."""
+    """Dünner Counter-Wrapper mit automatischem component/env-Tag.
+
+    Spiegelt nach Prometheus, falls der Name gemappt ist.
+    """
     attrs = {"component": settings.environment}
     attrs.update(tags)
     if unit:
         sentry_metrics.distribution(name, value, unit=unit, attributes=attrs)
     else:
         sentry_metrics.count(name, value, attributes=attrs)
+    prom_counter(name, value, **tags)
 
 
 @contextmanager

@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi import _rate_limit_exceeded_handler
@@ -29,10 +29,12 @@ from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
 from app.shared.sentry import init_sentry
 from app.shared.observability import install_log_bridge
+from app.shared.metrics_prom import start_db_collector
 
 logger.info("Starting kleinanzeigen-ai application...")
 init_sentry("api")
 install_log_bridge()
+start_db_collector()
 
 def _relative_time_de(dt) -> str:
     """German relative-time label for the results feed ("vor 5 Min.", "gestern", ...)."""
@@ -189,6 +191,14 @@ async def healthz():
 @app.get("/version", tags=["Ops"], include_in_schema=False)
 async def version():
     return JSONResponse(BUILD_INFO)
+
+
+@app.get("/metrics", tags=["Ops"], include_in_schema=False)
+async def metrics():
+    """Prometheus scrape endpoint (text exposition format)."""
+    from app.shared.metrics_prom import render_metrics
+    body, content_type = render_metrics()
+    return Response(content=body, media_type=content_type)
 
 
 @app.get("/sw.js", include_in_schema=False)

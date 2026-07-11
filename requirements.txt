@@ -47,5 +47,8 @@ stripe==11.4.1
 # Error tracking
 sentry-sdk==2.64.0
 
+# Metrics — Prometheus export (Grafana dashboards)
+prometheus-client==0.21.1
+
 # Testing
 pytest==8.3.4

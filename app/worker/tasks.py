@@ -18,7 +18,8 @@ from app.shared.email_notifications import (
     send_email_notification,
 )
 from app.shared.metrics import track_job
-from app.shared.observability import track_job_decorator
+from app.shared.observability import track_job_decorator, metric
+from app.shared.metrics_prom import job_duration
 from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary, build_push_notification
 from app.shared.plans import ensure_weekly_credits, plan_config
@@ -68,7 +69,7 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
                     (time.monotonic() - start) * 1000,
                     unit="millisecond",
                 )
-                sentry_metrics.count("seller_extraction.request", 1, attributes={"cached": "false"})
+                metric("seller_extraction.request", 1, cached="false")
             except Exception:
                 pass
             html = response.text
@@ -76,7 +77,7 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
         else:
             html = cached
             try:
-                sentry_metrics.count("seller_extraction.request", 1, attributes={"cached": "true"})
+                metric("seller_extraction.request", 1, cached="true")
             except Exception:
                 pass
 
@@ -367,9 +368,9 @@ def _send_push_notifications(
         db.commit()
 
     if summary["sent"]:
-        sentry_metrics.count("notifications.push_sent", summary["sent"])
+        metric("notifications.push_sent", summary["sent"])
     if summary["failed"]:
-        sentry_metrics.count("notifications.push_failed", summary["failed"])
+        metric("notifications.push_failed", summary["failed"])
 
     _save_notification_delivery(db, user_id, task_id, "push", summary)
     return summary
@@ -435,10 +436,11 @@ def _send_email_notifications(
     ok, last = _retry_with_backoff(email_policy, f"resend(user={user.id},task={task_id})", _do_send)
     summary["sent"] = bool(ok)
     if summary["sent"]:
-        sentry_metrics.count("notifications.email_sent", 1)
+        metric("notifications.email_sent", 1)
+
     else:
         summary["errors"].append(f"Email send failed: {last}")
-        sentry_metrics.count("notifications.email_failed", 1)
+        metric("notifications.email_failed", 1)
 
     _save_notification_delivery(db, user_id, task_id, "email", summary)
     return summary
@@ -506,7 +508,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     resolved_task_id = None
     task = None
     job_start = time.monotonic()
-    sentry_metrics.count("job.started", 1, attributes={"job": "scrape.kleinanzeigen"})
+    metric("job.started", 1, task="scrape.kleinanzeigen")
     try:
         resolved_task_id, task = _ensure_task(db, task_id, parameters)
 
@@ -905,14 +907,16 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 )
         # ───────────────────────────────────────────────────────────────────
 
-        sentry_metrics.count("job.completed", 1, attributes={"job": "scrape.kleinanzeigen"})
+        metric("job.completed", 1, task="scrape.kleinanzeigen")
+        duration_s = time.monotonic() - job_start
         sentry_metrics.distribution(
             "job.duration_ms",
-            (time.monotonic() - job_start) * 1000,
+            duration_s * 1000,
             unit="millisecond",
             attributes={"job": "scrape.kleinanzeigen"},
         )
-        sentry_metrics.count("scrape.listings_found", new_count, attributes={"baseline": is_baseline})
+        job_duration.labels(task="scrape.kleinanzeigen").observe(duration_s)
+        metric("scrape.listings_found", new_count, baseline=str(bool(is_baseline)).lower())
 
         return {
             "status": "success",
@@ -946,13 +950,15 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 "url": locals().get("url"),
             },
         )
-        sentry_metrics.count("job.failed", 1, attributes={"job": "scrape.kleinanzeigen"})
+        metric("job.failed", 1, task="scrape.kleinanzeigen")
+        duration_s = time.monotonic() - job_start
         sentry_metrics.distribution(
             "job.duration_ms",
-            (time.monotonic() - job_start) * 1000,
+            duration_s * 1000,
             unit="millisecond",
             attributes={"job": "scrape.kleinanzeigen"},
         )
+        job_duration.labels(task="scrape.kleinanzeigen").observe(duration_s)
 
         # Only mark as permanently failed if this is the last retry attempt.
         # Earlier attempts should leave the task in "running" state so a
@@ -1023,8 +1029,8 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         db.close()
 
 
-@track_job_decorator("scrape.dispatch_admin_searches")
 @celery_app.task(name="scrape.dispatch_admin_searches", bind=False)
+@track_job_decorator("scrape.dispatch_admin_searches")
 def dispatch_admin_searches():
     """Dispatches scrape tasks for all due admin-configured searches.
     
@@ -1099,7 +1105,7 @@ def dispatch_admin_searches():
                     f"next_run={next_run.isoformat()}"
                 )
             
-            sentry_metrics.count("admin_search.dispatched", dispatched)
+            metric("admin_search.dispatched", dispatched)
             if dispatched:
                 logger.info(f"Dispatched {dispatched} admin search(es)")
     except Exception as e:
@@ -1109,8 +1115,8 @@ def dispatch_admin_searches():
         db.close()
 
 
-@track_job_decorator("scrape.reap_stale_recurring_searches")
 @celery_app.task(name="scrape.reap_stale_recurring_searches", bind=False)
+@track_job_decorator("scrape.reap_stale_recurring_searches")
 def reap_stale_recurring_searches():
     """Restart user recurring searches whose self-rescheduling chain died.
 
@@ -1182,7 +1188,7 @@ def reap_stale_recurring_searches():
                     f"(interval={interval}s, last_run={task.last_run_at})"
                 )
 
-            sentry_metrics.count("scrape.recurring_reaped", revived)
+            metric("scrape.recurring_reaped", revived)
             if revived:
                 logger.info(f"Reaped {revived} stale recurring search(es)")
     except Exception as e:
