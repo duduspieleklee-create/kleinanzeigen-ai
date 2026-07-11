@@ -39,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `POST /api/ai-search` parsed Query, findet passende Ergebnisse
     - `POST /api/ai-search/feedback` verfeinert mit Like/Dislike
     - Dashboard-Widget: Beschreiben, Ergebnisse sehen, Feedback geben
+  - **KI-Suche als Chat** (Feature)
+    - Chat-Fenster auf dem Dashboard (floating Button unten rechts)
+    - KI fragt nach, was fehlt (Artikel → Preis → Ort → Suche)
+    - Ergebnisse als Karten im Chat mit Like/Dislike
+    - `POST /api/ai-search/chat` — Chat-Endpoint mit Konversationsverlauf
 
 ### Changed
 - Smart Search Cache um 1h-TTL ergänzt, abgelaufene Einträge werden verworfen (Issue #260)

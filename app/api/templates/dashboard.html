@@ -2496,6 +2496,181 @@
 </script>
 {% endif %}
 
+{% if show_smart_search %}
+<style>
+#ai-chat-btn{position:fixed;bottom:24px;right:24px;z-index:999;width:60px;height:60px;border-radius:50%;background:#007bff;color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(0,123,255,.4);transition:transform .2s}
+#ai-chat-btn:hover{transform:scale(1.1)}
+#ai-chat-btn.open{transform:rotate(45deg);background:#dc3545}
+#ai-chat-panel{position:fixed;bottom:96px;right:24px;z-index:999;width:420px;max-width:calc(100vw-48px);height:560px;max-height:calc(100vh-140px);background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);display:none;flex-direction:column;overflow:hidden;font-size:14px}
+#ai-chat-panel.open{display:flex}
+#ai-chat-header{padding:16px 20px;background:#007bff;color:#fff;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+#ai-chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+#ai-chat-input-area{padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px}
+#ai-chat-input{flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:24px;outline:none;font-size:14px}
+#ai-chat-input:focus{border-color:#007bff}
+#ai-chat-send{padding:10px 20px;background:#007bff;color:#fff;border:none;border-radius:24px;cursor:pointer;font-weight:600;white-space:nowrap}
+.chat-msg{padding:10px 14px;border-radius:12px;max-width:85%;line-height:1.5;white-space:pre-wrap}
+.chat-msg.user{background:#007bff;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.chat-msg.assistant{background:#f0f2f5;color:#333;align-self:flex-start;border-bottom-left-radius:4px}
+.chat-result-card{border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin:6px 0;display:flex;gap:10px;background:#fff;cursor:pointer;transition:box-shadow .15s}
+.chat-result-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.chat-result-img{width:64px;height:64px;border-radius:6px;background:#f5f5f5;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:#ccc}
+.chat-result-img img{width:100%;height:100%;object-fit:cover}
+.chat-result-info{flex:1;min-width:0}
+.chat-result-title{font-weight:600;color:#333;text-decoration:none;display:block;margin-bottom:2px}
+.chat-result-price{font-weight:700;color:#007bff}
+.chat-result-loc{color:#888;font-size:12px;margin-left:8px}
+.chat-fb-btn{padding:3px 10px;border:1px solid #ddd;border-radius:14px;cursor:pointer;font-size:11px;background:#fff;margin-top:6px;margin-right:4px}
+.chat-fb-btn.active{border-color:#007bff;background:#e8f4ff}
+</style>
+
+<button id="ai-chat-btn" onclick="toggleChat()">💬</button>
+<div id="ai-chat-panel">
+  <div id="ai-chat-header">
+    <span>🤖 KI-Suche</span>
+    <span onclick="toggleChat()" style="cursor:pointer;opacity:.8">✕</span>
+  </div>
+  <div id="ai-chat-messages"></div>
+  <div id="ai-chat-input-area">
+    <input id="ai-chat-input" placeholder="Erzähl mir, was du suchst…" onkeydown="if(event.key==='Enter')sendChatMsg()">
+    <button id="ai-chat-send" onclick="sendChatMsg()">Senden</button>
+  </div>
+</div>
+<script>
+var chatMessages = [{role:'assistant', content:''}];  // greeting loaded dynamically
+var chatLiked = [];
+var chatDisliked = [];
+
+function toggleChat() {
+    var p = document.getElementById('ai-chat-panel');
+    var b = document.getElementById('ai-chat-btn');
+    var open = p.classList.toggle('open');
+    b.classList.toggle('open', open);
+    if (open && chatMessages.length === 1 && !chatMessages[0].content) {
+        fetch('/api/ai-search/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[]})})
+            .then(function(r){return r.json()})
+            .then(function(data){
+                chatMessages[0].content = data.reply;
+                renderChat();
+            });
+    }
+    if (open) setTimeout(function(){document.getElementById('ai-chat-messages').scrollTop=9999},100);
+}
+
+function renderChat() {
+    var el = document.getElementById('ai-chat-messages');
+    el.innerHTML = '';
+    chatMessages.forEach(function(m, i){
+        if (i === 0 && !m.content) return;
+        var div = document.createElement('div');
+        div.className = 'chat-msg ' + m.role;
+        div.textContent = m.content;
+        el.appendChild(div);
+        // Results nach der Nachricht anzeigen
+        if (m.results && m.results.length) {
+            m.results.forEach(function(r){
+                var card = document.createElement('div');
+                card.className = 'chat-result-card';
+                card.onclick = function(){ if(r.url) window.open(r.url,'_blank'); };
+                var imgDiv = document.createElement('div');
+                imgDiv.className = 'chat-result-img';
+                if (r.image_url) { var img=document.createElement('img'); img.src=r.image_url; imgDiv.appendChild(img); }
+                else { imgDiv.textContent = '📷'; }
+                card.appendChild(imgDiv);
+                var info = document.createElement('div');
+                info.className = 'chat-result-info';
+                var title = document.createElement('a');
+                title.className = 'chat-result-title';
+                title.href = r.url||'#'; title.target='_blank';
+                title.textContent = r.title||'—';
+                info.appendChild(title);
+                var meta = document.createElement('div');
+                var price = document.createElement('span');
+                price.className = 'chat-result-price';
+                price.textContent = r.price||(r.price_value ? r.price_value+'€' : '—');
+                meta.appendChild(price);
+                if (r.location) { var loc=document.createElement('span'); loc.className='chat-result-loc'; loc.textContent='📍 '+r.location; meta.appendChild(loc); }
+                info.appendChild(meta);
+                // Like/Dislike
+                var actions = document.createElement('div');
+                actions.style.marginTop = '6px';
+                var like = document.createElement('button');
+                like.className = 'chat-fb-btn' + (chatLiked.indexOf(r.id)!==-1?' active':'');
+                like.textContent = '👍 Mehr';
+                like.onclick = function(e){ e.stopPropagation(); toggleChatLike(r.id); };
+                actions.appendChild(like);
+                var dislike = document.createElement('button');
+                dislike.className = 'chat-fb-btn' + (chatDisliked.indexOf(r.id)!==-1?' active':'');
+                dislike.textContent = '👎 Weniger';
+                dislike.onclick = function(e){ e.stopPropagation(); toggleChatDislike(r.id); };
+                actions.appendChild(dislike);
+                info.appendChild(actions);
+                card.appendChild(info);
+                el.appendChild(card);
+            });
+        }
+    });
+    el.scrollTop = 9999;
+}
+
+function toggleChatLike(id) {
+    var idx = chatLiked.indexOf(id);
+    if (idx === -1) chatLiked.push(id); else chatLiked.splice(idx,1);
+    chatDisliked = chatDisliked.filter(function(d){return d!==id});
+    refineChatSearch();
+}
+
+function toggleChatDislike(id) {
+    var idx = chatDisliked.indexOf(id);
+    if (idx === -1) chatDisliked.push(id); else chatDisliked.splice(idx,1);
+    chatLiked = chatLiked.filter(function(l){return l!==id});
+    refineChatSearch();
+}
+
+function refineChatSearch() {
+    var userText = chatMessages.filter(function(m){return m.role==='user'}).map(function(m){return m.content}).join(' ');
+    fetch('/api/ai-search/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:userText,liked:chatLiked,disliked:chatDisliked})})
+        .then(function(r){return r.json()})
+        .then(function(data){
+            if (!data.results) return;
+            // Letzte assistant-Nachricht mit Ergebnissen aktualisieren
+            for (var i=chatMessages.length-1; i>=0; i--) {
+                if (chatMessages[i].role === 'assistant' && chatMessages[i].results) {
+                    chatMessages[i].results = data.results;
+                    chatMessages[i].content = 'Verfeinert! ' + data.total + ' Treffer' + (data.removed ? ' ('+data.removed+' ausgeblendet)' : '');
+                    break;
+                }
+            }
+            renderChat();
+        });
+}
+
+function sendChatMsg() {
+    var input = document.getElementById('ai-chat-input');
+    var text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    chatMessages.push({role:'user',content:text});
+    renderChat();
+    document.getElementById('ai-chat-send').disabled = true;
+    document.getElementById('ai-chat-send').textContent = '…';
+    fetch('/api/ai-search/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:chatMessages})})
+        .then(function(r){return r.json()})
+        .then(function(data){
+            var msg = {role:'assistant', content:data.reply};
+            if (data.results) msg.results = data.results;
+            chatMessages.push(msg);
+            renderChat();
+        })
+        .catch(function(){
+            chatMessages.push({role:'assistant', content:'❌ Fehler bei der Suche. Versuch es nochmal.'});
+            renderChat();
+        })
+        .finally(function(){document.getElementById('ai-chat-send').disabled = false;document.getElementById('ai-chat-send').textContent = 'Senden';});
+}
+</script>
+{% endif %}
+
     {% include "pwa_install.html" %}
 </body>
 </html>
