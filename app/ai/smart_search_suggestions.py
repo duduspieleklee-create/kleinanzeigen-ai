@@ -16,6 +16,7 @@ import logging
 import json
 import re
 from pathlib import Path
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.api.config import settings
 
@@ -75,26 +76,34 @@ class SmartSearchSuggestions:
     def get_related_terms(self, keyword: str) -> List[str]:
         """Holt verwandte Begriffe von Wikipedia-API (Fallback zu Mock-Daten)."""
         try:
-            response = requests.get(
-                "https://de.wikipedia.org/w/api.php",
-                params={
-                    "action": "query",
-                    "list": "search",
-                    "srsearch": keyword,
-                    "format": "json",
-                },
-                headers={"User-Agent": "kleinanzeigen-ai/1.0"},
-                timeout=5,
-            )
-            response.raise_for_status()
-            titles = [
-                item["title"]
-                for item in response.json().get("query", {}).get("search", [])
-            ]
-            return [title.split("–")[0].strip() for title in titles]
+            return self._fetch_related_terms_from_wikipedia(keyword)
         except Exception as e:
-            logger.error(f"Wikipedia-API-Fehler: {e}")
+            logger.warning("Wikipedia-API-Fehler (Fallback genutzt): %s", e)
             return self.related_terms.get(keyword, [])
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=0.1, max=0.5),
+        reraise=True,
+    )
+    def _fetch_related_terms_from_wikipedia(self, keyword: str) -> List[str]:
+        response = requests.get(
+            "https://de.wikipedia.org/w/api.php",
+            params={
+                "action": "query",
+                "list": "search",
+                "srsearch": keyword,
+                "format": "json",
+            },
+            headers={"User-Agent": "kleinanzeigen-ai/1.0"},
+            timeout=5,
+        )
+        response.raise_for_status()
+        titles = [
+            item["title"]
+            for item in response.json().get("query", {}).get("search", [])
+        ]
+        return [title.split("–")[0].strip() for title in titles]
 
     def get_custom_model_suggestions(self, query: str) -> List[str]:
         """Fragt einen OpenAI-kompatiblen Custom-Model-Endpoint nach Vorschlägen.

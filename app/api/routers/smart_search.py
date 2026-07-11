@@ -3,6 +3,7 @@ API-Endpunkte für Smart Search Suggestions.
 """
 
 from fastapi import APIRouter, HTTPException
+from app.api.config import settings
 from app.ai.smart_search_suggestions import smart_search
 
 router = APIRouter(prefix="/api", tags=["smart_search"])
@@ -33,3 +34,19 @@ def get_search_suggestions(query: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/custom-model/provider-presets", summary="Liste Provider-Presets")
+def get_custom_model_provider_presets():
+    """
+    Gibt die verfügbaren Provider-Presets für den Custom-Model-Endpoint zurück.
+
+    Rückgabe:
+        dict: {
+            "providers": {
+                "ollama": {"id": "ollama", "label": "Ollama", "endpoint": "...", "needs_api_key": false},
+                ...
+            }
+        }
+    """
+    return {"providers": settings.custom_model_provider_presets()}

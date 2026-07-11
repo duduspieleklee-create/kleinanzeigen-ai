@@ -1,5 +1,6 @@
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Any, Dict
 
 
 class Settings(BaseSettings):
@@ -137,6 +138,26 @@ class Settings(BaseSettings):
             return self.custom_model_endpoint
         preset = self._PROVIDER_PRESETS.get(self.custom_model_provider.lower())
         return preset[0] if preset else ""
+
+    @property
+    def custom_model_api_key_required(self) -> bool:
+        """Whether the resolved config needs an API key for the chosen provider."""
+        if self.custom_model_api_key:
+            return True
+        preset = self._PROVIDER_PRESETS.get(self.custom_model_provider.lower())
+        return bool(preset and preset[1])
+
+    def custom_model_provider_presets(self) -> Dict[str, Dict[str, Any]]:
+        """Return available provider presets with display metadata."""
+        return {
+            key: {
+                "id": key,
+                "label": key.capitalize(),
+                "endpoint": value[0],
+                "needs_api_key": value[1],
+            }
+            for key, value in self._PROVIDER_PRESETS.items()
+        }
 
     @property
     def custom_model_api_key_resolved(self) -> str:
