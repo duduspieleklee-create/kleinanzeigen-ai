@@ -8,7 +8,7 @@ import requests
 import sentry_sdk
 import sentry_sdk.metrics as sentry_metrics
 from bs4 import BeautifulSoup
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, and_
 
 from app.api.config import settings
 from app.shared.database import SessionLocal
@@ -1229,28 +1229,49 @@ def reap_stale_recurring_searches():
     try:
         with track_job("scrape.reap_stale_recurring_searches"):
             now = datetime.now(timezone.utc)
+            
+            # Candidates: settled statuses with last_run_at OR orphaned running tasks with last_run_at=NULL
             candidates = (
                 db.query(ScrapeTask)
                 .filter(
-                    ScrapeTask.status.in_(("completed", "partial_failed", "failed")),
-                    ScrapeTask.last_run_at.isnot(None),
+                    or_(
+                        # Settled statuses with last_run_at
+                        and_(
+                            ScrapeTask.status.in_(("completed", "partial_failed", "failed")),
+                            ScrapeTask.last_run_at.isnot(None),
+                        ),
+                        # Orphaned running tasks with last_run_at=NULL
+                        and_(
+                            ScrapeTask.status == "running",
+                            ScrapeTask.last_run_at.is_(None),
+                        ),
+                        # Orphaned pending tasks with old created_at and last_run_at=NULL
+                        and_(
+                            ScrapeTask.status == "pending",
+                            ScrapeTask.last_run_at.is_(None),
+                            ScrapeTask.created_at < now - timedelta(seconds=60),  # 60s grace period
+                        ),
+                    )
                 )
                 .all()
             )
+            
+            logger.info(f"Reaper candidates: {[c.id for c in candidates]}")
+            
             revived = 0
             for task in candidates:
                 try:
                     interval = int((task.parameters or {}).get("interval_seconds") or 0)
                 except (TypeError, ValueError):
                     interval = 0
-                if interval <= 0:
+                if interval <= 0 and task.status != "pending":
                     continue  # one-shot search, nothing to reschedule
                 grace = max(interval // 2, 120)
                 due_before = now - timedelta(seconds=interval + grace)
                 last_run = task.last_run_at
                 if last_run is not None and last_run.tzinfo is None:
                     last_run = last_run.replace(tzinfo=timezone.utc)
-                if last_run > due_before:
+                if last_run is not None and last_run > due_before:
                     continue  # chain still healthy (or run in flight)
 
                 # Atomically claim: only proceed if last_run_at is still the
@@ -1260,9 +1281,20 @@ def reap_stale_recurring_searches():
                     db.query(ScrapeTask)
                     .filter(
                         ScrapeTask.id == task.id,
-                        ScrapeTask.last_run_at == task.last_run_at,
-                        ScrapeTask.status.in_(
-                            ("completed", "partial_failed", "failed")
+                        or_(
+                            and_(
+                                ScrapeTask.last_run_at == task.last_run_at,
+                                task.status != "pending",
+                            ),
+                            and_(
+                                ScrapeTask.last_run_at.is_(None),
+                                task.status == "pending",
+                            ),
+                        ),
+                        or_(
+                            ScrapeTask.status.in_(("completed", "partial_failed", "failed")),
+                            ScrapeTask.status == "running",
+                            ScrapeTask.status == "pending",
                         ),
                     )
                     .update({"last_run_at": now}, synchronize_session=False)
