@@ -525,13 +525,16 @@
                     <div class="wizard-summary" id="wizard-summary"></div>
 
                     <label>Häufigkeit</label>
-                    {% set min_iv = min_interval_seconds or 300 %}
-                    {% set default_iv = 300 if min_iv <= 300 else min_iv %}
+                    {% set min_iv = min_interval_seconds or 3600 %}
+                    {# default to the fastest interval the plan allows; admin's
+                       floor (5s) isn't an offered option, so fall back to Sofort #}
+                    {% set default_iv = min_iv if min_iv in [3600, 1800, 60] else 60 %}
                     <div class="frequency-group frequency-group-compact">
-                        {% for val, lbl in [(60, 'Sofort'), (300, 'Alle 5 Minuten'), (1800, 'Alle 30 Minuten'), (3600, 'Alle 60 Minuten')] %}
+                        {% for val, lbl, tier in [(3600, 'Alle 60 Minuten', ''), (1800, 'Alle 30 Minuten', 'CORE'), (60, 'Sofort', 'PRO')] %}
                         <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
                             <input type="radio" name="interval_seconds" value="{{ val }}"{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
                             <span class="frequency-label">{{ lbl }}
+                            {% if tier == 'CORE' %}<span class="tier-badge" style="font-size:0.62rem;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:999px;background:#eef2ff;color:#4338ca;margin-left:4px">CORE</span>{% elif tier == 'PRO' %}<span class="tier-badge" style="font-size:0.62rem;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:999px;background:#f3e8ff;color:#7e22ce;margin-left:4px">PRO</span>{% endif %}
                             {% if val < min_iv %}<a href="/billing" class="freq-upgrade">Upgrade</a>{% endif %}</span>
                         </label>
                         {% endfor %}
