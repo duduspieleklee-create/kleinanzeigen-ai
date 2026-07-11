@@ -3,131 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kleinanzeigen.de Helfer – Automatische Überwachung für Kleinanzeigen-Suchen</title>
-    <meta name="description" content="Kleinanzeigen.de Helfer durchsucht deine gespeicherten Kleinanzeigen-Suchen automatisch, benachrichtigt dich sofort bei neuen Treffern und zeigt dir, ob ein Preis wirklich fair ist.">
+    <title>Kleinanzeigen.de Helfer – KI-gestützte Suche & Überwachung</title>
+    <meta name="description" content="KI sucht für dich auf Kleinanzeigen – Chat-basiert, automatisch, mit Betrugswarnung & Preistrends.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://kleeblatt.space/">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-    <meta name="theme-color" content="#2FBF71">
+    <meta name="theme-color" content="#0a0a1a">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
+    <style>
+    :root{--bg:#0a0a1a;--card:#111128;--accent:#6c5ce7;--accent2:#00cec9;--green:#00b894;--orange:#fdcb6e;--red:#e17055;--pink:#fd79a8;--text:#e0e0f0;--muted:#8888aa;--radius:20px}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+    .lp-shell{max-width:1200px;margin:0 auto;padding:20px}
+    .lp-nav{display:flex;justify-content:space-between;align-items:center;padding:16px 0;margin-bottom:40px}
+    .lp-nav a{color:var(--text);text-decoration:none}
+    .lp-wordmark{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .lp-nav-cta{background:linear-gradient(135deg,var(--accent),#8b7cf7);color:#fff!important;padding:10px 24px;border-radius:100px;font-weight:600;font-size:14px;transition:transform .2s,box-shadow .2s}
+    .lp-nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(108,92,231,.4)}
+    .lp-hero{text-align:center;padding:60px 0 80px;position:relative}
+    .lp-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(36px,6vw,64px);font-weight:700;line-height:1.1;background:linear-gradient(135deg,#fff,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:20px}
+    .lp-hero-sub{font-size:clamp(16px,2vw,22px);color:var(--muted);max-width:640px;margin:0 auto 32px;line-height:1.6}
+    .lp-hero-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+    .lp-hero-cta{background:linear-gradient(135deg,var(--accent),#8b7cf7);color:#fff!important;padding:16px 36px;border-radius:100px;font-weight:600;font-size:16px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform .2s,box-shadow .2s}
+    .lp-hero-cta:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(108,92,231,.5)}
+    .lp-hero-cta-secondary{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:var(--text)!important;padding:16px 36px;border-radius:100px;font-weight:600;font-size:16px;text-decoration:none;transition:background .2s}
+    .lp-hero-cta-secondary:hover{background:rgba(255,255,255,.15)}
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://kleeblatt.space/">
-    <meta property="og:title" content="Kleinanzeigen.de Helfer – Automatische Überwachung für Kleinanzeigen-Suchen">
-    <meta property="og:description" content="Nie wieder ein gutes Angebot verpassen. KI überwacht deine Kleinanzeigen-Suchen rund um die Uhr und meldet sich sofort bei neuen Treffern.">
-    <meta property="og:image" content="https://kleeblatt.space/static/icons/icon-512.png">
-    <meta property="og:locale" content="de_DE">
+    .lp-section-title{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;text-align:center;margin-bottom:48px;position:relative}
+    .lp-section-title span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://kleeblatt.space/">
-    <meta property="twitter:title" content="Kleinanzeigen.de Helfer – Automatische Überwachung für Kleinanzeigen-Suchen">
-    <meta property="twitter:description" content="Nie wieder ein gutes Angebot verpassen. KI überwacht deine Kleinanzeigen-Suchen automatisch.">
-    <meta property="twitter:image" content="https://kleeblatt.space/static/icons/icon-512.png">
+    .lp-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;margin-bottom:80px}
+    .lp-feature-card{background:var(--card);border-radius:var(--radius);padding:28px;border:1px solid rgba(255,255,255,.06);transition:transform .3s,border-color .3s,box-shadow .3s;position:relative;overflow:hidden}
+    .lp-feature-card:hover{transform:translateY(-4px);border-color:rgba(108,92,231,.3);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+    .lp-feature-card .icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px}
+    .lp-feature-card h3{font-size:18px;font-weight:600;margin-bottom:8px}
+    .lp-feature-card p{color:var(--muted);font-size:14px;line-height:1.6}
+    .lp-feature-card .tag{display:inline-block;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600;margin-top:12px;text-transform:uppercase;letter-spacing:.5px}
 
-    <!-- JSON-LD Structured Data -->
-    {% set plan_prices = {'basic': '0.00', 'core': '4.99', 'pro': '14.99'} %}
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Kleinanzeigen.de Helfer",
-      "applicationCategory": "UtilitiesApplication",
-      "operatingSystem": "Web, Android, iOS",
-      "url": "https://kleeblatt.space/",
-      "description": "Automatische KI-Überwachung für gespeicherte Kleinanzeigen-Suchen mit Sofort-Benachrichtigungen und Preis-Fairness-Check.",
-      "offers": [
-        {% for key, cfg in plans.items() %}
-        {
-          "@type": "Offer",
-          "name": "{{ cfg.label }}",
-          "price": "{{ plan_prices.get(key, '0.00') }}",
-          "priceCurrency": "EUR",
-          "description": "{{ cfg.credits_per_week }} Credits/Woche, bis zu {{ cfg.max_active_searches }} laufende Suchen, {% if cfg.min_interval_seconds <= 60 %}Sofort-Benachrichtigungen{% else %}Intervalle ab {{ cfg.min_interval_seconds // 60 }} Minuten{% endif %}"
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-      ]
-    }
-    </script>
+    /* Farben pro Feature */
+    .fc-chat .icon{background:rgba(108,92,231,.2);color:var(--accent)}
+    .fc-auto .icon{background:rgba(0,206,201,.2);color:var(--accent2)}
+    .fc-price .icon{background:rgba(253,203,110,.2);color:var(--orange)}
+    .fc-fraud .icon{background:rgba(225,112,85,.2);color:var(--red)}
+    .fc-trends .icon{background:rgba(0,184,148,.2);color:var(--green)}
+    .fc-push .icon{background:rgba(253,121,168,.2);color:var(--pink)}
+    .fc-chat .tag{background:rgba(108,92,231,.2);color:var(--accent)}
+    .fc-auto .tag{background:rgba(0,206,201,.2);color:var(--accent2)}
+    .fc-price .tag{background:rgba(253,203,110,.2);color:var(--orange)}
+    .fc-fraud .tag{background:rgba(225,112,85,.2);color:var(--red)}
+    .fc-trends .tag{background:rgba(0,184,148,.2);color:var(--green)}
+    .fc-push .tag{background:rgba(253,121,168,.2);color:var(--pink)}
+
+    /* Demo-Reihe */
+    .lp-demos{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:80px}
+    .lp-demo-card{background:var(--card);border-radius:var(--radius);padding:20px;border:1px solid rgba(255,255,255,.06);text-align:center}
+    .lp-demo-card .preview{height:160px;border-radius:12px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;font-size:48px;background:linear-gradient(135deg,rgba(108,92,231,.1),rgba(0,206,201,.1))}
+    .lp-demo-card h4{font-size:15px;font-weight:600;margin-bottom:4px}
+    .lp-demo-card p{color:var(--muted);font-size:13px;line-height:1.5}
+
+    .lp-glow-1{position:absolute;top:-100px;left:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(108,92,231,.12),transparent 70%);pointer-events:none}
+    .lp-glow-2{position:absolute;bottom:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(0,206,201,.1),transparent 70%);pointer-events:none}
+    .lp-glow-3{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(108,92,231,.06),transparent 70%);pointer-events:none}
+
+    .lp-cta-section{text-align:center;padding:60px 0 40px;position:relative}
+    .lp-cta-section h2{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700;margin-bottom:12px}
+    .lp-cta-section p{color:var(--muted);font-size:16px;margin-bottom:28px;max-width:500px;margin-left:auto;margin-right:auto}
+
+    .lp-card{border-radius:24px;background:var(--card);border:1px solid rgba(255,255,255,.06);padding:52px 44px;position:relative;overflow:hidden}
+    .lp-card-footer{text-align:center;padding-top:24px;color:var(--muted);font-size:14px}
+    .lp-card-footer a{color:var(--accent);text-decoration:none}
+    .lp-hero-actions{margin-top:24px}
+    </style>
 </head>
 <body class="landing-page">
     <div class="lp-shell">
         <div class="lp-card">
+            <div class="lp-glow-1"></div>
+            <div class="lp-glow-2"></div>
+
             <nav class="lp-nav">
-                <span class="lp-wordmark">Kleinanzeigen.de Helfer</span>
-                <a href="/auth/register" class="lp-nav-cta">Gratis Probeabo</a>
+                <span class="lp-wordmark">✦ Kleinanzeigen.de Helfer</span>
+                <a href="/auth/register" class="lp-nav-cta">Jetzt kostenlos starten →</a>
             </nav>
 
             <header class="lp-hero">
-                <div class="lp-radar" aria-hidden="true">
-                    <span class="lp-radar-ring lp-radar-ring-1"></span>
-                    <span class="lp-radar-ring lp-radar-ring-2"></span>
-                    <span class="lp-radar-ring lp-radar-ring-3"></span>
-                    <span class="lp-radar-sweep"></span>
-                    <span class="lp-radar-dot"></span>
-                </div>
-                <h1>Nie wieder ein gutes Angebot verpassen</h1>
+                <div class="lp-glow-3"></div>
+                <h1>KI sucht für dich.<br>Du entscheidest.</h1>
                 <p class="lp-hero-sub">
-                    KI überwacht deine Kleinanzeigen-Suchen automatisch — rund um die Uhr.
+                    Beschreib einfach was du suchst – die KI findet passende Anzeigen,<br>
+                    warnt vor Betrug und benachrichtigt dich sofort.
                 </p>
                 <div class="lp-hero-actions">
                     <a href="/auth/register" class="lp-hero-cta">
                         Kostenlos starten
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </a>
-                </div>
-
-                {# KI-Suche ist Pro-Feature — Demo auf Landing zeigt Pro-Upsell #}
-                <div class="lp-smart-search-demo">
-                    <label class="lp-demo-label">✨ KI-Suche</label>
-                    <div class="lp-pro-upsell-box" style="background:#fef7e6;border:1px solid #f0c040;border-radius:10px;padding:16px;text-align:center;">
-                        <strong>🔒 Pro-Feature</strong>
-                        <p style="margin:8px 0 0;font-size:14px;">
-                            KI-gestützte Suchvorschläge, die deine Trefferquote erhöhen.<br>
-                            <a href="/billing" style="font-weight:bold;">Upgrade zu Pro →</a>
-                        </p>
-                    </div>
-                    <small class="lp-demo-hint">Synonyme, verwandte Begriffe &amp; KI-Vorschläge in Echtzeit</small>
+                    <a href="#features" class="lp-hero-cta-secondary">Features entdecken</a>
                 </div>
             </header>
 
-            <section class="lp-benefits">
-                <div class="lp-benefit-card">
-                    <div class="lp-benefit-icon lp-benefit-icon-green">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    </div>
-                    <div>
-                        <h3>Automatische Suche</h3>
-                        <p>Deine Suchen laufen 24/7 im Hintergrund.</p>
-                    </div>
+            {# ── Feature Grid ── #}
+            <div id="features" class="lp-features">
+                <div class="lp-feature-card fc-chat">
+                    <div class="icon">💬</div>
+                    <h3>KI-Suche per Chat</h3>
+                    <p>„Ich suche ein gebrauchtes Eichensofa unter 200€ in Berlin“ — die KI versteht dich, fragt nach und zeigt dir passende Ergebnisse. Einfach erzählen, nicht tippen.</p>
+                    <span class="tag">Chat-basiert</span>
                 </div>
-                <div class="lp-benefit-card">
-                    <div class="lp-benefit-icon lp-benefit-icon-amber">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                    </div>
-                    <div>
-                        <h3>Sofort benachrichtigt</h3>
-                        <p>Push, sobald ein neuer Treffer reinkommt.</p>
-                    </div>
+
+                <div class="lp-feature-card fc-auto">
+                    <div class="icon">🔄</div>
+                    <h3>Automatische Dauer-Suche</h3>
+                    <p>Einmal einrichten, läuft für immer. Die App durchsucht Kleinanzeigen im Hintergrund im von dir gewählten Intervall — du bekommst nur die neuen Treffer.</p>
+                    <span class="tag">Rund um die Uhr</span>
                 </div>
-                <div class="lp-benefit-card">
-                    <div class="lp-benefit-icon lp-benefit-icon-tangerine">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    </div>
-                    <div>
-                        <h3>Fairer Preis-Check</h3>
-                        <p>Die KI zeigt dir, ob ein Angebot fair ist.</p>
-                    </div>
+
+                <div class="lp-feature-card fc-fraud">
+                    <div class="icon">🛡️</div>
+                    <h3>Betrugswarnung in Echtzeit</h3>
+                    <p>KI erkennt verdächtige Anzeigen: unrealistische Preise, Phishing-Links, betrügerische Verkäuferprofile. Du siehst sofort, ob eine Anzeige vertrauenswürdig ist.</p>
+                    <span class="tag">Sicherheit</span>
                 </div>
-            </section>
+
+                <div class="lp-feature-card fc-price">
+                    <div class="icon">🏷️</div>
+                    <h3>Fairness-Check & Preis-Trends</h3>
+                    <p>Ist der Preis fair? Die KI vergleicht mit ähnlichen Angeboten und zeigt dir, ob du ein Schnäppchen machst oder besser warten solltest.</p>
+                    <span class="tag">Preisanalyse</span>
+                </div>
+
+                <div class="lp-feature-card fc-trends">
+                    <div class="icon">📈</div>
+                    <h3>Google Trends live</h3>
+                    <p>Sieh, was gerade angesagt ist. Die App zeigt dir aktuelle Google-Suchtrends zu deinen Keywords — damit du weißt, wonach alle suchen.</p>
+                    <span class="tag">Trends</span>
+                </div>
+
+                <div class="lp-feature-card fc-push">
+                    <div class="icon">🔔</div>
+                    <h3>Sofort-Benachrichtigungen</h3>
+                    <p>Push-Benachrichtigung auf dein Handy, sobald ein neuer Treffer für deine Suche gefunden wird. Kein ständiges Neuladen mehr.</p>
+                    <span class="tag">Push</span>
+                </div>
+            </div>
+
+            {# ── Demo/Preview Cards ── #}
+            <div class="lp-demos">
+                <div class="lp-demo-card">
+                    <div class="preview">💬</div>
+                    <h4>Chat-Suche</h4>
+                    <p>„Ein iPhone in München bis 500€“ — die KI sucht für dich.</p>
+                </div>
+                <div class="lp-demo-card">
+                    <div class="preview">🛡️</div>
+                    <h4>Betrugsprüfung</h4>
+                    <p>Jede Anzeige wird auf Betrugsmerkmale gescannt.</p>
+                </div>
+                <div class="lp-demo-card">
+                    <div class="preview">📈</div>
+                    <h4>Trends</h4>
+                    <p>Aktuelle Google Trends direkt in deiner Suche.</p>
+                </div>
+                <div class="lp-demo-card">
+                    <div class="preview">🔔</div>
+                    <h4>Sofort-Alarm</h4>
+                    <p>Push-Benachrichtigung bei neuen Treffern.</p>
+                </div>
+            </div>
+
+            {# ── CTA ── #}
+            <div class="lp-cta-section">
+                <h2>Bereit, kein Angebot mehr zu verpassen?</h2>
+                <p>Die KI sucht für dich — rund um die Uhr. Kostenlos starten, keine Kreditkarte nötig.</p>
+                <div class="lp-hero-actions">
+                    <a href="/auth/register" class="lp-hero-cta">
+                        Kostenlos starten →
+                    </a>
+                </div>
+            </div>
 
             <div class="lp-card-footer">
-                Ab 0€ · <a href="/billing">Preise ansehen</a>
+                <a href="/billing">Alle Details</a>
             </div>
         </div>
     </div>
