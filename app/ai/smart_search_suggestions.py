@@ -41,7 +41,7 @@ class SmartSearchSuggestions:
             "Garten": ["Pflanze", "Blume", "Rasen", "Gartengeräte"],
             "Schuhe": ["Sohle", "Schnürsenkel", "Einlagen"],
         }
-        self.cache = {}  # Cache für Suchvorschläge
+        self.cache = {}  # Cache für Suchvorschläge (Struktur: {"query": {"data": ..., "timestamp": datetime}})
         self.trends = self._load_trends()
 
     def _load_trends(self) -> Dict[str, List[str]]:
@@ -169,8 +169,15 @@ class SmartSearchSuggestions:
 
     def get_suggestions(self, query: str) -> Dict[str, List[str]]:
         """Generiert Suchvorschläge für eine Nutzeranfrage."""
+        from datetime import datetime, timedelta
+        
+        # Cache-Invalidierung (TTL: 1 Stunde)
         if query in self.cache:
-            return self.cache[query]
+            cached_data = self.cache[query]
+            if datetime.now() - cached_data["timestamp"] < timedelta(hours=1):
+                return cached_data["data"]
+            else:
+                del self.cache[query]
 
         keywords = query.split()
         suggestions: Dict[str, List[str]] = {}
@@ -192,7 +199,7 @@ class SmartSearchSuggestions:
             if custom:
                 suggestions["KI-Vorschläge (Custom Model)"] = custom
 
-        self.cache[query] = suggestions
+        self.cache[query] = {"data": suggestions, "timestamp": datetime.now()}
         return suggestions
 
 
