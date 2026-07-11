@@ -11,6 +11,16 @@
     if (!input || !list) return;
 
     var activeIndex = -1;
+    var _lastQuery = '';
+
+    function trackClick(term) {
+        // Fire-and-forget click tracking
+        fetch('/api/search-suggestions/click', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keyword: _lastQuery, suggestion: term, suggestion_type: 'generic' })
+        }).catch(function() {});
+    }
 
     function render(items) {
         list.innerHTML = '';
@@ -21,6 +31,7 @@
             li.textContent = term;
             li.addEventListener('mousedown', function(e) {
                 e.preventDefault();
+                trackClick(term);
                 input.value = term;
                 list.style.display = 'none';
                 input.dispatchEvent(new Event('input'));
@@ -43,6 +54,7 @@
 
     function fetchSuggestions() {
         var q = input.value.trim();
+        _lastQuery = q;
         if (q.length < 2) { list.style.display = 'none'; return; }
         fetch('/api/search-suggestions?query=' + encodeURIComponent(q), {
             headers: { 'Accept': 'application/json' }
@@ -70,6 +82,7 @@
             activeIndex = (activeIndex - 1 + items.length) % items.length;
         } else if (e.key === 'Enter' && activeIndex >= 0) {
             e.preventDefault();
+            trackClick(items[activeIndex].textContent);
             items[activeIndex].dispatchEvent(new Event('mousedown'));
             return;
         } else if (e.key === 'Escape') {

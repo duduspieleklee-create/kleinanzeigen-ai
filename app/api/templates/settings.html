@@ -170,6 +170,73 @@
 
     {% include "_version_footer.html" %}
 
+    {% if is_admin %}
+    <!-- Custom Model Settings (Admin-only, Issue #268) -->
+    <div class="settings-section">
+        <h2>Custom Model Provider</h2>
+        <p class="settings-hint">KI-Vorschläge für Smart Search via OpenAI-kompatiblen Endpoint.</p>
+
+        <div class="settings-item">
+            <div class="settings-label">
+                <span>Provider</span>
+                <small>Ollama, OpenAI oder Together — füllt Endpoint/Key-Voraussetzung automatisch</small>
+            </div>
+            <select id="cm-provider" onchange="onCMProviderChange()" style="max-width:300px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+                <option value="">— Manuelle Konfiguration —</option>
+            </select>
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-label">
+                <span>Endpoint</span>
+                <small>OpenAI-kompatible API-Basis-URL (z. B. http://localhost:11434/v1)</small>
+            </div>
+            <input type="text" id="cm-endpoint" style="flex:1;max-width:400px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-label">
+                <span>API-Key</span>
+                <small>Nur bei OpenAI/Together nötig — Ollama braucht keinen</small>
+            </div>
+            <input type="password" id="cm-api-key" style="flex:1;max-width:400px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-label">
+                <span>Model-Name</span>
+                <small>z. B. qwen2.5:1.5b, gpt-4o-mini, meta-llama/Meta-Llama-3.1-8B</small>
+            </div>
+            <input type="text" id="cm-model-name" style="flex:1;max-width:400px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-label">
+                <span>Temperature</span>
+                <small>Kreativitätsfaktor (0.0 = deterministisch, 1.0 = kreativ)</small>
+            </div>
+            <input type="number" id="cm-temperature" min="0" max="2" step="0.1" value="0.3" style="width:100px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+        </div>
+
+        <div class="settings-item">
+            <div class="settings-label">
+                <span>Max Tokens</span>
+                <small>Maximale Antwortlänge in Tokens</small>
+            </div>
+            <input type="number" id="cm-max-tokens" min="1" max="4096" value="256" style="width:120px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+        </div>
+
+        <div class="settings-item">
+            <span id="cm-status" style="padding:8px 12px;border-radius:6px;font-weight:bold;"></span>
+        </div>
+
+        <div class="settings-item">
+            <button onclick="saveCMModel()" style="padding:10px 20px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;">Speichern</button>
+            <span id="cm-save-result" style="margin-left:12px;"></span>
+        </div>
+    </div>
+    {% endif %}
+
     <script>
         // ── Push notifications: real browser subscribe/unsubscribe ──
         // (mirrors the logic in dashboard.html's notification banner)
@@ -435,6 +502,81 @@
                     alert('Fehler beim Löschen des Kontos.');
                 });
         }
+        {% if is_admin %}
+        // ── Custom Model Einstellungen (Issue #268) ────────────────────────
+        var _cmProviders = {};
+
+        function loadCMConfig() {
+            fetch('/api/custom-model/config')
+                .then(function(r) { return r.ok ? r.json() : null; })
+                .then(function(data) {
+                    if (!data) return;
+                    _cmProviders = data.providers || {};
+                    var sel = document.getElementById('cm-provider');
+                    sel.innerHTML = '<option value="">— Manuelle Konfiguration —</option>';
+                    Object.keys(_cmProviders).forEach(function(k) {
+                        var opt = document.createElement('option');
+                        opt.value = k;
+                        opt.textContent = _cmProviders[k].label + ' (' + _cmProviders[k].endpoint + ')';
+                        if (k === data.provider) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                    document.getElementById('cm-endpoint').value = data.endpoint || '';
+                    document.getElementById('cm-model-name').value = data.model_name || '';
+                    document.getElementById('cm-temperature').value = data.temperature || 0.3;
+                    document.getElementById('cm-max-tokens').value = data.max_tokens || 256;
+                    var statusEl = document.getElementById('cm-status');
+                    if (data.disabled) {
+                        statusEl.textContent = '⚪ Nicht konfiguriert';
+                        statusEl.style.background = '#f0f0f0';
+                    } else {
+                        statusEl.textContent = '🟢 Aktiv (' + data.active_endpoint + ' / ' + data.active_model + ')';
+                        statusEl.style.background = '#d4edda';
+                    }
+                    if (data.api_key_configured) {
+                        document.getElementById('cm-api-key').placeholder = '•••••••• (gespeichert)';
+                    }
+                }).catch(function() {});
+        }
+
+        function onCMProviderChange() {
+            var sel = document.getElementById('cm-provider');
+            var provider = sel.value;
+            if (provider && _cmProviders[provider]) {
+                document.getElementById('cm-endpoint').value = _cmProviders[provider].endpoint;
+            }
+        }
+
+        function saveCMModel() {
+            var btn = document.querySelector('button[onclick="saveCMModel()"]');
+            var resultEl = document.getElementById('cm-save-result');
+            btn.disabled = true;
+            resultEl.textContent = 'Speichert...';
+            fetch('/api/custom-model/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: document.getElementById('cm-provider').value,
+                    endpoint: document.getElementById('cm-endpoint').value.trim(),
+                    api_key: document.getElementById('cm-api-key').value,
+                    model_name: document.getElementById('cm-model-name').value.trim(),
+                    temperature: parseFloat(document.getElementById('cm-temperature').value) || 0.3,
+                    max_tokens: parseInt(document.getElementById('cm-max-tokens').value) || 256,
+                })
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    resultEl.textContent = data.status === 'saved' ? '✅ ' + data.note : '❌ Fehler';
+                    loadCMConfig();
+                })
+                .catch(function() { resultEl.textContent = '❌ Netzwerkfehler'; })
+                .finally(function() { btn.disabled = false; });
+        }
+
+        if (document.getElementById('cm-provider')) {
+            loadCMConfig();
+        }
+        {% endif %}
     </script>
     {% include "pwa_install.html" %}
 </body>
