@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Datamuse-API-Fehler: retry + logger.warning statt error reduziert Sentry-Noise (Issue #249)
 - Redis/Kombu None hostname: leere REDIS_URL fällt auf Default zurück + loggt Warnung (Issue #254)
+- Map: client-seitiges Over-Caching von Budget-exhaustierten Locations behoben (Issue #221)
 - Navigationsfix: 'Meine Ergebnisse'-Tab mit Map-Button (Issue #223)
 - Deploy-Race beim VPS-Update behoben: `git pull` durch `git fetch` + `git reset --hard origin/main` ersetzt (vermeidet divergent-branch-Abbrüche)
 - Alembic-Migration: doppelte Index-Erzeugung in `fraud_alerts`/`search_suggestions` entfernt (brach `mobile`/`deploy` auf frischer DB)
