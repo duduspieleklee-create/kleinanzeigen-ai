@@ -296,3 +296,26 @@ class GeocodeCache(Base):
 
     def __repr__(self):
         return f"<GeocodeCache(location='{self.location}', lat={self.lat}, lon={self.lon})>"
+
+
+class SearchSuggestion(Base):
+    """Tracks which Smart Search suggestions were shown and how often used.
+
+    Each row is a (keyword, suggestion, suggestion_type) triple with a usage
+    counter — incremented every time the suggestion appears in a GET
+    /api/search-suggestions response.  This feeds analytics and popularity
+    ranking without storing PII (no user_id).
+    """
+
+    __tablename__ = "search_suggestions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    keyword = Column(String(255), nullable=False, index=True)
+    suggestion = Column(String(255), nullable=False)
+    suggestion_type = Column(String(50), nullable=False)
+    usage_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<SearchSuggestion(keyword='{self.keyword}', suggestion='{self.suggestion}', type='{self.suggestion_type}', count={self.usage_count})>"
