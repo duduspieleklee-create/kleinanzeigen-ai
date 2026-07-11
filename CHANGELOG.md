@@ -20,7 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keine Änderungen
 
 ### Fixed
-- Keine Fixes
+- Navigationsfix: 'Meine Ergebnisse'-Tab mit Map-Button (Issue #223)
+- Deploy-Race beim VPS-Update behoben: `git pull` durch `git fetch` + `git reset --hard origin/main` ersetzt (vermeidet divergent-branch-Abbrüche)
+- Alembic-Migration: doppelte Index-Erzeugung in `fraud_alerts`/`search_suggestions` entfernt (brach `mobile`/`deploy` auf frischer DB)
+- Smart-Search-Tests deterministisch gemacht (Netzwerk-Mock), da Live-Datamuse/Wikipedia-Calls die hartkodierten Mock-Daten überschrieben
+- Orphaned 'running' Recurring-Search-Tasks mit `last_run_at=NULL` werden vom Reaper erkannt und revived (Fixes #217)
+- Resend-Key-Ausfall: nicht-blockierendes Banner + selbst-diagnostizierende Logs (Fixes #237)
+- PWA: branded Icons regeneriert, tote Sound-Datei, deutsche Offline-Seite, iOS-Icon (Fixes #227)
+- PWA: sichtbarer Install-Button + iOS-Manual-Add-Pfad (Fixes #235)
+- Suchergebnis-Map als Pro-Feature abgegrenzt (Fixes #225)
+- Wizard: Interval-Optionen nach Tarif gestaffelt (Fixes #224)
 
 ---
 
@@ -28,12 +37,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Erste Version von kleinanzeigen-ai
-
-### Changed
-- Keine Änderungen
-
----
-## [Unreleased]
-
-### Fixed
-- Navigation zu 'Meine Ergebnisse'-Tab mit Map-Button (Issue #223)
