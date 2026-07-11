@@ -27,7 +27,6 @@ def upgrade():
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime(timezone=True), onupdate=sa.func.now()),
     )
-    op.create_index(op.f('ix_search_suggestions_keyword'), 'search_suggestions', ['keyword'], unique=False)
 
 
 def downgrade():

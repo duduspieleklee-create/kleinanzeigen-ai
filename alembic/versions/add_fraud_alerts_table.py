@@ -30,7 +30,6 @@ def upgrade():
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime(timezone=True), onupdate=sa.func.now()),
     )
-    op.create_index(op.f('ix_fraud_alerts_ad_id'), 'fraud_alerts', ['ad_id'], unique=False)
 
 
 def downgrade():
