@@ -16,7 +16,6 @@ import logging
 import json
 import re
 from pathlib import Path
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.api.config import settings
 
@@ -42,7 +41,6 @@ class SmartSearchSuggestions:
             "Garten": ["Pflanze", "Blume", "Rasen", "Gartengeräte"],
             "Schuhe": ["Sohle", "Schnürsenkel", "Einlagen"],
         }
-        from datetime import datetime, timedelta
         self.cache = {}  # Cache für Suchvorschläge (Struktur: {"query": {"data": ..., "timestamp": datetime}})
         self.trends = self._load_trends()
 
