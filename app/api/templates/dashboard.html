@@ -2269,6 +2269,12 @@
                 input.value = term;
                 list.style.display = 'none';
                 input.dispatchEvent(new Event('input'));
+                // Click-Tracking (Issue #269)
+                fetch('/api/search-suggestions/click', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword: input.value, suggestion: term })
+                }).catch(function() {});
             });
             list.appendChild(li);
         });

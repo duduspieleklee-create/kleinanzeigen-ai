@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (`CUSTOM_MODEL_ENDPOINT`/`CUSTOM_MODEL_NAME`, optional, mit Fallback)
   - Custom Model Provider-Presets (`ollama`/`openai`/`together`): `CUSTOM_MODEL_PROVIDER`
     füllt Endpoint automatisch; expliziter Endpoint/Key überschreibt Preset
+- **Click-Tracking für Smart Search Vorschläge** (Issue #269)
+  - `POST /api/search-suggestions/click` — inkrementiert click_count
+  - `POST /api/search-suggestions/impression` — inkrementiert usage_count
+  - Click-Handler in der Dashboard- und Landing-Suchleiste
+  - Admin-Endpoint `GET /api/custom-model/top-suggestions`
+- **Settings-UI für Custom Model Provider** (Issue #268)
+  - Admin-only Settings-Sektion mit Provider-Dropdown, Endpoint, API-Key, Model, Temperature, Max Tokens
+  - `GET/POST /api/custom-model/config` — lesen/speichern der Konfiguration
+  - Live-Status-Anzeige (konfiguriert/aktiv/nicht konfiguriert)
 
 ### Changed
 - Smart Search Cache um 1h-TTL ergänzt, abgelaufene Einträge werden verworfen (Issue #260)

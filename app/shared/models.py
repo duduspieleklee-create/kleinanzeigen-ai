@@ -314,8 +314,9 @@ class SearchSuggestion(Base):
     suggestion = Column(String(255), nullable=False)
     suggestion_type = Column(String(50), nullable=False)
     usage_count = Column(Integer, default=0, nullable=False)
+    click_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def __repr__(self):
-        return f"<SearchSuggestion(keyword='{self.keyword}', suggestion='{self.suggestion}', type='{self.suggestion_type}', count={self.usage_count})>"
+        return f"<SearchSuggestion(keyword='{self.keyword}', suggestion='{self.suggestion}', type='{self.suggestion_type}', count={self.usage_count}, clicks={self.click_count})>"
