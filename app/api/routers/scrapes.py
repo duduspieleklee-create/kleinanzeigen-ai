@@ -14,6 +14,7 @@ from app.api.models.schemas import ScrapeResponse
 from app.api.dependencies import get_current_user
 from app.shared.pricing import deal_badge, median_price
 from app.shared.plans import plan_config, ensure_weekly_credits
+from app.shared.result_filters import parse_terms
 from app.worker.tasks import scrape_kleinanzeigen
 from app.api.config import settings
 from app.api.version import register_globals
@@ -82,6 +83,9 @@ async def create_scrape(
     condition: Optional[str] = Form(None),
     shipping: Optional[str] = Form(None),
     interval_seconds: Optional[str] = Form(None),
+    require_keywords: Optional[str] = Form(None),
+    exclude_keywords: Optional[str] = Form(None),
+    exclude_locations: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -231,6 +235,24 @@ async def create_scrape(
 
     # Remove None values so url_builder receives clean kwargs
     parameters = {k: v for k, v in parameters.items() if v is not None}
+
+    # ── Advanced result filters (Core/Pro) ──────────────────────────────────
+    # Stored ONLY for plan-eligible users (admin exempt); Basic input is
+    # silently dropped — the wizard also disables the fields for Basic. These
+    # are NOT kleinanzeigen URL params: the worker applies them post-scrape
+    # (app/shared/result_filters.py) and strips them before building the URL.
+    allow_advanced = bool(
+        user and (user.is_admin or plan_config(user.plan).get("advanced_filters"))
+    )
+    if allow_advanced:
+        for key, raw in (
+            ("require_keywords", require_keywords),
+            ("exclude_keywords", exclude_keywords),
+            ("exclude_locations", exclude_locations),
+        ):
+            terms = parse_terms(raw)
+            if terms:
+                parameters[key] = terms
 
     # ── Duplicate guard ─────────────────────────────────────────────────────
     # Don't let a user stack identical searches — each duplicate burns a plan

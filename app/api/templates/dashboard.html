@@ -468,6 +468,37 @@
                         </select>
                       </div>
                     </div>
+
+                    <!-- Advanced filters (Core/Pro): require/exclude keywords +
+                         exclude locations. kleinanzeigen can't express these, so
+                         the worker applies them to results post-scrape. Basic
+                         sees the fields disabled with an upsell. -->
+                    <div class="advanced-filters" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border,#e5e7eb)">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                        <label style="margin:0">Erweiterte Filter</label>
+                        {% if not show_advanced_filters %}
+                        <span style="font-size:0.7rem;font-weight:600;letter-spacing:.03em;padding:2px 7px;border-radius:999px;background:#eef2ff;color:#4338ca">CORE</span>
+                        {% endif %}
+                      </div>
+                      {% if not show_advanced_filters %}
+                      <p class="rc-upsell-note">Nur Treffer mit bestimmten Wörtern zeigen, Müll wie „defekt" ausblenden und ganze Orte ausschließen &mdash; ohne Credits dafür zu verbrauchen. <a href="/billing">Mit Core freischalten</a>.</p>
+                      {% endif %}
+                      <div class="form-grid">
+                        <div class="form-field">
+                          <label for="require_keywords">Muss enthalten</label>
+                          <input type="text" id="require_keywords" name="require_keywords" placeholder="z. B. original, ovp"{% if not show_advanced_filters %} disabled{% endif %}>
+                        </div>
+                        <div class="form-field">
+                          <label for="exclude_keywords">Darf nicht enthalten</label>
+                          <input type="text" id="exclude_keywords" name="exclude_keywords" placeholder="z. B. defekt, bastler"{% if not show_advanced_filters %} disabled{% endif %}>
+                        </div>
+                        <div class="form-field">
+                          <label for="exclude_locations">Orte ausschließen</label>
+                          <input type="text" id="exclude_locations" name="exclude_locations" placeholder="z. B. Saarbrücken, 66111"{% if not show_advanced_filters %} disabled{% endif %}>
+                        </div>
+                      </div>
+                      <p style="margin:6px 2px 0;font-size:0.78rem;color:var(--text-muted,#6b7280)">Mehrere Begriffe mit Komma trennen. Gilt für Titel + Beschreibung; „Muss enthalten" verlangt <em>alle</em> Begriffe (ganzes Wort).</p>
+                    </div>
                   </div><!-- /filter-panel -->
 
                   <div class="wizard-inline-warning" id="step1-warning" style="display:none">
