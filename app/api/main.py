@@ -150,13 +150,20 @@ async def security_middleware(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     # Cloudflare Turnstile loads its widget script and renders an iframe from
     # challenges.cloudflare.com, so it must be allowed in script-src/frame-src.
+    # The results map view (dashboard "Kartenansicht") loads the Leaflet lib
+    # (JS+CSS) from cdnjs.cloudflare.com, geocodes result locations against
+    # nominatim.openstreetmap.org, and renders OpenStreetMap tiles — the tiles
+    # are covered by img-src 'https:', but the script/style/fetch hosts must be
+    # allowed explicitly.
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "img-src 'self' data: https:; "
-        "style-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com "
+        "https://cdnjs.cloudflare.com; "
         "frame-src https://challenges.cloudflare.com; "
-        "connect-src 'self' https://challenges.cloudflare.com; "
+        "connect-src 'self' https://challenges.cloudflare.com "
+        "https://nominatim.openstreetmap.org; "
         "frame-ancestors 'none'; "
         "base-uri 'self'"
     )

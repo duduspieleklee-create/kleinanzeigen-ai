@@ -1867,6 +1867,9 @@
         // ── Location map view ──
         var mapInstance = null;
         var mapMarkers = [];
+        // Cache of location string -> {lat, lon} (or null when not found), kept
+        // across map re-opens so we never re-geocode the same place.
+        var geocodeCache = {};
 
         function toggleMapView() {
             var container = document.getElementById('map-container');
@@ -1890,37 +1893,70 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(mapInstance);
 
-            var bounds = L.latLngBounds();
+            // Group cards by location so each distinct place is geocoded once,
+            // not once per result (many cards share a city).
+            var byLocation = {};
             document.querySelectorAll('.result-card-wrapper[data-location]').forEach(function(wrapper) {
                 var location = wrapper.dataset.location;
-                if (location) {
-                    geocodeLocation(location, wrapper, bounds);
-                }
+                if (!location) return;
+                (byLocation[location] = byLocation[location] || []).push(wrapper);
             });
 
-            if (bounds.isValid()) {
-                mapInstance.fitBounds(bounds, { padding: [50, 50] });
-            }
+            var bounds = L.latLngBounds();
+            var locations = Object.keys(byLocation);
+            var i = 0;
+
+            // Nominatim's usage policy allows at most ~1 request/second — firing
+            // all lookups at once (the old behaviour) risks a 403/429 IP block.
+            // Walk the distinct locations one at a time, spacing only the calls
+            // that actually hit the network (cached ones continue immediately).
+            (function next() {
+                if (!mapInstance || i >= locations.length) return;
+                var loc = locations[i++];
+                geocodeLocation(loc).then(function(res) {
+                    if (res.coords && mapInstance) {
+                        byLocation[loc].forEach(function(wrapper) {
+                            var marker = L.marker([res.coords.lat, res.coords.lon]).addTo(mapInstance);
+                            var title = (wrapper.querySelector('.rc-title')?.textContent || 'Item').trim();
+                            var price = (wrapper.querySelector('.rc-price-main')?.textContent || 'N/A').trim();
+                            marker.bindPopup(title + ' – ' + price);
+                            mapMarkers.push(marker);
+                            bounds.extend([res.coords.lat, res.coords.lon]);
+                        });
+                        // Re-fit as markers arrive, so the map zooms to the
+                        // results instead of staying on the Germany overview
+                        // (the old code fitBounds()'d before any async lookup
+                        // had resolved, so bounds was always still empty).
+                        if (bounds.isValid()) {
+                            mapInstance.fitBounds(bounds, { padding: [50, 50] });
+                        }
+                    }
+                    setTimeout(next, res.fromCache ? 0 : 1100);
+                });
+            })();
         }
 
-        function geocodeLocation(location, wrapper, bounds) {
-            if (!mapInstance) return;
+        // Resolves a location string to {coords: {lat, lon}|null, fromCache: bool}.
+        // Never rejects — a failed/failed-to-find lookup resolves with null coords
+        // so the sequential walk in initializeMap keeps going.
+        function geocodeLocation(location) {
+            if (Object.prototype.hasOwnProperty.call(geocodeCache, location)) {
+                return Promise.resolve({ coords: geocodeCache[location], fromCache: true });
+            }
             var query = encodeURIComponent(location + ', Germany');
-            fetch('https://nominatim.openstreetmap.org/search?q=' + query + '&format=json&limit=1')
+            return fetch('https://nominatim.openstreetmap.org/search?q=' + query + '&format=json&limit=1')
                 .then(r => r.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        var lat = parseFloat(data[0].lat);
-                        var lon = parseFloat(data[0].lon);
-                        var marker = L.marker([lat, lon]).addTo(mapInstance);
-                        var title = wrapper.querySelector('.card-title')?.textContent || 'Item';
-                        var price = wrapper.querySelector('.card-price')?.textContent || 'N/A';
-                        marker.bindPopup(title + ' - ' + price);
-                        mapMarkers.push(marker);
-                        bounds.extend([lat, lon]);
-                    }
+                .then(function(data) {
+                    var coords = (data && data.length > 0)
+                        ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) }
+                        : null;
+                    geocodeCache[location] = coords;
+                    return { coords: coords, fromCache: false };
                 })
-                .catch(err => console.error('Geocoding error:', err));
+                .catch(function(err) {
+                    console.error('Geocoding error:', err);
+                    return { coords: null, fromCache: false };
+                });
         }
 
         // ── Smart sharing functions ──
