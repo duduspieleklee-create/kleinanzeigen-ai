@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     füllt Endpoint automatisch; expliziter Endpoint/Key überschreibt Preset
 
 ### Changed
+- Smart Search Cache um 1h-TTL ergänzt, abgelaufene Einträge werden verworfen (Issue #260)
+- `/api/search-suggestions` erhält Client-Rate-Limit über fastapi-limiter
 - Keine Änderungen
 
 ### Fixed
