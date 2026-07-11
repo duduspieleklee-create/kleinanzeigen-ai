@@ -1,0 +1,27 @@
+[
+    {
+        "query": "Auto kaufen",
+        "suggestions": ["Gebrauchtwagen", "PKW kaufen", "Auto gebraucht", "Neues Auto finden", "Auto preisgünstig"],
+        "clicks": ["Gebrauchtwagen", "PKW kaufen"]
+    },
+    {
+        "query": "Gartenmöbel kaufen",
+        "suggestions": ["Gartenstuhl", "Liegestuhl", "Gartenmöbel online", "Holzliegestuhl", "Gartenmöbel reparieren"],
+        "clicks": ["Gartenstuhl", "Liegestuhl", "Gartenmöbel online"]
+    },
+    {
+        "query": "Wohnung mieten Berlin",
+        "suggestions": ["Mietwohnung Berlin", "Wohnung suchen Berlin", "Kaufwohnung Berlin", "Wohnungsangebot Berlin", "Haus in Berlin"],
+        "clicks": ["Mietwohnung Berlin", "Wohnungsangebot Berlin"]
+    },
+    {
+        "query": "Handy kaufen",
+        "suggestions": ["iPhone 15", "Samsung Galaxy S23", "Android Handy", "Smartphone", "5G Handy"],
+        "clicks": ["iPhone 15", "Samsung Galaxy S23", "Smartphone"]
+    },
+    {
+        "query": "Schuhe kaufen",
+        "suggestions": ["Sneaker", "Stiefel", "Sandalen", "Laufschuhe", "Winterstiefel"],
+        "clicks": ["Sneaker", "Stiefel", "Winterstiefel"]
+    }
+]

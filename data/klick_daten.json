@@ -1,0 +1,22 @@
+[
+    {
+        "query": "Auto kaufen",
+        "clicks": ["Gebrauchtwagen", "PKW kaufen", "Auto gebraucht", "Neues Auto finden", "Auto preisgünstig", "Auto verkaufen", "Auto gebraucht kaufen"],
+        "timestamp": "2026-07-11T12:00:00Z"
+    },
+    {
+        "query": "Gartenmöbel kaufen",
+        "clicks": ["Gartenstuhl", "Liegestuhl", "Gartenmöbel online", "Holzliegestuhl", "Gartenmöbel reparieren", "Gartenmöbel günstig", "Liegestuhl kaufen"],
+        "timestamp": "2026-07-11T12:05:00Z"
+    },
+    {
+        "query": "Haus kaufen",
+        "clicks": ["Wohnhaus kaufen", "Haus in der Nähe", "Haus kaufen Berlin", "Haus kaufen günstig", "Wohnung kaufen", "Haus kaufen mit Garten"],
+        "timestamp": "2026-07-11T12:10:00Z"
+    },
+    {
+        "query": "Auto reparieren",
+        "clicks": ["Auto reparieren Berlin", "Autoreparatur günstig", "Auto reparieren kosten", "Autoreparatur Werkstatt", "Auto reparieren online", "Autoreparatur Preise"],
+        "timestamp": "2026-07-11T12:15:00Z"
+    }
+]

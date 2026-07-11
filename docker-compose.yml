@@ -2,7 +2,6 @@ services:
   # PostgreSQL Database
   db:
     image: postgres:15-alpine
-    environment:
       POSTGRES_USER: kleinanzeigen
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: kleinanzeigen_ai
@@ -27,87 +26,16 @@ services:
       timeout: 5s
       retries: 5
 
-  # FastAPI Application
-  api:
-    build:
-      context: .
-      dockerfile: app/api/Dockerfile
+  # Custom Model Endpoint (Ollama)
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    restart: unless-stopped
     ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama-data:/root/.ollama
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY}
-      ENVIRONMENT: ${ENVIRONMENT:-dev}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
-      VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
-      # Email (Resend). Key is read from .env — if suspended/rotated at
-      # resend.com, edit .env and `docker compose up -d` to reload the process.
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      # From-address MUST be a Resend-verified domain for external recipients.
-      # Default onboarding@resend.dev is the sandbox sender and only reaches the
-      # Resend account owner's inbox — set a verified domain in .env for prod.
-      EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - .:/app
-    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
-
-  # Celery Worker
-  worker:
-    build:
-      context: .
-      dockerfile: app/worker/Dockerfile
-    environment:
-      DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
-      REDIS_URL: redis://redis:6379/0
-      SYSTEM_USER_ID: ${SYSTEM_USER_ID:-1}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
-      VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
-      # Email (Resend) — same key/domain as the api service (worker sends
-      # new-results notifications). Rotate via .env + `docker compose up -d`.
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
-      PROMETHEUS_MULTIPROC_DIR: /tmp/prom_multiproc
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - .:/app
-    command: celery -A app.worker.celery_app worker --loglevel=info
-
-  # Celery Beat (Scheduler)
-  beat:
-    build:
-      context: .
-      dockerfile: app/beat/Dockerfile
-    environment:
-      DATABASE_URL: postgresql://kleinanzeigen:secret@db:5432/kleinanzeigen_ai
-      REDIS_URL: redis://redis:6379/0
-      SYSTEM_USER_ID: ${SYSTEM_USER_ID:-1}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - .:/app
-    command: celery -A app.beat.celery_beat beat --loglevel=info --schedule /tmp/celerybeat-schedule
-
-  # Prometheus (Metriken-Sammlung, scrapt api/worker/beat)
-  prometheus:
-    image: prom/prometheus:v2.54.1
-    ports:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -124,19 +52,3 @@ services:
     image: grafana/grafana:11.2.0
     ports:
       - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-  prometheus_data:
-  grafana_data:

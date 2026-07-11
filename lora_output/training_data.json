@@ -1,0 +1,12 @@
+[
+    {
+        "query": "Auto kaufen",
+        "suggestions": ["Neues Auto suchen", "Auto preise vergleichen", "Auto auschecken", "Auto aufschlüsseln", "Auto in den Kleinanzeigen finden"],
+        "clicks": ["Gebrauchtwagen", "PKW kaufen"]
+    },
+    {
+        "query": "Gartenmöbel kaufen",
+        "suggestions": ["Gartenstuhl", "Liegestuhl", "Gartenmöbel online", "Holzliegestuhl", "Gartenmöbel reparieren"],
+        "clicks": ["Gartenstuhl", "Liegestuhl", "Gartenmöbel online"]
+    }
+]
