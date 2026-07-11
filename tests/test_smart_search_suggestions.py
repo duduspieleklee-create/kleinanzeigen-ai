@@ -125,6 +125,41 @@ def test_custom_model_handles_network_error(sss, monkeypatch):
     assert sss.get_custom_model_suggestions("Auto kaufen") == []
 
 
+def test_custom_model_strips_numbering_and_bullets(sss, monkeypatch):
+    """Kleine LLMs nummerieren gern — der Parser muss '1. X' -> 'X' machen."""
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_endpoint", "http://localhost:11434/v1")
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_name", "llama3")
+
+    fake_resp = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "choices": [
+                {"message": {"content": "1. Gebrauchtwagen\n2) PKW kaufen\n3 - Auto gebraucht\n• Wagen\nKfz"}}
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        "app.ai.smart_search_suggestions.requests.post", lambda *a, **k: fake_resp
+    )
+    result = sss.get_custom_model_suggestions("Auto kaufen")
+    assert result == ["Gebrauchtwagen", "PKW kaufen", "Auto gebraucht", "Wagen", "Kfz"]
+
+
+@pytest.mark.skipif(
+    not __import__("os").environ.get("CUSTOM_MODEL_ENDPOINT"),
+    reason="echtes Custom Model nur mit CUSTOM_MODEL_ENDPOINT gesetzt (z.B. Ollama)",
+)
+def test_custom_model_smoke_against_real_endpoint(monkeypatch):
+    """Smoke-Test gegen ein laufendes OpenAI-kompatibles Modell (z.B. Ollama)."""
+    from app.ai import smart_search_suggestions as mod
+
+    inst = mod.SmartSearchSuggestions()
+    inst.cache = {}
+    result = inst.get_custom_model_suggestions("Auto kaufen")
+    assert isinstance(result, list)
+    assert all(not t[0].isdigit() for t in result), "Nummerierung sollte bereinigt sein"
+
+
 # ── get_suggestions (Kombination) ─────────────────────────────────────────
 def test_get_suggestions_combines_sources(sss, monkeypatch):
     datamuse = SimpleNamespace(

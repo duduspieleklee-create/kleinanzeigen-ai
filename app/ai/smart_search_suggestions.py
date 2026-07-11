@@ -14,6 +14,7 @@ from typing import List, Dict
 import requests
 import logging
 import json
+import re
 from pathlib import Path
 
 from app.api.config import settings
@@ -118,8 +119,14 @@ class SmartSearchSuggestions:
                     "role": "system",
                     "content": (
                         "Du bist ein Such-Assistent für eine Kleinanzeigen-Plattform. "
-                        "Gib ausschließlich relevante Suchbegriffe zurück, einen pro "
-                        "Zeile, ohne Nummerierung und ohne erklärenden Text."
+                        "Gib ausschließlich relevante Suchbegriffe zurück. "
+                        "Regeln: GENAU ein Suchbegriff pro Zeile. KEINE Nummerierung "
+                        "(kein '1.', '2.' oder '1)'), KEINE Aufzählungszeichen, "
+                        "KEIN erklärender Text, KEINE Einleitung. "
+                        "Beispielausgabe:\n"
+                        "Gebrauchtwagen\n"
+                        "PKW kaufen\n"
+                        "Auto gebraucht"
                     ),
                 },
                 {
@@ -133,12 +140,16 @@ class SmartSearchSuggestions:
             response = requests.post(url, headers=headers, json=payload, timeout=10)
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
-            suggestions = [
-                line.strip("-•* ").strip()
-                for line in content.splitlines()
-                if line.strip()
-            ]
-            return [s for s in suggestions if s][:10]
+            raw = re.split(r"[\n\r]+", content)
+            suggestions = []
+            for line in raw:
+                line = line.strip()
+                # Entferne führende Nummerierung wie "1." "2)" "3 -" und Symbole
+                line = re.sub(r"^\s*\d+[\.\)\-\•\*\u2022]?\s*", "", line).strip(" -\u2022\u2023")
+                line = line.strip()
+                if line:
+                    suggestions.append(line)
+            return suggestions[:10]
         except Exception as e:
             logger.error(f"Custom-Model-Endpoint-Fehler: {e}")
             return []
