@@ -15,6 +15,15 @@ celery_app.conf.beat_schedule = {
         "task": "scrape.dispatch_admin_searches",
         "schedule": 60.0,
     },
+    # Safety net for USER recurring searches: unlike admin searches (dispatched
+    # from next_run_at above), user searches self-reschedule via an in-broker
+    # ETA task that a worker restart/crash drops, silently killing the chain.
+    # This reaper re-primes any recurring user search that's overdue so a deploy
+    # can't strand it. The task's own grace window prevents racing healthy chains.
+    "reap-stale-recurring-searches": {
+        "task": "scrape.reap_stale_recurring_searches",
+        "schedule": 120.0,
+    },
     # Retention purge — app/worker/archival_task.py implements these but they
     # were never wired into a schedule, so results/token-usage rows piled up
     # forever despite the documented 14-day / 90-day policy. Run both once a
