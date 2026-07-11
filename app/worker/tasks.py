@@ -1069,3 +1069,85 @@ def dispatch_admin_searches():
         db.rollback()
     finally:
         db.close()
+
+
+@celery_app.task(name="scrape.reap_stale_recurring_searches", bind=False)
+def reap_stale_recurring_searches():
+    """Restart user recurring searches whose self-rescheduling chain died.
+
+    User searches re-queue themselves via ``apply_async(countdown=interval)``
+    at the end of every run. That pending ETA task lives only in the broker,
+    so a worker restart/crash (or any run that errors before the reschedule
+    line) breaks the chain permanently — unlike admin searches, which Beat
+    re-dispatches from ``next_run_at`` every minute. This reaper is that same
+    safety net for user searches: it finds recurring tasks that are overdue
+    and re-primes them, so no deploy or crash can silently strand a search.
+
+    A task is "overdue" when its last run finished more than
+    ``interval + grace`` ago (grace absorbs a run that's merely in flight, so
+    we never race a healthy chain). Only settled statuses are eligible; a
+    ``running``/``pending`` task is left alone, and ``cancelled`` is honoured.
+    Re-priming atomically bumps ``last_run_at`` (same claim trick as the admin
+    dispatcher) so overlapping reaper passes can't double-dispatch.
+    """
+    db = SessionLocal()
+    try:
+        with track_job("scrape.reap_stale_recurring_searches"):
+            now = datetime.now(timezone.utc)
+            candidates = (
+                db.query(ScrapeTask)
+                .filter(
+                    ScrapeTask.status.in_(("completed", "partial_failed", "failed")),
+                    ScrapeTask.last_run_at.isnot(None),
+                )
+                .all()
+            )
+            revived = 0
+            for task in candidates:
+                try:
+                    interval = int((task.parameters or {}).get("interval_seconds") or 0)
+                except (TypeError, ValueError):
+                    interval = 0
+                if interval <= 0:
+                    continue  # one-shot search, nothing to reschedule
+                grace = max(interval // 2, 120)
+                due_before = now - timedelta(seconds=interval + grace)
+                last_run = task.last_run_at
+                if last_run is not None and last_run.tzinfo is None:
+                    last_run = last_run.replace(tzinfo=timezone.utc)
+                if last_run > due_before:
+                    continue  # chain still healthy (or run in flight)
+
+                # Atomically claim: only proceed if last_run_at is still the
+                # stale value we saw, so a concurrent reaper/real run wins the
+                # race and we don't double-dispatch.
+                claimed = (
+                    db.query(ScrapeTask)
+                    .filter(
+                        ScrapeTask.id == task.id,
+                        ScrapeTask.last_run_at == task.last_run_at,
+                        ScrapeTask.status.in_(
+                            ("completed", "partial_failed", "failed")
+                        ),
+                    )
+                    .update({"last_run_at": now}, synchronize_session=False)
+                )
+                if not claimed:
+                    continue
+                db.commit()
+
+                scrape_kleinanzeigen.apply_async(args=[dict(task.parameters), task.id])
+                revived += 1
+                logger.info(
+                    f"Reaped stale recurring search task_id={task.id} "
+                    f"(interval={interval}s, last_run={task.last_run_at})"
+                )
+
+            sentry_metrics.count("scrape.recurring_reaped", revived)
+            if revived:
+                logger.info(f"Reaped {revived} stale recurring search(es)")
+    except Exception as e:
+        logger.error(f"reap_stale_recurring_searches failed: {e}")
+        db.rollback()
+    finally:
+        db.close()
