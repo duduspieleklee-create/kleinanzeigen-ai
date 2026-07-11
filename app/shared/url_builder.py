@@ -2,6 +2,8 @@ import re
 from typing import Optional
 from urllib.parse import urlencode
 
+from app.shared.category_codes import category_code
+
 
 def _sanitize_path_segment(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9\-]", "", value.replace(" ", "-").lower())
@@ -36,11 +38,10 @@ def build_kleinanzeigen_url(
     """
     Build a kleinanzeigen.de search URL from structured parameters.
 
-    When location_id is provided the canonical URL is used:
-      /s-{location_slug}/{keywords}/k0l{locationId}[r{radius}][+global.zustand:{condition}]
-
-    Without location_id (backward-compat / text-only location):
-      /[filter-prefixes/]s-{category}/{location-slug}/{keywords}/k0[+condition]
+    Category and location are both scoped by numeric codes packed into the
+    trailing k-token (``c{categoryId}`` / ``l{locationId}`` / ``r{radius}``),
+    not by the ``s-{slug}`` path segments, which are display/SEO only:
+      /[filter-prefixes/]s-{category}/{location-slug}/{keywords}/k0[c{catId}][l{locId}][r{radius}][+condition]
       ?minPrice=&maxPrice=&sortingField=&radius=
     """
     base = "https://www.kleinanzeigen.de"
@@ -79,8 +80,17 @@ def build_kleinanzeigen_url(
     if keywords and category:
         path_parts.append(_sanitize_path_segment(keywords))
 
-    # ── k0 token: locationId + radius go here when locationId is known ───────
+    # ── k token: category / locationId / radius codes ───────────────────────
+    # kleinanzeigen scopes a search via codes packed into this token, in the
+    # order c{categoryId} l{locationId} r{radius}, e.g. "k0c297l3331r20". The
+    # s-{category} path segment above is display/SEO only — WITHOUT the c-code
+    # the search isn't category-filtered at all (k0 == all categories), so a
+    # "haus-kaufen" search would return listings from every category. See
+    # app/shared/category_codes.py.
     k0 = "k0"
+    cat_code = category_code(category)
+    if cat_code:
+        k0 += f"c{cat_code}"
     if location_id:
         k0 += f"l{int(location_id)}"
         if radius and int(radius) in _VALID_RADII:
