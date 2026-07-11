@@ -76,8 +76,7 @@ self.addEventListener('push', e => {
     tag: 'notification',
     requireInteraction: true,
     data: { url: '/dashboard' },
-    actions: [],
-    sound: '/static/notification.mp3'
+    actions: []
   };
   try {
     if (e.data) {
@@ -85,11 +84,6 @@ self.addEventListener('push', e => {
       data = { ...data, ...parsed };
     }
   } catch (_) {}
-
-  // Play notification sound (optional)
-  if (data.sound && typeof playNotificationSound === 'function') {
-    playNotificationSound();
-  }
 
   // Vibration pattern for mobile
   const vibrationPattern = [200, 100, 200];

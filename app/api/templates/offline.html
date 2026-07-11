@@ -1,22 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline — kleinanzeigen-ai</title>
     <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
     <meta name="theme-color" content="#007bff">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
 </head>
 <body class="offline-page">
     <div class="offline-card">
-        <h2>Connection lost</h2>
-        <p>kleinanzeigen-ai couldn't reach the server. You may be offline, or the server may be restarting.</p>
-        <p>This page retries automatically and reloads as soon as the connection is back.</p>
-        <a href="/dashboard" class="retry-btn">Try again</a>
+        <h2>Verbindung verloren</h2>
+        <p>kleinanzeigen-ai konnte den Server nicht erreichen. Du bist entweder offline oder der Server startet gerade neu.</p>
+        <p>Diese Seite lädt automatisch neu, sobald die Verbindung wieder da ist.</p>
+        <a href="/dashboard" class="retry-btn">Erneut versuchen</a>
     </div>
     <script>
-        // Reload the originally requested page as soon as connectivity returns.
+        // Lädt die ursprünglich angeforderte Seite neu, sobald die Verbindung zurückkehrt.
         window.addEventListener('online', function () { location.reload(); });
         setInterval(function () {
             fetch('/healthz', { cache: 'no-store' })
