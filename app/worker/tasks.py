@@ -480,16 +480,26 @@ def run_test_push(db, user_id: int) -> dict:
     )
 
 
-def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int, object | None]:
+def _ensure_task(db, task_id: int | None, parameters: dict) -> tuple[int | None, object | None]:
     """
     Return (task_id, task_orm_object).
 
     - If task_id is supplied (API-triggered run): load and return the existing ScrapeTask.
+      If the row no longer exists (e.g. the user deleted the search between a reaper
+      claim and this run) return (None, None) — the caller bails, so we never insert
+      ScrapeResults against a missing parent (would blow the scrape_results_task_id_fkey
+      FK; see Sentry PYTHON-FASTAPI-X).
     - If task_id is None (Beat-scheduled run): create a new ScrapeTask owned by the
       configured SYSTEM_USER_ID so that ScrapeResult FK constraints are always satisfied.
     """
     if task_id is not None:
         task = db.query(ScrapeTask).filter(ScrapeTask.id == task_id).first()
+        if task is None:
+            logger.warning(
+                f"ScrapeTask id={task_id} no longer exists — skipping run to avoid "
+                f"orphaned ScrapeResult inserts (FK scrape_results_task_id_fkey)"
+            )
+            return None, None
         return task_id, task
 
     # Beat-scheduled run — create an internal task record
@@ -525,7 +535,15 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
     try:
         resolved_task_id, task = _ensure_task(db, task_id, parameters)
 
-        # Guard: if the user cancelled before this queued run started, bail out
+        # Guard: the ScrapeTask row vanished (user deleted the search, or a
+        # reaper pass revived a task whose row was dropped). _ensure_task returns
+        # (None, None) in that case — bail before the doomed ScrapeResult insert
+        # that would otherwise violate scrape_results_task_id_fkey (Sentry #X).
+        if task is None:
+            logger.info(
+                f"ScrapeTask for task_id={task_id} missing — aborting run cleanly."
+            )
+            return
         # without touching the status so the "cancelled" state is preserved.
         if task and task.status == "cancelled":
             logger.info(
@@ -1223,6 +1241,22 @@ def reap_stale_recurring_searches():
                 if not claimed:
                     continue
                 db.commit()
+
+                # Guard: the task row may have been deleted (user removed the
+                # search) since we selected it as a candidate. Don't re-enqueue a
+                # run against a missing parent — that only produces FK violations
+                # downstream (scrape_results_task_id_fkey) and re-primes forever.
+                still_exists = (
+                    db.query(ScrapeTask.id)
+                    .filter(ScrapeTask.id == task.id)
+                    .first()
+                )
+                if not still_exists:
+                    logger.info(
+                        f"Skipping reaped task_id={task.id}: ScrapeTask row gone "
+                        f"(search likely deleted) — not re-enqueuing."
+                    )
+                    continue
 
                 scrape_kleinanzeigen.apply_async(args=[dict(task.parameters), task.id])
                 revived += 1
