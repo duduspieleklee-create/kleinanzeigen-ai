@@ -28,15 +28,7 @@
             </div>
             <button type="button" class="results-new-search-btn" onclick="resultsStartSearch()">Suchen</button>
         </div>
-        <script>
-        function resultsStartSearch() {
-            var q = document.getElementById('smart-search-input').value.trim();
-            if (q) window.location.href = '/dashboard?keywords=' + encodeURIComponent(q);
-        }
-        document.getElementById('smart-search-input').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); resultsStartSearch(); }
-        });
-        </script>
+        <script type="module" src="/static/main.js?v={{ build_info.commit_short }}"></script>
 
         <div class="summary">
             <h1>{{ task.parameters.get('keywords', 'Suche') }}

@@ -19,43 +19,4 @@
     <span>Tippe auf <strong>&#x1F4CC; Teilen</strong> &rarr; <strong>&#x2795; Zum Home-Bildschirm</strong>, um die App hinzuzufügen.</span>
 </div>
 
-<script>
-(function () {
-    var btn = document.getElementById('pwa-install-btn');
-    var iosHint = document.getElementById('pwa-ios-hint');
-    if (!btn) return;
-
-    // Capture the native install prompt so we can trigger it from our button.
-    var deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', function (e) {
-        // Don't preventDefault immediately so the browser stays happy; we
-        // still capture the event for our button click.
-        deferredPrompt = e;
-        btn.hidden = false;
-    });
-
-    window.addEventListener('appinstalled', function () {
-        btn.hidden = true;
-        iosHint.hidden = true;
-        deferredPrompt = null;
-    });
-
-    btn.addEventListener('click', function () {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(function () {
-            deferredPrompt = null;
-            btn.hidden = true;
-        });
-    });
-
-    // iOS detection: no beforeinstallprompt, so offer the manual path.
-    var isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
-        (navigator.userAgent.includes('Macintosh') && 'ontouchend' in document);
-    var standalone = window.matchMedia('(display-mode: standalone)').matches ||
-        window.navigator.standalone === true;
-    if (isIOS && !standalone) {
-        iosHint.hidden = false;
-    }
-})();
-</script>
+<script type="module" src="/static/main.js?v={{ build_info.commit_short }}"></script>

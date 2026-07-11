@@ -57,25 +57,7 @@
     </div>
 
 
-    <script>
-        // Register the service worker so the app is installable as a PWA
-        // from the very first page, before the user logs in.
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(function () {});
-        }
-
-        // NEW: password show/hide toggle, shared pattern also used on register.html
-        document.querySelectorAll('.password-toggle').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var input = document.getElementById(btn.dataset.target);
-                if (!input) return;
-                var showing = input.type === 'text';
-                input.type = showing ? 'password' : 'text';
-                btn.textContent = showing ? 'Anzeigen' : 'Verbergen';
-                btn.setAttribute('aria-label', showing ? 'Passwort anzeigen' : 'Passwort verbergen');
-            });
-        });
-    </script>
+    <script type="module" src="/static/main.js?v={{ build_info.commit_short }}"></script>
     {% include "pwa_install.html" %}
 </body>
 </html>
