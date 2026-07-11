@@ -78,9 +78,18 @@ def geocode_locations(
             result[raw] = coords
 
     # Geocode misses inline, up to the budget; the rest stay null this call.
+    budget_exhausted_raw: list[str] = []
     for key in misses[:_MAX_NETWORK_LOOKUPS]:
         coords = geocode(key, db)
         for raw in originals_by_key[key]:
             result[raw] = coords
 
-    return result
+    # Remaining misses: exceeded per-request budget — list original strings
+    # so the client can distinguish "not found" from "not yet looked up".
+    for key in misses[_MAX_NETWORK_LOOKUPS:]:
+        budget_exhausted_raw.extend(originals_by_key[key])
+
+    return {
+        "coordinates": result,
+        "budget_exhausted": budget_exhausted_raw,
+    }

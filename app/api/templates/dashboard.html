@@ -2017,9 +2017,15 @@
             })
                 .then(r => r.json())
                 .then(function(data) {
+                    var coordsMap = data.coordinates || data;  // backwards compat
+                    var exhausted = data.budget_exhausted || [];
                     uncached.forEach(function(loc) {
-                        var coords = data[loc] || null;
-                        geocodeCache[loc] = coords;  // cache positive AND negative
+                        var coords = coordsMap[loc] || null;
+                        // Nur cachen, wenn die Location tatsächlich vom Server
+                        // verarbeitet wurde — nicht Budget-exhaustierte (Issue #221)
+                        if (exhausted.indexOf(loc) === -1) {
+                            geocodeCache[loc] = coords;
+                        }
                         out[loc] = coords;
                     });
                     return out;
