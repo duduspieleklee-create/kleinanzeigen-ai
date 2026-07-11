@@ -9,133 +9,140 @@
     <link rel="canonical" href="https://kleeblatt.space/">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-    <meta name="theme-color" content="#f6f9fc">
+    <meta name="theme-color" content="#2FBF71">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
-    <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Inter',-apple-system,sans-serif;background:#f6f9fc;color:#1a1a2e;line-height:1.6;-webkit-font-smoothing:antialiased}
-    .shell{max-width:1100px;margin:0 auto;padding:0 24px}
-    nav{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid #e6edf4}
-    .logo{font-weight:700;font-size:18px;color:#1a1a2e;letter-spacing:-.3px}
-    .logo em{font-style:normal;color:#635bff}
-    .nav-cta{background:#635bff;color:#fff;padding:8px 20px;border-radius:100px;font-size:14px;font-weight:600;text-decoration:none;transition:background .2s}
-    .nav-cta:hover{background:#5046e5}
-    .hero{text-align:center;padding:80px 0 20px;max-width:720px;margin:0 auto}
-    .hero h1{font-size:clamp(32px,5vw,52px);font-weight:700;letter-spacing:-1px;line-height:1.15;margin-bottom:16px;color:#0a0a1a}
-    .hero p{font-size:18px;color:#5a6a7a;margin-bottom:32px}
-    .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-    .btn-primary{background:#1a1a2e;color:#fff;padding:12px 28px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:background .2s}
-    .btn-primary:hover{background:#333}
-    .btn-secondary{background:#fff;color:#1a1a2e;padding:12px 28px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;border:1px solid #d0d9e4;transition:border-color .2s}
-    .btn-secondary:hover{border-color:#a0b0c0}
-    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin:64px 0}
-    .feature{background:#fff;border-radius:12px;padding:28px;border:1px solid #e8edf4;transition:border-color .2s,box-shadow .2s}
-    .feature:hover{border-color:#d0d9e4;box-shadow:0 4px 20px rgba(0,0,0,.04)}
-    .feature .ic{font-size:28px;margin-bottom:12px}
-    .feature h3{font-size:16px;font-weight:600;margin-bottom:6px;color:#1a1a2e}
-    .feature p{font-size:14px;color:#5a6a7a;line-height:1.6}
-    .demo-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:48px 0}
-    .demo-item{background:#fff;border:1px solid #e8edf4;border-radius:10px;padding:20px;text-align:center;font-size:14px;color:#5a6a7a;transition:border-color .2s}
-    .demo-item:hover{border-color:#d0d9e4}
-    .demo-item .di{font-size:32px;margin-bottom:8px}
-    .demo-item strong{display:block;color:#1a1a2e;font-weight:600;font-size:15px;margin-bottom:2px}
-    .cta-section{text-align:center;padding:48px 0 24px;border-top:1px solid #e8edf4;margin-top:32px}
-    .cta-section h2{font-size:22px;font-weight:700;margin-bottom:8px;color:#1a1a2e}
-    .cta-section p{color:#5a6a7a;font-size:15px;margin-bottom:24px}
-    .footer-links{text-align:center;padding:24px 0 40px;font-size:13px;color:#8a9aaa}
-    .footer-links a{color:#635bff;text-decoration:none}
-    .footer-links a:hover{text-decoration:underline}
-    @media(max-width:640px){
-        .hero{padding:48px 0 16px}
-        .hero h1{font-size:28px}
-        .features{grid-template-columns:1fr}
-        .demo-bar{grid-template-columns:1fr 1fr}
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://kleeblatt.space/">
+    <meta property="og:title" content="Kleinanzeigen.de Helfer – KI-gestützte Suche & Überwachung">
+    <meta property="og:description" content="Nie wieder ein gutes Angebot verpassen. KI sucht für dich auf Kleinanzeigen – rund um die Uhr.">
+    <meta property="og:image" content="https://kleeblatt.space/static/icons/icon-512.png">
+    <meta property="og:locale" content="de_DE">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://kleeblatt.space/">
+    <meta property="twitter:title" content="Kleinanzeigen.de Helfer – KI-gestützte Suche & Überwachung">
+    <meta property="twitter:description" content="Nie wieder ein gutes Angebot verpassen. KI sucht für dich auf Kleinanzeigen automatisch.">
+    <meta property="twitter:image" content="https://kleeblatt.space/static/icons/icon-512.png">
+
+    <!-- JSON-LD Structured Data -->
+    {% set plan_prices = {'basic': '0.00', 'core': '4.99', 'pro': '14.99'} %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Kleinanzeigen.de Helfer",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "url": "https://kleeblatt.space/",
+      "description": "Automatische KI-Überwachung für gespeicherte Kleinanzeigen-Suchen mit Sofort-Benachrichtigungen und Preis-Fairness-Check.",
+      "offers": [
+        {% for key, cfg in plans.items() %}
+        {
+          "@type": "Offer",
+          "name": "{{ cfg.label }}",
+          "price": "{{ plan_prices.get(key, '0.00') }}",
+          "priceCurrency": "EUR",
+          "description": "{{ cfg.credits_per_week }} Credits/Woche, bis zu {{ cfg.max_active_searches }} laufende Suchen, {% if cfg.min_interval_seconds <= 60 %}Sofort-Benachrichtigungen{% else %}Intervalle ab {{ cfg.min_interval_seconds // 60 }} Minuten{% endif %}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
     }
-    </style>
+    </script>
 </head>
-<body>
-    <div class="shell">
-        <nav>
-            <span class="logo">✦ <em>kleinanzeigen</em> Helfer</span>
-            <a href="/auth/register" class="nav-cta">Kostenlos starten →</a>
-        </nav>
+<body class="landing-page">
+    <div class="lp-shell">
+        <div class="lp-card">
+            <nav class="lp-nav">
+                <span class="lp-wordmark">Kleinanzeigen.de Helfer</span>
+                <a href="/auth/register" class="lp-nav-cta">Kostenlos starten</a>
+            </nav>
 
-        <div class="hero">
-            <h1>Beschreib, was du suchst.<br>Die KI findet es.</h1>
-            <p>Chatten, suchen, finden – dein persönlicher KI-Assistent für Kleinanzeigen. Mit Betrugswarnung, Preistrends und Sofort-Benachrichtigungen.</p>
-            <div class="hero-actions">
-                <a href="/auth/register" class="btn-primary">Kostenlos starten</a>
-                <a href="#features" class="btn-secondary">Wie es funktioniert</a>
-            </div>
-        </div>
+            <header class="lp-hero">
+                <div class="lp-radar" aria-hidden="true">
+                    <span class="lp-radar-ring lp-radar-ring-1"></span>
+                    <span class="lp-radar-ring lp-radar-ring-2"></span>
+                    <span class="lp-radar-ring lp-radar-ring-3"></span>
+                    <span class="lp-radar-sweep"></span>
+                    <span class="lp-radar-dot"></span>
+                </div>
+                <h1>Nie wieder ein gutes Angebot verpassen</h1>
+                <p class="lp-hero-sub">
+                    KI sucht für dich auf Kleinanzeigen – rund um die Uhr.
+                </p>
+                <div class="lp-hero-actions">
+                    <a href="/auth/register" class="lp-hero-cta">
+                        Kostenlos starten
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </header>
 
-        <div id="features" class="features">
-            <div class="feature">
-                <div class="ic">💬</div>
-                <h3>Chat-Suche</h3>
-                <p>„Gebrauchtes Eichensofa unter 200€ in Berlin“ – sag der KI was du suchst, sie findet es.</p>
-            </div>
-            <div class="feature">
-                <div class="ic">🔄</div>
-                <h3>Automatische Überwachung</h3>
-                <p>Einmal eingerichtet, läuft die Suche für immer. Du bekommst nur die neuen Treffer.</p>
-            </div>
-            <div class="feature">
-                <div class="ic">🛡️</div>
-                <h3>Betrugswarnung</h3>
-                <p>Verdächtige Anzeigen werden automatisch erkannt – Phishing, Fake-Verkäufer, unseriöse Preise.</p>
-            </div>
-            <div class="feature">
-                <div class="ic">🏷️</div>
-                <h3>Fairness-Check</h3>
-                <p>Ist der Preis fair? Die KI vergleicht mit ähnlichen Angeboten und zeigt dir, ob du zuschlagen solltest.</p>
-            </div>
-            <div class="feature">
-                <div class="ic">📈</div>
-                <h3>Google Trends</h3>
-                <p>Aktuelle Suchtrends zu deinen Keywords – sieh, was gerade angesagt ist.</p>
-            </div>
-            <div class="feature">
-                <div class="ic">🔔</div>
-                <h3>Sofort-Benachrichtigungen</h3>
-                <p>Push aufs Handy, sobald ein neuer Treffer gefunden wird. Kein ständiges Neuladen.</p>
-            </div>
-        </div>
+            <section class="lp-benefits" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    </div>
+                    <div>
+                        <h3>Chat-Suche</h3>
+                        <p>Beschreib einfach was du suchst – die KI findet passende Anzeigen.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    </div>
+                    <div>
+                        <h3>Automatisch überwachen</h3>
+                        <p>Einmal eingerichtet, läuft die Suche für immer – Push bei neuen Treffern.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-tangerine">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </div>
+                    <div>
+                        <h3>Fairness-Check</h3>
+                        <p>Ist der Preis fair? Die KI vergleicht mit ähnlichen Angeboten.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div>
+                        <h3>Betrugswarnung</h3>
+                        <p>Verdächtige Anzeigen werden automatisch erkannt und markiert.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div>
+                        <h3>Google Trends</h3>
+                        <p>Aktuelle Suchtrends zu deinen Keywords – live integriert.</p>
+                    </div>
+                </div>
+                <div class="lp-benefit-card">
+                    <div class="lp-benefit-icon lp-benefit-icon-tangerine">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    </div>
+                    <div>
+                        <h3>Sofort-Benachrichtigung</h3>
+                        <p>Push aufs Handy, sobald ein neuer Treffer gefunden wird.</p>
+                    </div>
+                </div>
+            </section>
 
-        <div class="demo-bar">
-            <div class="demo-item">
-                <div class="di">💬</div>
-                <strong>Chat-Suche</strong>
-                Einfach erzählen, was du brauchst
+            <div class="lp-card-footer">
+                <a href="/billing">Alle Details</a>
             </div>
-            <div class="demo-item">
-                <div class="di">🛡️</div>
-                <strong>Betrugsprüfung</strong>
-                Jede Anzeige wird gescannt
-            </div>
-            <div class="demo-item">
-                <div class="di">📈</div>
-                <strong>Google Trends</strong>
-                Aktuelle Trend-Daten live
-            </div>
-            <div class="demo-item">
-                <div class="di">🔔</div>
-                <strong>Push-Alarm</strong>
-                Sofort benachrichtigt
-            </div>
-        </div>
-
-        <div class="cta-section">
-            <h2>Kein Angebot mehr verpassen</h2>
-            <p>Die KI sucht für dich – rund um die Uhr. Kostenlos starten, keine Kreditkarte nötig.</p>
-            <a href="/auth/register" class="btn-primary">Kostenlos starten →</a>
-        </div>
-
-        <div class="footer-links">
-            <a href="/billing">Alle Details</a>
         </div>
     </div>
 
