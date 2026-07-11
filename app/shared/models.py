@@ -1,5 +1,5 @@
 import sqlalchemy as sa
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Boolean, Column, Float, Integer, String, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.shared.database import Base
@@ -268,3 +268,31 @@ class BillingEvent(Base):
 
     def __repr__(self):
         return f"<BillingEvent(id={self.id}, event_id='{self.event_id}', status='{self.status}')>"
+
+
+class GeocodeCache(Base):
+    """Server-side cache of location string -> lat/lon.
+
+    The results map (dashboard "Kartenansicht") needs coordinates for each
+    result's free-text location. Rather than geocoding in the browser on every
+    map open — which hammered nominatim.openstreetmap.org, violated its ~1
+    req/s usage policy, and repeated the same lookups every time — the API
+    geocodes each distinct location once and stores it here (see
+    app/shared/geocoding.py). Cache rows are location-derived, not user-owned.
+
+    ``lat``/``lon`` NULL is a NEGATIVE cache entry: the location was looked up
+    but Nominatim returned no hit, so we remember that and don't re-query it.
+    """
+    __tablename__ = "geocode_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # Normalised lookup key (lower-cased, whitespace-collapsed) so trivially
+    # different spellings of the same place share one cache row / one lookup.
+    location = Column(String(200), nullable=False, unique=True, index=True)
+    lat = Column(Float)   # NULL => geocoded but not found (negative cache)
+    lon = Column(Float)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<GeocodeCache(location='{self.location}', lat={self.lat}, lon={self.lon})>"

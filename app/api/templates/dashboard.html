@@ -1867,6 +1867,9 @@
         // ── Location map view ──
         var mapInstance = null;
         var mapMarkers = [];
+        // Cache of location string -> {lat, lon} (or null when not found), kept
+        // across map re-opens so we never re-geocode the same place.
+        var geocodeCache = {};
 
         function toggleMapView() {
             var container = document.getElementById('map-container');
@@ -1890,37 +1893,82 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(mapInstance);
 
-            var bounds = L.latLngBounds();
+            // Group cards by location so each distinct place is geocoded once,
+            // not once per result (many cards share a city).
+            var byLocation = {};
             document.querySelectorAll('.result-card-wrapper[data-location]').forEach(function(wrapper) {
                 var location = wrapper.dataset.location;
-                if (location) {
-                    geocodeLocation(location, wrapper, bounds);
-                }
+                if (!location) return;
+                (byLocation[location] = byLocation[location] || []).push(wrapper);
             });
 
-            if (bounds.isValid()) {
-                mapInstance.fitBounds(bounds, { padding: [50, 50] });
-            }
+            var locations = Object.keys(byLocation);
+            if (locations.length === 0) return;
+
+            // Geocoding is done server-side (POST /api/geocode) with a DB cache
+            // and rate limiting, so the browser makes ONE request for all the
+            // distinct locations instead of hitting Nominatim per card (the old
+            // behaviour, which violated Nominatim's usage policy). The server
+            // returns {location: {lat,lon}|null}; unresolved ones (not found, or
+            // past the per-request geocode budget) come back null and fill in on
+            // a later open as the cache warms.
+            resolveLocations(locations).then(function(coordsByLocation) {
+                if (!mapInstance) return;
+                var bounds = L.latLngBounds();
+                locations.forEach(function(loc) {
+                    var coords = coordsByLocation[loc];
+                    if (!coords) return;
+                    byLocation[loc].forEach(function(wrapper) {
+                        var marker = L.marker([coords.lat, coords.lon]).addTo(mapInstance);
+                        var title = (wrapper.querySelector('.rc-title')?.textContent || 'Item').trim();
+                        var price = (wrapper.querySelector('.rc-price-main')?.textContent || 'N/A').trim();
+                        marker.bindPopup(title + ' – ' + price);
+                        mapMarkers.push(marker);
+                        bounds.extend([coords.lat, coords.lon]);
+                    });
+                });
+                // Fit only after markers exist — the old code fitBounds()'d
+                // before the async lookups resolved, so it never zoomed in.
+                if (bounds.isValid()) {
+                    mapInstance.fitBounds(bounds, { padding: [50, 50] });
+                }
+            });
         }
 
-        function geocodeLocation(location, wrapper, bounds) {
-            if (!mapInstance) return;
-            var query = encodeURIComponent(location + ', Germany');
-            fetch('https://nominatim.openstreetmap.org/search?q=' + query + '&format=json&limit=1')
+        // Resolves an array of location strings to {location: {lat,lon}|null}
+        // via the server, using the in-page cache to skip already-known ones.
+        // Never rejects — on error it resolves with whatever the cache holds so
+        // the map still renders its known markers.
+        function resolveLocations(locations) {
+            var out = {};
+            var uncached = [];
+            locations.forEach(function(loc) {
+                if (Object.prototype.hasOwnProperty.call(geocodeCache, loc)) {
+                    out[loc] = geocodeCache[loc];
+                } else {
+                    uncached.push(loc);
+                }
+            });
+            if (uncached.length === 0) return Promise.resolve(out);
+
+            return fetch('/api/geocode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locations: uncached })
+            })
                 .then(r => r.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        var lat = parseFloat(data[0].lat);
-                        var lon = parseFloat(data[0].lon);
-                        var marker = L.marker([lat, lon]).addTo(mapInstance);
-                        var title = wrapper.querySelector('.card-title')?.textContent || 'Item';
-                        var price = wrapper.querySelector('.card-price')?.textContent || 'N/A';
-                        marker.bindPopup(title + ' - ' + price);
-                        mapMarkers.push(marker);
-                        bounds.extend([lat, lon]);
-                    }
+                .then(function(data) {
+                    uncached.forEach(function(loc) {
+                        var coords = data[loc] || null;
+                        geocodeCache[loc] = coords;  // cache positive AND negative
+                        out[loc] = coords;
+                    });
+                    return out;
                 })
-                .catch(err => console.error('Geocoding error:', err));
+                .catch(function(err) {
+                    console.error('Geocoding error:', err);
+                    return out;  // render whatever we already had cached
+                });
         }
 
         // ── Smart sharing functions ──
