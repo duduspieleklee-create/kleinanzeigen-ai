@@ -75,6 +75,36 @@ def test_get_related_terms_falls_back_to_mock_on_error(sss, monkeypatch):
     assert sss.get_related_terms("Auto") == ["Reifen", "Motor", "Fahrer", "Bremse", "Getriebe"]
 
 
+def test_get_related_terms_retries_transient_failures_then_succeeds(sss, monkeypatch):
+    calls = {"n": 0}
+
+    def fake_get(url, *a, **k):
+        calls["n"] += 1
+        if "wikipedia" not in str(url):
+            return SimpleNamespace(
+                raise_for_status=lambda: None,
+                json=lambda: [],
+            )
+        if calls["n"] < 3:
+            raise RuntimeError("transient wikipedia failure")
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "query": {
+                    "search": [
+                        {"title": "Reifen – Wikipedia"},
+                        {"title": "Motor"},
+                    ]
+                }
+            },
+        )
+
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", fake_get)
+    result = sss.get_related_terms("Auto")
+    assert result[:2] == ["Reifen", "Motor"]
+    assert calls["n"] == 3
+
+
 # ── Lokale Trends ──────────────────────────────────────────────────────────
 def test_get_local_trends_known_keyword(sss):
     assert "IKEA" in sss.get_local_trends("Gartenmöbel")
