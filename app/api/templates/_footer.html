@@ -1,0 +1,18 @@
+<footer class="app-footer">
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <span class="footer-logo">kleinanzeigen-ai</span>
+            <span class="footer-tagline">Automatische Suche auf Kleinanzeigen.de</span>
+        </div>
+        <nav class="footer-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/settings">Einstellungen</a>
+            <a href="/billing">Tarife</a>
+            <a href="mailto:support@kleeblatt.space">Support</a>
+            <a href="https://github.com/duduspieleklee-create/kleinanzeigen-ai" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+        <div class="footer-version">
+            v{{ build_info.version }} · {{ build_info.commit_short }} · {{ build_info.built_at }}{% if build_info.environment != 'prod' %} · {{ build_info.environment }}{% endif %}
+        </div>
+    </div>
+</footer>

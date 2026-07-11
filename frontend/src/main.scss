@@ -4793,3 +4793,65 @@ body.landing-page {
   .overview-card { padding: 12px 8px; }
   .feature-info-card { padding: 16px; }
 }
+
+/* ── App footer ─────────────────────────────────────────────────── */
+.app-footer {
+  margin-top: 32px;
+  padding: 20px 0 28px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.footer-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.footer-logo {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+.footer-tagline {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+.footer-links a {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.footer-links a:hover {
+  color: var(--color-accent);
+}
+.footer-version {
+  font-size: 0.7rem;
+  color: var(--color-text-subtle);
+  font-family: var(--font-mono, monospace);
+}
+
+@media (min-width: 640px) {
+  .footer-inner {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+    align-items: center;
+  }
+  .footer-brand { align-items: flex-start; }
+}
