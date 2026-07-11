@@ -4586,3 +4586,85 @@ body.landing-page {
   flex: none;
   color: var(--color-accent);
 }
+
+/* ---------- smart search demo (landing page) ------------------------------- */
+.lp-smart-search-demo {
+    margin-top: 28px;
+    text-align: left;
+    max-width: 420px;
+}
+.lp-demo-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text, #1a1a2e);
+    margin-bottom: 6px;
+}
+.lp-smart-search-demo .suggest-wrap {
+    position: relative;
+}
+.lp-smart-search-demo input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.lp-smart-search-demo input:focus {
+    border-color: var(--color-accent, #2FBF71);
+}
+.lp-demo-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: rgba(0,0,0,0.45);
+}
+
+/* ---------- smart search on results page ---------------------------------- */
+.results-smart-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 14px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+.results-smart-search label {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.results-smart-search .suggest-wrap {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+}
+.results-smart-search input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+}
+.results-smart-search input:focus {
+    border-color: #007bff;
+}
+.results-new-search-btn {
+    padding: 8px 18px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.results-new-search-btn:hover {
+    background: #0056b3;
+}

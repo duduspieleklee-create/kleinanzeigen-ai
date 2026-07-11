@@ -17,6 +17,27 @@
     </div>
 
     <div class="wrap">
+        {# ── Smart Search: neue Suche mit KI-Vorschlägen ───────────────────── #}
+        <div class="results-smart-search">
+            <label for="smart-search-input">Neue Suche mit KI-Vorschlägen:</label>
+            <div class="suggest-wrap">
+                <input type="text" id="smart-search-input"
+                       placeholder="Suchbegriff eingeben…"
+                       autocomplete="off" />
+                <ul id="smart-search-suggestions" class="suggest-list"></ul>
+            </div>
+            <button type="button" class="results-new-search-btn" onclick="resultsStartSearch()">Suchen</button>
+        </div>
+        <script>
+        function resultsStartSearch() {
+            var q = document.getElementById('smart-search-input').value.trim();
+            if (q) window.location.href = '/dashboard?keywords=' + encodeURIComponent(q);
+        }
+        document.getElementById('smart-search-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); resultsStartSearch(); }
+        });
+        </script>
+
         <div class="summary">
             <h1>{{ task.parameters.get('keywords', 'Suche') }}
                 <span class="count-badge">{{ total_count }} Ergebnis(se)</span>
@@ -130,6 +151,7 @@
         </div>
         {% endif %}
     </div>
+    {% include "_smart_search_suggestions.html" %}
     {% include "pwa_install.html" %}
 </body>
 </html>
