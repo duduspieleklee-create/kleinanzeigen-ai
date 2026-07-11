@@ -14,8 +14,6 @@ import logging
 import re
 from typing import Optional
 
-from app.api.config import settings
-
 logger = logging.getLogger("kleinanzeigen-ai")
 
 # Pattern: Preis-Angaben (range zuerst, sonst frisst "max" den "bis"-Range)
