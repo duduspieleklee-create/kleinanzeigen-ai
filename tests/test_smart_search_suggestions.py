@@ -303,3 +303,46 @@ def test_api_endpoint_returns_suggestions(monkeypatch):
     assert isinstance(resp["suggestions"], dict)
     # data/trends.json liefert Trends für "Auto" ohne Netz
     assert "Aktuelle Trends für 'Auto'" in resp["suggestions"]
+
+
+# ── Persistenz (search_suggestions DB) ─────────────────────────────────────
+def test_persist_suggestions_creates_and_increments(monkeypatch):
+    """Vorschläge werden in der DB gespeichert und bei Wiederholung hochgezählt."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    from app.shared.database import Base
+    from app.shared.models import SearchSuggestion
+    from app.api.routers.smart_search import _persist_suggestions
+
+    eng = create_engine("sqlite:///:memory:",
+                        connect_args={"check_same_thread": False},
+                        poolclass=StaticPool)
+    Base.metadata.create_all(eng)
+    Session = sessionmaker(bind=eng, expire_on_commit=False)
+
+    # Mock external calls
+    monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", lambda *a, **k: SimpleNamespace(
+        raise_for_status=lambda: None, json=lambda: []
+    ))
+
+    db = Session()
+    suggestions = {
+        "Synonyme für 'Auto'": ["PKW", "Wagen"],
+        "Verwandte Begriffe für 'Auto'": ["Reifen"],
+    }
+
+    # First call → creates rows
+    _persist_suggestions("Auto", suggestions, db)
+    rows = db.query(SearchSuggestion).filter(SearchSuggestion.keyword == "Auto").all()
+    assert len(rows) == 3
+    assert all(r.usage_count == 1 for r in rows)
+
+    # Second call → increments
+    _persist_suggestions("Auto", suggestions, db)
+    rows = db.query(SearchSuggestion).filter(SearchSuggestion.keyword == "Auto").all()
+    assert len(rows) == 3
+    assert all(r.usage_count == 2 for r in rows)
+
+    db.close()
