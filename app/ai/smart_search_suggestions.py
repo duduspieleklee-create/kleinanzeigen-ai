@@ -11,7 +11,8 @@ API-Integration:
 from typing import List, Dict
 import requests
 import logging
-from pytrends.request import TrendReq
+import json
+from pathlib import Path
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
@@ -36,6 +37,21 @@ class SmartSearchSuggestions:
             "Schuhe": ["Sohle", "Schnürsenkel", "Einlagen"],
         }
         self.cache = {}  # Cache für Suchvorschläge
+        self.trends = self._load_trends()
+
+    def _load_trends(self) -> Dict[str, List[str]]:
+        """Lädt Trends aus der lokalen Datenbank."""
+        try:
+            trends_path = Path(__file__).parent.parent / ".." / "data" / "trends.json"
+            with open(trends_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Trends-Datenbank: {e}")
+            return {}
+
+    def get_local_trends(self, keyword: str) -> List[str]:
+        """Holt Trends aus der lokalen Datenbank."""
+        return self.trends.get(keyword, [])
 
     def get_synonyms(self, keyword: str) -> List[str]:
         """Holt Synonyme von Datamuse-API."""
@@ -72,26 +88,6 @@ class SmartSearchSuggestions:
             logger.error(f"Wikipedia-API-Fehler: {e}")
             return self.related_terms.get(keyword, [])
 
-    def get_trending_terms(self, keyword: str) -> List[str]:
-        """Holt Trends von Google Trends (Scraping)."""
-        try:
-            pytrends = TrendReq(hl='de-DE', tz=360)
-            pytrends.build_payload(kw_list=[keyword])
-            related = pytrends.related_queries()
-            top_queries = related.get(keyword, {}).get("top", [])
-            if isinstance(top_queries, list):
-                return [query["query"] for query in top_queries[:10]]
-            elif isinstance(top_queries, str):
-                # Falls die Daten als String zurückgegeben werden, parsen wir sie
-                top_queries = eval(top_queries)
-                return [query["query"] for query in top_queries[:10]]
-            else:
-                # Falls die Daten als DataFrame zurückgegeben werden
-                return top_queries["query"].tolist()[:10]
-        except Exception as e:
-            logger.error(f"Google Trends-Scraping-Fehler: {e}")
-            return []
-
     def get_suggestions(self, query: str) -> Dict[str, List[str]]:
         """Generiert Suchvorschläge für eine Nutzeranfrage."""
         if query in self.cache:
@@ -103,14 +99,14 @@ class SmartSearchSuggestions:
         for keyword in keywords:
             synonyms = self.get_synonyms(keyword)
             related_terms = self.get_related_terms(keyword)
-            trending_terms = self.get_trending_terms(keyword)
+            local_trends = self.get_local_trends(keyword)
 
             if synonyms:
                 suggestions[f"Synonyme für '{keyword}'"] = synonyms
             if related_terms:
                 suggestions[f"Verwandte Begriffe für '{keyword}'"] = related_terms
-            if trending_terms:
-                suggestions[f"Aktuelle Trends für '{keyword}'"] = trending_terms
+            if local_trends:
+                suggestions[f"Aktuelle Trends für '{keyword}'"] = local_trends
 
         self.cache[query] = suggestions
         return suggestions
