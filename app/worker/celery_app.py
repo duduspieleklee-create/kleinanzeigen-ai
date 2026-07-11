@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.shared.sentry import init_sentry  # noqa: E402 — must follow load_dotenv()
+from app.shared.observability import install_log_bridge  # noqa: E402
 
 init_sentry("worker")
+install_log_bridge()
 
 # Redis connection from environment variable
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

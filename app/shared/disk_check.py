@@ -29,6 +29,8 @@ def main() -> None:
 
     if pct_used >= threshold:
         init_sentry("disk-check")
+        from app.shared.observability import install_log_bridge
+        install_log_bridge()
         sentry_sdk.capture_message(
             f"Disk usage at {pct_used:.1f}% on {path} (threshold {threshold:.0f}%)",
             level="warning",

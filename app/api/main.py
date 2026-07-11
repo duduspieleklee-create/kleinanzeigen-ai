@@ -28,10 +28,11 @@ from app.shared.token_tracking import get_token_usage_stats
 from app.shared.proxy import is_rotating_enabled
 from app.shared.logging_config import logger
 from app.shared.sentry import init_sentry
-import sentry_sdk
+from app.shared.observability import install_log_bridge
 
 logger.info("Starting kleinanzeigen-ai application...")
 init_sentry("api")
+install_log_bridge()
 
 def _relative_time_de(dt) -> str:
     """German relative-time label for the results feed ("vor 5 Min.", "gestern", ...)."""
@@ -66,6 +67,30 @@ def _is_recent(dt, hours: int = 6) -> bool:
 
 
 app = FastAPI(title="kleinanzeigen-ai")
+
+# Sentry request context: tag route + (best-effort) user id per request so
+# API errors become filterable in Sentry without touching every endpoint.
+from jose import jwt as _jwt  # noqa: E402
+
+from app.api.config import settings as _settings  # noqa: E402
+from app.shared.observability import set_request_context  # noqa: E402
+
+
+@app.middleware("http")
+async def _sentry_request_context(request: Request, call_next):
+    user_id = None
+    token = request.cookies.get("access_token")
+    if token:
+        try:
+            payload = _jwt.decode(token, _settings.secret_key, algorithms=["HS256"])
+            sub = payload.get("sub")
+            if sub is not None:
+                user_id = int(sub)
+        except Exception:
+            pass
+    set_request_context(user_id, request.url.path, request.method)
+    return await call_next(request)
+
 
 # Rate limiting — brute-force / credential-stuffing protection on auth routes.
 app.state.limiter = limiter
@@ -217,7 +242,6 @@ async def dashboard(
         return await _build_dashboard(request, db)
     except Exception:
         logger.exception("Unhandled exception on /dashboard")
-        sentry_sdk.capture_exception()
         raise
 
 
@@ -264,7 +288,6 @@ async def _build_dashboard(
             admin_searches = db.query(AdminSearch).order_by(AdminSearch.created_at.desc()).all()
         except Exception:
             logger.exception("Failed to load admin searches for dashboard")
-            sentry_sdk.capture_exception()
             admin_error = "Admin-Suchen konnten nicht geladen werden."
             db.rollback()  # reset session before the next query
         try:
@@ -272,7 +295,6 @@ async def _build_dashboard(
             rotating_proxy_enabled = is_rotating_enabled(db)
         except Exception:
             logger.exception("Failed to load proxies for dashboard")
-            sentry_sdk.capture_exception()
             proxy_error = "Proxy-Status konnte nicht geladen werden."
             db.rollback()
 
