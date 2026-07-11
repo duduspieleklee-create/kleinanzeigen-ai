@@ -13,7 +13,6 @@ Funktionen:
 """
 import logging
 import re
-from hashlib import md5
 from urllib.parse import urlparse
 
 logger = logging.getLogger("kleinanzeigen-ai")
