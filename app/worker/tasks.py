@@ -19,7 +19,7 @@ from app.shared.email_notifications import (
 )
 from app.shared.metrics import track_job
 from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
-from app.shared.smart_alerts import build_smart_summary
+from app.shared.smart_alerts import build_smart_summary, build_push_notification
 from app.shared.plans import ensure_weekly_credits, plan_config
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
 from app.shared.proxy import proxies_for_requests
@@ -192,10 +192,10 @@ def _save_notification_delivery(db, user_id: int, task_id: int | None, channel: 
 
 
 def _send_push_notifications(
-    db, user_id: int, result_count: int, keywords: str, highlight: str = None,
+    db, user_id: int, result_count: int, keywords: str = "", highlight: str = None,
     location: str = None, price_range: str = None, best_price: str = None,
     image_url: str = None, task_id: int | None = None, bypass_preferences: bool = False,
-    tag: str = None, title: str = None,
+    tag: str = None, title: str = None, deal: dict = None, cheapest_price: str = None,
 ) -> dict:
     """Send a web push to every subscription of a user.
 
@@ -244,26 +244,35 @@ def _send_push_notifications(
     if not subs:
         return summary
 
-    # Build compelling notification title and body
-    if title:
-        title_text = title
-    elif highlight:
-        # Highlight the best deal
-        title_text = "🎯 Great Deal Found!"
+    # Build compelling notification title and body.
+    # Test paths pass explicit title/highlight; keep honoring those verbatim so
+    # the "send test notification" button stays a clear, self-labeled toast.
+    if title or highlight:
+        title_text = title or (
+            "🎯 Top-Deal gefunden!" if highlight else
+            f"🆕 {result_count} neue Treffer"
+        )
+        body = highlight if highlight else keywords
     else:
-        # Multiple new listings
-        title_text = f"✨ {result_count} new listing{'s' if result_count != 1 else ''}"
+        # Real runs: deterministic, German, value-first (price/saving/location).
+        # `deal` is only present when the user searched a concrete item AND a
+        # below-market offer was found — see the caller in scrape_kleinanzeigen.
+        built = build_push_notification(
+            new_count=result_count,
+            keywords=keywords,
+            cheapest_price=cheapest_price,
+            location=location,
+            deal=deal,
+        )
+        title_text = built["title"]
+        body = built["body"]
 
     # Tag: tests pass an explicit, per-click unique tag so each click is a
     # distinct, visible toast (browsers collapse same-tag notifications). Real
     # runs group by search via "search-{task_id}".
     effective_tag = tag if tag is not None else f"search-{task_id}"
 
-    # Build rich notification payload with actions and metadata
-    # Body takes the highlight when present, otherwise the keywords.
-    body = highlight if highlight else f"{keywords}"
-
-    payload = json.dumps({
+    payload_data = {
         "title": title_text,
         "body": body,
         "icon": "/static/icon-192x192.png",
@@ -273,8 +282,8 @@ def _send_push_notifications(
         "data": {
             "searchKeywords": keywords,
             "resultCount": result_count,
-            "location": location or "All locations",
-            "priceRange": price_range or "Any price",
+            "location": location or "Alle Orte",
+            "priceRange": price_range or "Beliebig",
             "bestPrice": best_price,
             "taskId": task_id,
             "url": "/dashboard#tab-my-results",
@@ -282,20 +291,26 @@ def _send_push_notifications(
         "actions": [
             {
                 "action": "view-results",
-                "title": "View Results",
+                "title": "Ansehen",
                 "icon": "/static/icon-view.png"
             },
             {
                 "action": "open-search",
-                "title": "Open Search",
+                "title": "Suche öffnen",
                 "icon": "/static/icon-search.png"
             },
             {
                 "action": "dismiss",
-                "title": "Dismiss"
+                "title": "Ausblenden"
             }
         ]
-    })
+    }
+    # Big preview image (listing thumbnail) when we have one — supported by
+    # Chrome/Edge/Android. Data is already computed by the caller; we just
+    # surface it (previously it was passed in but never rendered).
+    if image_url:
+        payload_data["image"] = image_url
+    payload = json.dumps(payload_data)
     # VAPID_PRIVATE_KEY must be the raw base64url-encoded 32-byte EC scalar
     # (paired with the raw public key the browser uses), not PEM. pywebpush's
     # webpush() loads string keys via Vapid.from_string(), which only strips
@@ -767,14 +782,17 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         # The baseline run is silent: a "25 new listings" push right after
         # setting up a search is noise, and none of it is genuinely new.
         if task and new_count > 0 and not is_baseline:
-            # Highlight the best below-market deal among the new listings.
-            # Deal badges are a Core/Pro feature — Basic owners get the plain
-            # "N new listing(s)" body.
+            keywords = parameters.get("keywords", "") or ""
+            # Deal-Highlight nur, wenn konkret nach einem Gegenstand gesucht
+            # wird (keywords gesetzt) — bei reinem Kategorie-/Service-Stöbern
+            # ist ein "unter Marktpreis" sinnlos. Zusätzlich Core/Pro-gated.
             highlight = None
             best_price_str = None
             best_image_url = None
             best_title = None
-            if owner and (owner.is_admin or plan_config(owner.plan).get("deal_badges")):
+            deal = None
+            deal_gated = owner and (owner.is_admin or plan_config(owner.plan).get("deal_badges"))
+            if keywords and deal_gated:
                 all_values = [
                     v for (v,) in db.query(ScrapeResult.price_value)
                     .filter(ScrapeResult.task_id == resolved_task_id).all()
@@ -785,48 +803,64 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     badge = deal_badge(r.price_value, med)
                     if badge and badge["cls"] == "deal-great":
                         if best is None or r.price_value < best[0]:
-                            best = (r.price_value, r.title, badge["label"], r.image_url)
+                            best = (r.price_value, r.title, badge["label"], r.image_url, r.trust_score)
                 if best:
                     highlight = f"🔥 {best[2]}: {best[1]}"
                     best_price_str = f"€{best[0]}"
                     best_image_url = best[3]
                     best_title = best[1]
+                    deal = {
+                        "title": best[1],
+                        "price": "geschenkt" if best[0] == 0 else f"{best[0]} €",
+                        "saving_eur": int(round(med - best[0])) if med else None,
+                        "trust_score": best[4],
+                    }
 
             # Smart Alerts: one deterministic sentence for the dashboard, reusing
             # the deal data computed above (so it's plan-gated for free — Basic
             # owners never had a best_title/best_price_str set).
             task.last_summary = build_smart_summary(
                 new_count,
-                parameters.get("keywords", ""),
+                keywords,
                 deal_title=best_title,
                 best_price_str=best_price_str,
             )
             db.commit()
 
-            location = parameters.get("location", "All locations")
+            location = parameters.get("location") or None
             price_min = parameters.get("price_min")
             price_max = parameters.get("price_max")
             price_range = None
             if price_min or price_max:
                 price_range = f"€{price_min or '0'}–€{price_max or '∞'}"
 
+            # Günstigster neuer Treffer (für den Fallback-Body ohne Deal) —
+            # nutzt die bereits geparsten Preise, kein Netzwerk/kein Plan-Gate.
+            priced = [r for r in new_results if r.price_value is not None]
+            cheapest_price = None
+            if priced:
+                cheapest = min(priced, key=lambda r: r.price_value)
+                cheapest_price = "geschenkt" if cheapest.price_value == 0 \
+                    else f"{cheapest.price_value} €"
+
             _send_push_notifications(
                 db,
                 user_id=task.user_id,
                 result_count=new_count,
-                keywords=parameters.get("keywords", "your search"),
-                highlight=highlight,
+                keywords=keywords,
                 location=location,
                 price_range=price_range,
                 best_price=best_price_str,
                 image_url=best_image_url,
                 task_id=resolved_task_id,
+                deal=deal,
+                cheapest_price=cheapest_price,
             )
             _send_email_notifications(
                 db,
                 user_id=task.user_id,
                 result_count=new_count,
-                keywords=parameters.get("keywords", "your search"),
+                keywords=keywords or "deine Suche",
                 new_results=new_results,
                 highlight=highlight,
                 task_id=resolved_task_id,
