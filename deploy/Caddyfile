@@ -9,6 +9,15 @@
 #
 # See the "Hostname options" section of docs/vps-deployment.md if you
 # only have a bare IP and no hostname at all.
-kleeblatt.space, www.kleeblatt.space {
+# Canonical host: redirect www -> apex so there is exactly one origin.
+# Without this, a visitor on https://www.kleeblatt.space sends Origin/Referer
+# with a "www." host, but Caddy proxies Host: kleeblatt.space upstream, so the
+# app's CSRF middleware sees mismatched hosts and 403s every POST (login,
+# settings save, test-notification button) while GET/OAuth flows still work.
+www.kleeblatt.space {
+	redir https://kleeblatt.space{uri} permanent
+}
+
+kleeblatt.space {
 	reverse_proxy 127.0.0.1:8000
 }

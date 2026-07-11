@@ -100,7 +100,16 @@ async def security_middleware(request: Request, call_next):
         source = request.headers.get("origin") or request.headers.get("referer")
         if source:
             source_host = urlparse(source).netloc
-            if source_host and source_host != request.url.netloc:
+            # Compare registrable hosts, ignoring a leading "www." so the same
+            # site served from both www. and apex is not treated as cross-origin
+            # (Caddy canonicalises www -> apex, but this keeps the check robust
+            # if a proxy ever forwards a different Host).
+            def _host_core(h: str) -> str:
+                h = (h or "").lower()
+                if h.startswith("www."):
+                    h = h[4:]
+                return h
+            if source_host and _host_core(source_host) != _host_core(request.url.netloc):
                 return JSONResponse(
                     status_code=403,
                     content={"detail": "Cross-origin request rejected"},
