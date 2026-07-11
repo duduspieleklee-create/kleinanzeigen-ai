@@ -1,9 +1,12 @@
 import ssl
 import os
+import logging
 from celery import Celery
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger("kleinanzeigen-ai")
 
 # Prometheus multiprocess-dir (prefork-Worker) vor dem metrics_prom-Import
 # vorbereiten: Verzeichnis anlegen und Altbestände leeren, damit tote PIDs
@@ -28,7 +31,11 @@ install_log_bridge()
 start_exporter(8001)
 
 # Redis connection from environment variable
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+_RAW_REDIS_URL = os.getenv("REDIS_URL")
+if not _RAW_REDIS_URL:
+    logger.warning("REDIS_URL is empty or unset — falling back to default")
+    _RAW_REDIS_URL = "redis://localhost:6379/0"
+REDIS_URL = _RAW_REDIS_URL.strip()
 
 # rediss:// (Memorystore in-transit encryption, if enabled) requires SSL —
 # disable cert verification since the certificate may not be in the default
