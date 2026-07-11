@@ -184,10 +184,16 @@ jobs:
             # (e.g. a server-side edit left uncommitted). The VPS working
             # tree must always reflect the committed SHA; real changes
             # belong in a PR, not the deploy target.
+            #
+            # Then do a hard reset to origin/main instead of `git pull`.
+            # `git pull` aborts with "divergent branches" (exit 128) when the
+            # VPS `main` carries a local commit not on the remote, which
+            # breaks the whole deploy. `git fetch` + `reset --hard` makes the
+            # VPS reflect the exact committed SHA regardless of local commits.
             git checkout -- .
             git checkout main
-            git branch --set-upstream-to=origin/main main
-            git pull
+            git fetch origin
+            git reset --hard origin/main
             # Upsert a KEY=VALUE line into .env. tr strips any CR/LF so a stray
             # trailing newline in a GitHub secret can't corrupt the file (a
             # newline pasted into the secret would otherwise split the line).
