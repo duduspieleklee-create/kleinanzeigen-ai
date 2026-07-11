@@ -107,9 +107,15 @@ class Settings(BaseSettings):
 
     # ── Custom model endpoint (OpenAI-compatible) ─────────────────────────────
     # Lets Smart Search Suggestions query any OpenAI-compatible Chat Completions
-    # API (OpenAI, vLLM, Ollama, llama.cpp, Together, etc.) for higher-quality,
-    # context-aware suggestions. Leave CUSTOM_MODEL_ENDPOINT empty to disable.
-    # Example: http://localhost:11434/v1  (Ollama) or https://api.openai.com/v1
+    # API for higher-quality, context-aware suggestions.
+    #
+    # EITHER set CUSTOM_MODEL_ENDPOINT + CUSTOM_MODEL_NAME directly (full control),
+    # OR set CUSTOM_MODEL_PROVIDER to a preset that fills endpoint/auth defaults:
+    #   ollama   → http://localhost:11434/v1   (no key)
+    #   openai   → https://api.openai.com/v1   (needs CUSTOM_MODEL_API_KEY)
+    #   together → https://api.together.xyz/v1 (needs CUSTOM_MODEL_API_KEY)
+    # Explicit CUSTOM_MODEL_ENDPOINT / *_API_KEY always win over the preset.
+    custom_model_provider: str = ""
     custom_model_endpoint: str = ""
     custom_model_api_key: str = ""
     custom_model_name: str = ""
@@ -117,10 +123,32 @@ class Settings(BaseSettings):
     custom_model_temperature: float = 0.3
     custom_model_max_tokens: int = 256
 
+    # Preset → default (endpoint, needs_api_key). Explicit config overrides these.
+    _PROVIDER_PRESETS = {
+        "ollama": ("http://localhost:11434/v1", False),
+        "openai": ("https://api.openai.com/v1", True),
+        "together": ("https://api.together.xyz/v1", True),
+    }
+
+    @property
+    def custom_model_endpoint_resolved(self) -> str:
+        """Effective endpoint: explicit setting wins, else provider preset default."""
+        if self.custom_model_endpoint:
+            return self.custom_model_endpoint
+        preset = self._PROVIDER_PRESETS.get(self.custom_model_provider.lower())
+        return preset[0] if preset else ""
+
+    @property
+    def custom_model_api_key_resolved(self) -> str:
+        """Effective API key: explicit setting wins, else provider preset (none)."""
+        if self.custom_model_api_key:
+            return self.custom_model_api_key
+        return ""  # presets either need no key (ollama) or require an explicit one
+
     @property
     def custom_model_enabled(self) -> bool:
-        """True only when both endpoint and model name are configured."""
-        return bool(self.custom_model_endpoint and self.custom_model_name)
+        """True when a usable endpoint+model are resolvable (provider or explicit)."""
+        return bool(self.custom_model_endpoint_resolved and self.custom_model_name)
 
     @property
     def turnstile_enabled(self) -> bool:

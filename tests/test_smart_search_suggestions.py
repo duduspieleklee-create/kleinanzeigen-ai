@@ -87,8 +87,42 @@ def test_get_local_trends_unknown_keyword_empty(sss):
 # ── Custom Model Endpoint (OpenAI-kompatibel) ─────────────────────────────
 def test_custom_model_disabled_returns_empty(sss, monkeypatch):
     monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_endpoint", "")
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_provider", "")
     monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_name", "")
     assert sss.get_custom_model_suggestions("Auto kaufen") == []
+
+
+def test_provider_preset_resolves_endpoint_and_enables(monkeypatch):
+    """CUSTOM_MODEL_PROVIDER=ollama füllt Endpoint automatisch, kein Key nötig."""
+    from app.api import config as cfg
+
+    monkeypatch.setattr(cfg.settings, "custom_model_provider", "ollama")
+    monkeypatch.setattr(cfg.settings, "custom_model_endpoint", "")
+    monkeypatch.setattr(cfg.settings, "custom_model_name", "qwen2.5:1.5b")
+    assert cfg.settings.custom_model_endpoint_resolved == "http://localhost:11434/v1"
+    assert cfg.settings.custom_model_api_key_resolved == ""
+    assert cfg.settings.custom_model_enabled is True
+
+
+def test_provider_preset_openai_requires_explicit_key(monkeypatch):
+    from app.api import config as cfg
+
+    monkeypatch.setattr(cfg.settings, "custom_model_provider", "openai")
+    monkeypatch.setattr(cfg.settings, "custom_model_name", "gpt-4o-mini")
+    # Preset liefert Endpoint, aber keinen Key → nur sinnvoll mit explizitem Key
+    assert cfg.settings.custom_model_endpoint_resolved == "https://api.openai.com/v1"
+    monkeypatch.setattr(cfg.settings, "custom_model_api_key", "sk-test")
+    assert cfg.settings.custom_model_api_key_resolved == "sk-test"
+    assert cfg.settings.custom_model_enabled is True
+
+
+def test_explicit_endpoint_overrides_provider(monkeypatch):
+    from app.api import config as cfg
+
+    monkeypatch.setattr(cfg.settings, "custom_model_provider", "openai")
+    monkeypatch.setattr(cfg.settings, "custom_model_endpoint", "http://localhost:8000/v1")
+    monkeypatch.setattr(cfg.settings, "custom_model_name", "local-model")
+    assert cfg.settings.custom_model_endpoint_resolved == "http://localhost:8000/v1"
 
 
 def test_custom_model_enabled_returns_parsed_lines(sss, monkeypatch):
@@ -123,6 +157,42 @@ def test_custom_model_handles_network_error(sss, monkeypatch):
 
     monkeypatch.setattr("app.ai.smart_search_suggestions.requests.post", boom)
     assert sss.get_custom_model_suggestions("Auto kaufen") == []
+
+
+def test_custom_model_strips_numbering_and_bullets(sss, monkeypatch):
+    """Kleine LLMs nummerieren gern — der Parser muss '1. X' -> 'X' machen."""
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_endpoint", "http://localhost:11434/v1")
+    monkeypatch.setattr("app.ai.smart_search_suggestions.settings.custom_model_name", "llama3")
+
+    fake_resp = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {
+            "choices": [
+                {"message": {"content": "1. Gebrauchtwagen\n2) PKW kaufen\n3 - Auto gebraucht\n• Wagen\nKfz"}}
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        "app.ai.smart_search_suggestions.requests.post", lambda *a, **k: fake_resp
+    )
+    result = sss.get_custom_model_suggestions("Auto kaufen")
+    assert result == ["Gebrauchtwagen", "PKW kaufen", "Auto gebraucht", "Wagen", "Kfz"]
+
+
+@pytest.mark.skipif(
+    not __import__("os").environ.get("CUSTOM_MODEL_ENDPOINT"),
+    reason="echtes Custom Model nur mit CUSTOM_MODEL_ENDPOINT gesetzt (z.B. Ollama)",
+)
+def test_custom_model_smoke_against_real_endpoint(monkeypatch):
+    """Smoke-Test gegen ein laufendes OpenAI-kompatibles Modell (z.B. Ollama)."""
+    from app.ai import smart_search_suggestions as mod
+
+    inst = mod.SmartSearchSuggestions()
+    inst.cache = {}
+    result = inst.get_custom_model_suggestions("Auto kaufen")
+    assert isinstance(result, list)
+    assert all(not t[0].isdigit() for t in result), "Nummerierung sollte bereinigt sein"
+    assert len(result) >= 1, "Modell sollte mindestens einen Vorschlag liefern"
 
 
 # ── get_suggestions (Kombination) ─────────────────────────────────────────

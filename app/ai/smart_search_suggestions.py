@@ -14,6 +14,7 @@ from typing import List, Dict
 import requests
 import logging
 import json
+import re
 from pathlib import Path
 
 from app.api.config import settings
@@ -101,13 +102,13 @@ class SmartSearchSuggestions:
         Erfordert settings.custom_model_endpoint und settings.custom_model_name.
         Bei Fehlern oder fehlender Konfiguration → leere Liste (kein Abbruch).
         """
-        if not (settings.custom_model_endpoint and settings.custom_model_name):
+        if not (settings.custom_model_endpoint_resolved and settings.custom_model_name):
             return []
 
-        url = settings.custom_model_endpoint.rstrip("/") + "/chat/completions"
+        url = settings.custom_model_endpoint_resolved.rstrip("/") + "/chat/completions"
         headers = {"Content-Type": "application/json"}
-        if settings.custom_model_api_key:
-            headers["Authorization"] = f"Bearer {settings.custom_model_api_key}"
+        if settings.custom_model_api_key_resolved:
+            headers["Authorization"] = f"Bearer {settings.custom_model_api_key_resolved}"
 
         payload = {
             "model": settings.custom_model_name,
@@ -117,9 +118,19 @@ class SmartSearchSuggestions:
                 {
                     "role": "system",
                     "content": (
-                        "Du bist ein Such-Assistent für eine Kleinanzeigen-Plattform. "
-                        "Gib ausschließlich relevante Suchbegriffe zurück, einen pro "
-                        "Zeile, ohne Nummerierung und ohne erklärenden Text."
+                        "Du bist ein Such-Assistent für die Plattform kleinanzeigen.de. "
+                        "Gib ausschließlich reale Suchbegriffe zurück, wie sie Nutzer "
+                        "dort eingeben würden – auch Synonyme und verwandte Begriffe "
+                        "zum Suchbegriff. "
+                        "Regeln: GENAU ein Suchbegriff pro Zeile. KEINE Nummerierung "
+                        "(kein '1.', '2.' oder '1)'), KEINE Aufzählungszeichen, "
+                        "KEIN erklärender Text, KEINE Einleitung, KEINE Anführungszeichen. "
+                        "Nur konkrete, verkaufsrelevante Begriffe (z.B. 'Gebrauchtwagen', "
+                        "'PKW kaufen', 'Auto gebraucht'). Liefere mindestens 5 Begriffe. "
+                        "Beispielausgabe:\n"
+                        "Gebrauchtwagen\n"
+                        "PKW kaufen\n"
+                        "Auto gebraucht"
                     ),
                 },
                 {
@@ -133,12 +144,25 @@ class SmartSearchSuggestions:
             response = requests.post(url, headers=headers, json=payload, timeout=10)
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
-            suggestions = [
-                line.strip("-•* ").strip()
-                for line in content.splitlines()
-                if line.strip()
-            ]
-            return [s for s in suggestions if s][:10]
+            raw = re.split(r"[\n\r]+", content)
+            suggestions = []
+            for line in raw:
+                # Entferne umschließende Satzzeichen/Symbole (kein Backslash-Escaping)
+                line = line.strip().strip("\"'`*•–—- ")
+                # Entferne führende Nummerierung wie "1." "2)" "3 -"
+                line = re.sub(r"^\s*\d+[.)•-]?\s*", "", line).strip()
+                line = line.strip("\"'`*•–—- ")
+                # Mindestens 2 Zeichen, maximal 60 (keine reinen Satzzeichen)
+                if line and 1 < len(line) <= 60:
+                    suggestions.append(line)
+            # Dedupe (case-insensitive), Reihenfolge bewahren
+            seen = set()
+            unique = []
+            for s in suggestions:
+                if s.lower() not in seen:
+                    seen.add(s.lower())
+                    unique.append(s)
+            return unique[:10]
         except Exception as e:
             logger.error(f"Custom-Model-Endpoint-Fehler: {e}")
             return []

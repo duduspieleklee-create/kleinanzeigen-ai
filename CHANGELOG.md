@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Datenbank-Tabelle für Suchvorschläge und deren Nutzungshäufigkeit
   - Custom Model Endpoint (OpenAI-kompatibel) für KI-Vorschläge
     (`CUSTOM_MODEL_ENDPOINT`/`CUSTOM_MODEL_NAME`, optional, mit Fallback)
+  - Custom Model Provider-Presets (`ollama`/`openai`/`together`): `CUSTOM_MODEL_PROVIDER`
+    füllt Endpoint automatisch; expliziter Endpoint/Key überschreibt Preset
 
 ### Changed
 - Keine Änderungen
