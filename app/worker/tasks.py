@@ -28,10 +28,19 @@ from app.shared.pricing import deal_badge, median_price, parse_price, calculate_
 from app.shared.proxy import proxies_for_requests
 from app.shared.token_tracking import log_token_usage
 from app.shared.url_builder import build_kleinanzeigen_url
+from app.shared.result_filters import passes_filters
 from app.worker.celery_app import celery_app
 from app.worker.seller_scraper import extract_seller_info
 
 logger = logging.getLogger("kleinanzeigen-ai")
+
+# Keys stored in a task's parameters JSON that are NOT kleinanzeigen URL params
+# and must be stripped before build_kleinanzeigen_url(**scrape_params): the
+# scheduling interval and the advanced result-filter lists (applied post-scrape,
+# see app/shared/result_filters.py).
+_NON_URL_PARAM_KEYS = frozenset(
+    {"interval_seconds", "require_keywords", "exclude_keywords", "exclude_locations"}
+)
 
 _SELLER_PAGE_CACHE: dict[str, str] = {}
 
@@ -557,7 +566,9 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
             db.commit()
 
         # Build scrape URL (strip scheduling key before passing to url_builder)
-        scrape_params = {k: v for k, v in parameters.items() if k != "interval_seconds"}
+        scrape_params = {
+            k: v for k, v in parameters.items() if k not in _NON_URL_PARAM_KEYS
+        }
         url = build_kleinanzeigen_url(**scrape_params)
         logger.info(f"Starting scrape for: {url}")
 
@@ -633,6 +644,13 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
         new_results = []
         parse_error_count = 0
 
+        # Advanced result filters (Core/Pro) — the API only stores these for
+        # plan-eligible users. Applied per listing below, BEFORE dedup/credit/
+        # save, so a filtered-out listing costs no credit and sends no alert.
+        require_kw = parameters.get("require_keywords") or []
+        exclude_kw = parameters.get("exclude_keywords") or []
+        exclude_loc = parameters.get("exclude_locations") or []
+
         for item in listings[:25]:
             item_url = None
             try:
@@ -679,6 +697,14 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
 
                 desc_tag = item.find("p", class_="aditem-main--middle--description")
                 description = desc_tag.get_text(strip=True) if desc_tag else None
+
+                # Advanced filters (Core/Pro): drop listings the user excluded
+                # (or that miss a required term) before they can become results.
+                if (require_kw or exclude_kw or exclude_loc) and not passes_filters(
+                    title, description, location,
+                    require=require_kw, exclude=exclude_kw, exclude_locations=exclude_loc,
+                ):
+                    continue
 
                 key = item_url or f"{title}|{price}|{location}"
                 if key in seen_keys:

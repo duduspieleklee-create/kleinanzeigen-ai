@@ -352,6 +352,10 @@ async def _build_dashboard(
     show_deals = bool(is_admin or (cfg and cfg.get("deal_badges")))
     # Trust Score badges are a Core/Pro feature — Basic users see them grayed out
     show_trust_scores = bool(is_admin or (cfg and cfg.get("trust_scores", False)))
+    # Advanced result filters (require/exclude keywords + exclude locations) are
+    # a Core/Pro feature — the wizard shows the fields enabled only for eligible
+    # plans (Basic sees them disabled with an upsell).
+    show_advanced_filters = bool(is_admin or (cfg and cfg.get("advanced_filters", False)))
     recent_results = []
     if recent_rows:
         medians = {}
@@ -393,6 +397,7 @@ async def _build_dashboard(
             "recent_results": recent_results,
             "show_deals": show_deals,
             "show_trust_scores": show_trust_scores,
+            "show_advanced_filters": show_advanced_filters,
             "flash_success": flash_success,
             "flash_error": flash_error,
             "new_task_id": new_task_id,

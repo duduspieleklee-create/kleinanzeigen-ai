@@ -15,6 +15,10 @@ no scheduled job is needed).
 
 Deal badges (below/above-market classification) are a Core/Pro feature —
 Basic users get plain results.
+
+Advanced result filters (require/exclude keywords + exclude locations, applied
+post-scrape in the worker — see app/shared/result_filters.py) are likewise a
+Core/Pro feature, gated by the ``advanced_filters`` flag.
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -29,6 +33,7 @@ PLANS = {
         "min_interval_seconds": 3600,
         "deal_badges": False,
         "trust_scores": False,
+        "advanced_filters": False,
     },
     "core": {
         "label": "Core",
@@ -37,6 +42,7 @@ PLANS = {
         "min_interval_seconds": 1800,
         "deal_badges": True,
         "trust_scores": True,
+        "advanced_filters": True,
     },
     "pro": {
         "label": "Pro",
@@ -46,6 +52,7 @@ PLANS = {
         "min_interval_seconds": 60,
         "deal_badges": True,
         "trust_scores": True,
+        "advanced_filters": True,
     },
 }
 
