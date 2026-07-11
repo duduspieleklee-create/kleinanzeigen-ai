@@ -1,8 +1,10 @@
 {
   "name": "kleinanzeigen-ai",
   "short_name": "KA-AI",
-  "description": "Intelligent scraping and analytics for kleinanzeigen.de",
+  "description": "Intelligentes Überwachen und Auswerten deiner Kleinanzeigen.de-Suchen",
   "start_url": "/dashboard",
+  "scope": "/",
+  "id": "/dashboard",
   "display": "standalone",
   "background_color": "#f4f4f4",
   "theme_color": "#007bff",
