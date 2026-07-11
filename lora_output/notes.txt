@@ -1,0 +1,76 @@
+# LoRA-Training für qwen2.5:1.5b
+
+## Vorbereitung
+
+- **Modell:** qwen2.5:1.5b
+- **Training-Daten:** /workspace/kleinanzeigen-ai/data/training_data.json
+- **LoRA-Config:** Rang=8, alpha=16, target_modules=["q_proj", "k_proj", "v_proj", "o_proj"]
+- **Training-Direktorium:** /workspace/kleinanzeigen-ai/lora_output
+
+## Training-Skript
+
+```python
+from datasets import load_dataset
+from trl import SFTTrainer
+from peft import LoraConfig, get_peft_model
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# Modell und Tokenizer
+model_name = 'qwen2.5:1.5b'
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name, device_map='auto')
+
+# LoRA-Config
+peft_config = LoraConfig(
+    r=8, lora_alpha=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    lora_dropout=0.05,
+    bias='none',
+    task_type='CAUSAL_LM',
+)
+
+# Training-Daten laden
+with open('/workspace/kleinanzeigen-ai/data/training_data.json', 'r') as f:
+    data = json.load(f)
+
+def format_data(examples):
+    prompts = []
+    completions = []
+    for entry in data:
+        prompt = f"Schlage passende Suchbegriffe für: {entry['query']}"
+        completions.append(entry['clicks'])
+    return {'prompt': prompts, 'completion': completions}
+
+dataset = load_dataset('json', data_files='/workspace/kleinanzeigen-ai/data/training_data.json', split='train')
+dataset = dataset.map(format_data)
+
+# Trainer
+from transformers import SFTTrainingArgs
+trainer = SFTTrainer(
+    model=model,
+    args=SFTTrainingArgs(
+        output_dir='/workspace/kleinanzeigen-ai/lora_output',
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=2,
+        learning_rate=2e-4,
+        max_steps=100,
+        optim='paged_adamw_torchscript',
+        warmup_ratio=0.1,
+        lr_scheduler_type='cosine',
+        logging_steps=10,
+        save_total_limit=1,
+    ),
+    dataset=dataset,
+    peft_config=peft_config,
+    pack_on_cpu=True,
+)
+
+# Trainen
+trainer.train()
+
+# LoRA-Modell exportieren
+model.save_pretrained('/workspace/kleinanzeigen-ai/lora_output/qwen2.5:1.5b-lora')
+tokenizer.save_pretrained('/workspace/kleinanzeigen-ai/lora_output/qwen2.5:1.5b-lora')
+
+print('LoRA-Training abgeschlossen!')
+```
