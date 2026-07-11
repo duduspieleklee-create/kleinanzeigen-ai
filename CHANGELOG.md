@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Admin-only Settings-Sektion mit Provider-Dropdown, Endpoint, API-Key, Model, Temperature, Max Tokens
   - `GET/POST /api/custom-model/config` — lesen/speichern der Konfiguration
   - Live-Status-Anzeige (konfiguriert/aktiv/nicht konfiguriert)
+- **Betrugserkennung (Fraud Detection)** (Issue #267)
+  - Pattern-basierte Anzeigen-Analyse: Preis-Anomalien, Text-Keywords, fehlende Bilder/Beschreibung
+  - Verkäufer-Profil-Check: Kontonalter, Massenlistings, Bewertungen
+  - Link-Phishing-Prüfung: Scam-Domains, verdächtige TLDs, IP-Adressen
+  - Bild-Duplikat-Erkennung via URL-Pattern-Analyse
+  - POST/GET `/api/fraud-check` Endpoints mit DB-Persistenz
+  - FraudAlert Modell + Trust-Score 0–100
 
 ### Changed
 - Smart Search Cache um 1h-TTL ergänzt, abgelaufene Einträge werden verworfen (Issue #260)

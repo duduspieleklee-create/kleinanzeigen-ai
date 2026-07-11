@@ -298,6 +298,23 @@ class GeocodeCache(Base):
         return f"<GeocodeCache(location='{self.location}', lat={self.lat}, lon={self.lon})>"
 
 
+class FraudAlert(Base):
+    """Speichert Betrugswarnungen für Anzeigen aus der Frauderkenung."""
+    __tablename__ = "fraud_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ad_id = Column(Integer, nullable=False, index=True)
+    fraud_level = Column(String(20), nullable=False, default="low")
+    warnings = Column(JSON)
+    recommendation = Column(Text)
+    trust_score = Column(Integer, default=100)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<FraudAlert(ad_id={self.ad_id}, level='{self.fraud_level}', score={self.trust_score})>"
+
+
 class SearchSuggestion(Base):
     """Tracks which Smart Search suggestions were shown and how often used.
 
