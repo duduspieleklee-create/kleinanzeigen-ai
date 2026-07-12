@@ -190,7 +190,7 @@
         <div class="flash-error" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <span>Bitte bestätige deine E-Mail-Adresse ({{ user_email }}), um Suchen zu starten &mdash; überprüfe dein Postfach für den Link.</span>
             <form method="post" action="/auth/resend-verification" style="margin:0">
-                <button type="submit" style="white-space:nowrap;padding:8px 12px;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer;font-size:0.85rem;min-height:40px">Bestätigungs-E-Mail erneut senden</button>
+                <button type="submit" style="white-space:nowrap;padding:8px 12px;border:none;border-radius:6px;background:var(--color-accent);color:#fff;cursor:pointer;font-size:0.85rem;min-height:40px">Bestätigungs-E-Mail erneut senden</button>
             </form>
         </div>
         {% endif %}
@@ -234,39 +234,110 @@
 
         <!-- ── TAB: My Searches ── -->
         <div id="tab-my-searches" class="tab-pane active">
-            <!-- Overview stats -->
-            <div class="overview-grid">
-                <div class="overview-card">
-                    <span class="overview-value">{{ active_searches }}<span class="overview-sub">/ {{ max_active_searches }}</span></span>
-                    <span class="overview-label">Aktive Suchen</span>
+            <!-- Credits hero — the headline metric (pay-as-you-go) -->
+            <div class="credits-hero">
+                <div class="ch-main">
+                    <span class="ch-label">Credits</span>
+                    <span class="ch-value">{{ credits }}</span>
+                    <span class="ch-tag">Pay-as-you-go</span>
                 </div>
-                <div class="overview-card">
-                    <span class="overview-value">{{ recent_results|length if recent_results else 0 }}</span>
-                    <span class="overview-label">Neue Treffer</span>
-                </div>
-                <div class="overview-card">
-                    <span class="overview-value">{{ credits }}</span>
-                    <span class="overview-label">Credits übrig</span>
+                <div class="ch-side">
+                    <div class="ch-mini">
+                        <span class="ch-mini-num">{{ active_searches }}<span class="ch-mini-den">/{{ max_active_searches }}</span></span>
+                        <span class="ch-mini-cap">Aktive Suchen</span>
+                    </div>
+                    <a href="/billing" class="ch-topup">Credits aufladen →</a>
                 </div>
             </div>
 
-            <!-- Feature info card -->
-            <div class="feature-info-card">
-                <div class="feature-info-head">
-                    <h3 style="margin:0">Was kleinanzeigen-ai für dich tut</h3>
-                    <span class="plan-badge plan-{{ plan_name|lower }}">{{ plan_label }}</span>
+            <!-- Primary action: start a new search -->
+            <button type="button" class="new-search-cta" onclick="goToNewSearchTab()">
+                <span class="ns-plus">+</span> Neue Suche erstellen
+            </button>
+
+            <!-- KI-Agent — message the agent directly, right here -->
+            <div class="agent-card">
+                <div class="agent-head">
+                    <span class="agent-icon">🤖</span>
+                    <div class="agent-head-text">
+                        <span class="agent-title">KI-Agent{% if not show_smart_search %} <span class="ft-badge ft-locked">Pro</span>{% endif %}</span>
+                        <span class="agent-sub">Beschreib einfach, was du suchst — der Agent durchsucht Kleinanzeigen live für dich.</span>
+                    </div>
                 </div>
-                <ul class="feature-list">
-                    <li><span class="feature-icon">🔍</span> Automatische Suche auf Kleinanzeigen.de — rund um die Uhr, ohne dass du manuell nachschauen musst.</li>
-                    <li><span class="feature-icon">🔔</span> Sofortige Benachrichtigungen per Push & E-Mail, sobald ein passendes Angebot erscheint.</li>
-                    <li><span class="feature-icon">🤖</span> KI-Preis-Check: Fairness-Bewertung und Median-Preis für jedes Ergebnis.</li>
-                    <li><span class="feature-icon">⭐</span> Favoriten speichern und geteilte Suchen für Freunde oder Familie erstellen.</li>
-                </ul>
-                <div class="feature-info-footer">
-                    <span class="feature-limit">Limit: {{ max_active_searches }} aktive Suchen · Intervall {{ min_interval_seconds }}s</span>
-                    <a href="/billing" class="feature-upgrade-btn">Plan upgraden →</a>
+                {% if show_smart_search %}
+                <form class="agent-input-row" onsubmit="return askAgent(event)">
+                    <input id="agent-inline-input" type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" autocomplete="off">
+                    <button type="submit" class="agent-send" aria-label="Agent fragen">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </button>
+                </form>
+                {% else %}
+                <div class="agent-input-row">
+                    <input type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" disabled>
+                    <a href="/billing" class="agent-send agent-upsell">Pro freischalten</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Feature overview: every capability at a glance -->
+            <div class="features-head">
+                <h3>Deine Funktionen</h3>
+                <a href="/billing" class="features-plan">{{ plan_label }} · Upgrade →</a>
+            </div>
+            <div class="feature-tiles">
+                {# Each tile: icon, name, one-line benefit, and a status badge.
+                   "Aktiv" (green) when the plan includes it, otherwise the tier
+                   needed to unlock it (neutral grey) — one accent colour only. #}
+                <div class="feature-tile">
+                    <span class="ft-icon">🔍</span>
+                    <span class="ft-title">Auto-Suche</span>
+                    <span class="ft-desc">Durchsucht Kleinanzeigen rund um die Uhr für dich.</span>
+                    <span class="ft-badge ft-on">Aktiv</span>
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">🚨</span>
+                    <span class="ft-title">Betrugsalarm</span>
+                    <span class="ft-desc">Wir überwachen, ob der Verkäufer neu ist oder Bilder gestohlen/mehrfach online stehen.</span>
+                    {% if show_trust_scores %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Core</span>{% endif %}
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">📈</span>
+                    <span class="ft-title">Smart Search</span>
+                    <span class="ft-desc">Bessere Keywords für deine Suche — dank Google-Trends & Co.</span>
+                    {% if show_smart_search %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Pro</span>{% endif %}
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">🤖</span>
+                    <span class="ft-title">KI-Preis-Check</span>
+                    <span class="ft-desc">Fairness-Bewertung & Median-Preis je Angebot.</span>
+                    {% if show_deals %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Core</span>{% endif %}
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">🎯</span>
+                    <span class="ft-title">Präzisions-Filter</span>
+                    <span class="ft-desc">Muss- & Ausschluss-Wörter, ganze Orte ausblenden.</span>
+                    {% if show_advanced_filters %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Core</span>{% endif %}
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">⭐</span>
+                    <span class="ft-title">Favoriten & Teilen</span>
+                    <span class="ft-desc">Beste Treffer speichern und mit Freunden teilen.</span>
+                    <span class="ft-badge ft-on">Aktiv</span>
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">🗺️</span>
+                    <span class="ft-title">Kartenansicht</span>
+                    <span class="ft-desc">Alle Treffer auf einer Karte entdecken.</span>
+                    {% if show_map %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Pro</span>{% endif %}
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">⚡</span>
+                    <span class="ft-title">Sofort-Alerts</span>
+                    <span class="ft-desc">Neue Treffer in Sekunden statt erst nach einer Stunde.</span>
+                    {% if min_interval_seconds and min_interval_seconds <= 60 %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Pro</span>{% endif %}
                 </div>
             </div>
+            <p class="features-limit">Limit: {{ max_active_searches }} aktive Suchen · Intervall ab {{ min_interval_seconds }}s</p>
 
             <div class="card">
                 <h3>Meine Suchen</h3>
@@ -428,7 +499,7 @@
                       <label for="ai-search-input">🤖 KI-Suche — Beschreibe was du suchst</label>
                       <div style="display:flex;gap:8px;">
                         <input type="text" id="ai-search-input" placeholder="z. B. gebrauchtes Eichensofa unter 200€ in Berlin" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;">
-                        <button id="ai-search-btn" style="padding:10px 16px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">🔍 KI-Suche</button>
+                        <button id="ai-search-btn" style="padding:10px 16px;background:var(--color-accent);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">🔍 KI-Suche</button>
                       </div>
                       <div id="ai-search-results" style="margin-top:12px;"></div>
                     </div>
@@ -474,11 +545,11 @@
                       applies these post-scrape; a filtered-out listing costs no
                       credit and sends no alert. Basic sees it disabled + upsell.
                   -->
-                  <div class="precision-filters" style="margin-top:16px;padding:14px 16px;border:1px solid var(--border,#e5e7eb);border-left:3px solid #6366f1;border-radius:12px">
+                  <div class="precision-filters" style="margin-top:16px;padding:14px 16px;border:1px solid var(--border,#e5e7eb);border-left:3px solid var(--color-accent,#2fbf71);border-radius:12px">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                       <strong style="font-size:0.95rem">🎯 Präziser filtern</strong>
                       {% if not show_advanced_filters %}
-                      <span style="font-size:0.7rem;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#4338ca">CORE</span>
+                      <span style="font-size:0.7rem;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#64748b">CORE</span>
                       {% endif %}
                     </div>
                     {% if not show_advanced_filters %}
@@ -594,7 +665,7 @@
                         <label class="frequency-option{% if val < min_iv %} frequency-locked{% endif %}">
                             <input type="radio" name="interval_seconds" value="{{ val }}"{% if val < min_iv %} disabled{% endif %}{% if val == default_iv %} checked{% endif %}>
                             <span class="frequency-label">{{ lbl }}
-                            {% if tier == 'CORE' %}<span class="tier-badge" style="font-size:0.62rem;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:999px;background:#eef2ff;color:#4338ca;margin-left:4px">CORE</span>{% elif tier == 'PRO' %}<span class="tier-badge tier-badge-pro" style="display:inline-flex;align-items:center;gap:3px;font-size:0.62rem;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,#8b5cf6,#4f46e5);color:#fff;box-shadow:0 1px 3px rgba(79,70,229,.4);margin-left:5px">⚡&#8239;PRO</span>{% endif %}
+                            {% if tier == 'CORE' %}<span class="tier-badge" style="font-size:0.62rem;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;margin-left:4px">CORE</span>{% elif tier == 'PRO' %}<span class="tier-badge tier-badge-pro" style="display:inline-flex;align-items:center;gap:3px;font-size:0.62rem;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px;background:var(--color-text,#16161d);color:#fff;margin-left:5px">⚡&#8239;PRO</span>{% endif %}
                             {% if val < min_iv %}<a href="/billing" class="freq-upgrade">Upgrade</a>{% endif %}</span>
                         </label>
                         {% endfor %}
@@ -711,7 +782,7 @@
                             {% else %}
                             <button id="map-toggle-btn" class="rc-map-btn rc-map-btn-locked" onclick="toggleMapView()" title="Ergebnisse auf der Karte anzeigen — ein Pro-Feature. Jetzt upgraden." style="display:inline-flex;align-items:center;gap:4px">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>
-                                <span style="font-size:0.58rem;font-weight:800;letter-spacing:.03em;padding:1px 5px;border-radius:999px;background:linear-gradient(135deg,#8b5cf6,#4f46e5);color:#fff">PRO</span>
+                                <span style="font-size:0.58rem;font-weight:800;letter-spacing:.03em;padding:1px 5px;border-radius:999px;background:var(--color-text,#16161d);color:#fff">PRO</span>
                             </button>
                             {% endif %}
                         </div>
@@ -2456,7 +2527,7 @@
             infoDiv.appendChild(title);
 
             var price = document.createElement('span');
-            price.style.cssText = 'font-weight:bold;color:#007bff;font-size:16px;';
+            price.style.cssText = 'font-weight:bold;color:#1f8a52;font-size:16px;';
             price.textContent = r.price || (r.price_value ? r.price_value + '€' : '—');
             infoDiv.appendChild(price);
 
@@ -2540,19 +2611,22 @@
 
 {% if show_smart_search %}
 <style>
-#ai-chat-btn{position:fixed;bottom:24px;right:24px;z-index:999;width:60px;height:60px;border-radius:50%;background:#007bff;color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(0,123,255,.4);transition:transform .2s}
-#ai-chat-btn:hover{transform:scale(1.1)}
-#ai-chat-btn.open{transform:rotate(45deg);background:#dc3545}
-#ai-chat-panel{position:fixed;bottom:96px;right:24px;z-index:999;width:420px;max-width:calc(100vw-48px);height:560px;max-height:calc(100vh-140px);background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);display:none;flex-direction:column;overflow:hidden;font-size:14px}
+/* AI chat launcher — neutral dark bubble that stacks ABOVE the green "+"
+   FAB on desktop and sits above the bottom nav on mobile, so the two
+   floating controls never overlap. One brand accent (green) for the panel. */
+#ai-chat-btn{position:fixed;bottom:90px;right:20px;z-index:80;width:56px;height:56px;border-radius:50%;background:#16161d;color:#fff;border:none;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(20,20,26,.28);transition:transform .2s,background .2s}
+#ai-chat-btn:hover{transform:scale(1.08);background:#000}
+#ai-chat-btn.open{transform:rotate(90deg)}
+#ai-chat-panel{position:fixed;bottom:156px;right:20px;z-index:80;width:400px;max-width:calc(100vw - 40px);height:540px;max-height:calc(100vh - 200px);background:#fff;border:1px solid var(--color-border,#e7e7ec);border-radius:16px;box-shadow:0 12px 40px rgba(20,20,26,.16);display:none;flex-direction:column;overflow:hidden;font-size:14px}
 #ai-chat-panel.open{display:flex}
-#ai-chat-header{padding:16px 20px;background:#007bff;color:#fff;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+#ai-chat-header{padding:16px 20px;background:var(--color-accent,#2fbf71);color:#fff;font-weight:600;display:flex;justify-content:space-between;align-items:center}
 #ai-chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
 #ai-chat-input-area{padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px}
 #ai-chat-input{flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:24px;outline:none;font-size:14px}
-#ai-chat-input:focus{border-color:#007bff}
-#ai-chat-send{padding:10px 20px;background:#007bff;color:#fff;border:none;border-radius:24px;cursor:pointer;font-weight:600;white-space:nowrap}
+#ai-chat-input:focus{border-color:var(--color-accent,#2fbf71)}
+#ai-chat-send{padding:10px 20px;background:var(--color-accent,#2fbf71);color:#fff;border:none;border-radius:24px;cursor:pointer;font-weight:600;white-space:nowrap}
 .chat-msg{padding:10px 14px;border-radius:12px;max-width:85%;line-height:1.5;white-space:pre-wrap}
-.chat-msg.user{background:#007bff;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.chat-msg.user{background:var(--color-accent,#2fbf71);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .chat-msg.assistant{background:#f0f2f5;color:#333;align-self:flex-start;border-bottom-left-radius:4px}
 .chat-result-card{border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin:6px 0;display:flex;gap:10px;background:#fff;cursor:pointer;transition:box-shadow .15s}
 .chat-result-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
@@ -2560,10 +2634,14 @@
 .chat-result-img img{width:100%;height:100%;object-fit:cover}
 .chat-result-info{flex:1;min-width:0}
 .chat-result-title{font-weight:600;color:#333;text-decoration:none;display:block;margin-bottom:2px}
-.chat-result-price{font-weight:700;color:#007bff}
+.chat-result-price{font-weight:700;color:var(--color-accent-hover,#1f8a52)}
 .chat-result-loc{color:#888;font-size:12px;margin-left:8px}
 .chat-fb-btn{padding:3px 10px;border:1px solid #ddd;border-radius:14px;cursor:pointer;font-size:11px;background:#fff;margin-top:6px;margin-right:4px}
-.chat-fb-btn.active{border-color:#007bff;background:#e8f4ff}
+.chat-fb-btn.active{border-color:var(--color-accent,#2fbf71);background:var(--color-accent-soft,#eaf8ef)}
+@media (max-width:560px){
+  #ai-chat-btn{bottom:calc(76px + env(safe-area-inset-bottom,0px));right:16px}
+  #ai-chat-panel{bottom:calc(142px + env(safe-area-inset-bottom,0px));right:16px}
+}
 </style>
 
 <button id="ai-chat-btn" onclick="toggleChat()">💬</button>
@@ -2582,6 +2660,22 @@
 var chatMessages = [{role:'assistant', content:''}];  // greeting loaded dynamically
 var chatLiked = [];
 var chatDisliked = [];
+
+// Inline KI-Agent box on the dashboard: opens the chat panel and forwards
+// the typed request straight into it, so the user never leaves the page.
+function askAgent(e) {
+    if (e) e.preventDefault();
+    var el = document.getElementById('agent-inline-input');
+    if (!el) return false;
+    var text = el.value.trim();
+    if (!text) return false;
+    el.value = '';
+    var panel = document.getElementById('ai-chat-panel');
+    if (panel && !panel.classList.contains('open')) toggleChat();
+    var chatInput = document.getElementById('ai-chat-input');
+    if (chatInput) { chatInput.value = text; sendChatMsg(); }
+    return false;
+}
 
 function toggleChat() {
     var p = document.getElementById('ai-chat-panel');
