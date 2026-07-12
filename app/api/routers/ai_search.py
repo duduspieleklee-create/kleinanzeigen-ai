@@ -2,6 +2,8 @@
 API-Endpunkte für den KI-gestützten Such-Assistenten + Chat.
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
