@@ -4073,6 +4073,11 @@ body.landing-page {
   color: var(--lp-navy);
   white-space: nowrap;
 }
+.lp-wordmark-sub {
+  font-weight: 500;
+  color: var(--lp-green-dark);
+  opacity: 0.75;
+}
 
 .lp-nav-actions {
   display: flex;
