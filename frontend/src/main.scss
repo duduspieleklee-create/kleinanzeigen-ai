@@ -4698,100 +4698,114 @@ body.landing-page {
   gap: 4px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   font-size: 0.8rem;
   font-weight: 600;
-  color: #c2410c;
+  color: var(--color-text);
 }
 .credit-icon { font-size: 0.85rem; }
-.credit-label { font-weight: 400; opacity: 0.7; font-size: 0.72rem; }
+.credit-count { color: var(--color-accent-hover); }
+.credit-label { font-weight: 400; color: var(--color-text-muted); font-size: 0.72rem; }
 
-/* Overview stats grid */
-.overview-grid {
+/* Quick stats strip — three neutral cells sharing one hairline grid */
+.stat-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.overview-card {
-  background: var(--color-surface);
+  gap: 1px;
+  background: var(--color-border);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 16px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.stat-cell {
+  background: var(--color-surface);
+  padding: 15px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: var(--shadow-sm);
+  gap: 4px;
 }
-.overview-value {
-  font-size: 1.8rem;
+.stat-num {
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--color-text);
   line-height: 1;
 }
-.overview-sub { font-size: 0.9rem; font-weight: 400; color: var(--color-text-muted); }
-.overview-label { font-size: 0.78rem; color: var(--color-text-muted); margin-top: 6px; }
+.stat-den { font-size: 0.85rem; font-weight: 500; color: var(--color-text-subtle); }
+.stat-cap { font-size: 0.72rem; color: var(--color-text-muted); text-align: center; }
 
-/* Feature info card */
-.feature-info-card {
-  background: linear-gradient(135deg, var(--color-accent-soft), #f0fdf4);
-  border: 1px solid var(--color-accent-soft-border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  margin-bottom: 16px;
-}
-.feature-info-head {
+/* Feature overview */
+.features-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
-  flex-wrap: wrap;
-  gap: 8px;
 }
-.feature-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 14px;
-  display: grid;
-  gap: 10px;
-}
-.feature-list li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  color: var(--color-text);
-}
-.feature-icon { font-size: 1.1rem; flex-shrink: 0; line-height: 1.3; }
-.feature-info-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-accent-soft-border);
-}
-.feature-limit { font-size: 0.78rem; color: var(--color-text-muted); }
-.feature-upgrade-btn {
-  background: var(--color-accent);
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  font-size: 0.82rem;
+.features-head h3 { margin: 0; font-size: 1.05rem; }
+.features-plan {
+  font-size: 0.78rem;
   font-weight: 600;
-  transition: background 0.15s;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  white-space: nowrap;
 }
-.feature-upgrade-btn:hover { background: var(--color-accent-hover); }
+.features-plan:hover { color: var(--color-accent); }
 
-/* Mobile: stack overview to 3 cols still but smaller */
-@media (max-width: 480px) {
-  .overview-value { font-size: 1.4rem; }
-  .overview-card { padding: 12px 8px; }
-  .feature-info-card { padding: 16px; }
+.feature-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+@media (min-width: 640px) {
+  .feature-tiles { grid-template-columns: repeat(3, 1fr); }
+}
+.feature-tile {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.feature-tile:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.ft-icon { font-size: 1.5rem; line-height: 1; margin-bottom: 6px; }
+.ft-title { font-size: 0.92rem; font-weight: 600; color: var(--color-text); }
+.ft-desc { font-size: 0.78rem; color: var(--color-text-muted); line-height: 1.4; }
+.ft-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.ft-on {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+  border: 1px solid var(--color-accent-soft-border);
+}
+.ft-locked {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.features-limit { font-size: 0.75rem; color: var(--color-text-subtle); margin: 0 0 4px; }
+
+@media (max-width: 360px) {
+  .stat-num { font-size: 1.35rem; }
 }
 
 /* ── App footer ─────────────────────────────────────────────────── */
@@ -4873,5 +4887,9 @@ body.landing-page {
 .fab-new-search:hover { background: var(--color-accent-hover); transform: scale(1.06); }
 .fab-new-search svg { width: 24px; height: 24px; }
 @media (max-width: 560px) {
+  /* Non-dashboard pages keep the FAB above the bottom nav. On the dashboard
+     the bottom nav already carries a "+" (new search), so the FAB is hidden
+     there to avoid stacking two identical actions in the same corner. */
   .fab-new-search { bottom: calc(var(--bottom-nav-height) + 16px + env(safe-area-inset-bottom, 0px)); }
+  body.dashboard-page .fab-new-search { display: none; }
 }
