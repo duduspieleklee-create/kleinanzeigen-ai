@@ -234,20 +234,49 @@
 
         <!-- ── TAB: My Searches ── -->
         <div id="tab-my-searches" class="tab-pane active">
-            <!-- Quick stats -->
-            <div class="stat-strip">
-                <div class="stat-cell">
-                    <span class="stat-num">{{ active_searches }}<span class="stat-den">/{{ max_active_searches }}</span></span>
-                    <span class="stat-cap">Aktive Suchen</span>
+            <!-- Credits hero — the headline metric (pay-as-you-go) -->
+            <div class="credits-hero">
+                <div class="ch-main">
+                    <span class="ch-label">Credits</span>
+                    <span class="ch-value">{{ credits }}</span>
+                    <span class="ch-tag">Pay-as-you-go</span>
                 </div>
-                <div class="stat-cell">
-                    <span class="stat-num">{{ recent_results|length if recent_results else 0 }}</span>
-                    <span class="stat-cap">Neue Treffer</span>
+                <div class="ch-side">
+                    <div class="ch-mini">
+                        <span class="ch-mini-num">{{ active_searches }}<span class="ch-mini-den">/{{ max_active_searches }}</span></span>
+                        <span class="ch-mini-cap">Aktive Suchen</span>
+                    </div>
+                    <a href="/billing" class="ch-topup">Credits aufladen →</a>
                 </div>
-                <div class="stat-cell">
-                    <span class="stat-num">{{ credits }}</span>
-                    <span class="stat-cap">Credits übrig</span>
+            </div>
+
+            <!-- Primary action: start a new search -->
+            <button type="button" class="new-search-cta" onclick="goToNewSearchTab()">
+                <span class="ns-plus">+</span> Neue Suche erstellen
+            </button>
+
+            <!-- KI-Agent — message the agent directly, right here -->
+            <div class="agent-card">
+                <div class="agent-head">
+                    <span class="agent-icon">🤖</span>
+                    <div class="agent-head-text">
+                        <span class="agent-title">KI-Agent{% if not show_smart_search %} <span class="ft-badge ft-locked">Pro</span>{% endif %}</span>
+                        <span class="agent-sub">Beschreib einfach, was du suchst — der Agent durchsucht Kleinanzeigen live für dich.</span>
+                    </div>
                 </div>
+                {% if show_smart_search %}
+                <form class="agent-input-row" onsubmit="return askAgent(event)">
+                    <input id="agent-inline-input" type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" autocomplete="off">
+                    <button type="submit" class="agent-send" aria-label="Agent fragen">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </button>
+                </form>
+                {% else %}
+                <div class="agent-input-row">
+                    <input type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" disabled>
+                    <a href="/billing" class="agent-send agent-upsell">Pro freischalten</a>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Feature overview: every capability at a glance -->
@@ -266,22 +295,22 @@
                     <span class="ft-badge ft-on">Aktiv</span>
                 </div>
                 <div class="feature-tile">
-                    <span class="ft-icon">🔔</span>
-                    <span class="ft-title">Push & E-Mail</span>
-                    <span class="ft-desc">Sofort benachrichtigt, sobald ein Treffer erscheint.</span>
-                    <span class="ft-badge ft-on">Aktiv</span>
+                    <span class="ft-icon">🚨</span>
+                    <span class="ft-title">Betrugsalarm</span>
+                    <span class="ft-desc">Wir überwachen, ob der Verkäufer neu ist oder Bilder gestohlen/mehrfach online stehen.</span>
+                    {% if show_trust_scores %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Core</span>{% endif %}
+                </div>
+                <div class="feature-tile">
+                    <span class="ft-icon">📈</span>
+                    <span class="ft-title">Smart Search</span>
+                    <span class="ft-desc">Bessere Keywords für deine Suche — dank Google-Trends & Co.</span>
+                    {% if show_smart_search %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Pro</span>{% endif %}
                 </div>
                 <div class="feature-tile">
                     <span class="ft-icon">🤖</span>
                     <span class="ft-title">KI-Preis-Check</span>
                     <span class="ft-desc">Fairness-Bewertung & Median-Preis je Angebot.</span>
                     {% if show_deals %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Core</span>{% endif %}
-                </div>
-                <div class="feature-tile">
-                    <span class="ft-icon">🛡️</span>
-                    <span class="ft-title">Trust-Score</span>
-                    <span class="ft-desc">Betrugserkennung & Vertrauenswert je Verkäufer.</span>
-                    {% if show_trust_scores %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Core</span>{% endif %}
                 </div>
                 <div class="feature-tile">
                     <span class="ft-icon">🎯</span>
@@ -300,12 +329,6 @@
                     <span class="ft-title">Kartenansicht</span>
                     <span class="ft-desc">Alle Treffer auf einer Karte entdecken.</span>
                     {% if show_map %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Pro</span>{% endif %}
-                </div>
-                <div class="feature-tile">
-                    <span class="ft-icon">💬</span>
-                    <span class="ft-title">KI-Such-Assistent</span>
-                    <span class="ft-desc">Beschreib im Chat, was du suchst — der Agent sucht live.</span>
-                    {% if show_smart_search %}<span class="ft-badge ft-on">Aktiv</span>{% else %}<span class="ft-badge ft-locked">Pro</span>{% endif %}
                 </div>
                 <div class="feature-tile">
                     <span class="ft-icon">⚡</span>
@@ -2637,6 +2660,22 @@
 var chatMessages = [{role:'assistant', content:''}];  // greeting loaded dynamically
 var chatLiked = [];
 var chatDisliked = [];
+
+// Inline KI-Agent box on the dashboard: opens the chat panel and forwards
+// the typed request straight into it, so the user never leaves the page.
+function askAgent(e) {
+    if (e) e.preventDefault();
+    var el = document.getElementById('agent-inline-input');
+    if (!el) return false;
+    var text = el.value.trim();
+    if (!text) return false;
+    el.value = '';
+    var panel = document.getElementById('ai-chat-panel');
+    if (panel && !panel.classList.contains('open')) toggleChat();
+    var chatInput = document.getElementById('ai-chat-input');
+    if (chatInput) { chatInput.value = text; sendChatMsg(); }
+    return false;
+}
 
 function toggleChat() {
     var p = document.getElementById('ai-chat-panel');
