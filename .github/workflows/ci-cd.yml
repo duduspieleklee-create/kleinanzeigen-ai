@@ -184,6 +184,10 @@ jobs:
             # Ensure a clean working tree – discard any local changes or untracked files
             git reset --hard
             git clean -fdx
+            # Restore .env from template if needed (preserve configuration across deploys)
+            if [ -f .env.example ]; then
+              cp -f .env.example .env
+            fi
             # Install Node/npm if missing (requires sudo)
             if ! command -v npm >/dev/null 2>&1; then
               sudo apt-get update -y
@@ -210,6 +214,8 @@ jobs:
             # trailing newline in a GitHub secret can't corrupt the file (a
             # newline pasted into the secret would otherwise split the line).
             # Empty/whitespace-only secrets are skipped, leaving .env untouched.
+            # Ensure .env exists before upserting secrets
+            touch .env
             upsert_env() {
               local key="$1" val
               val="$(printf '%s' "$2" | tr -d '\r\n')"
@@ -231,6 +237,12 @@ jobs:
             # Build frontend assets (Vite) — produces app/api/static/main.js + style.css
             cd frontend && npm ci && npm run build && cd ..
             docker compose -f docker-compose.prod.yml build api
+            # Load environment variables from .env if present
+            if [ -f .env ]; then
+              set -a
+              . .env
+              set +a
+            fi
             docker compose -f docker-compose.prod.yml run --rm api alembic upgrade heads
             docker compose -f docker-compose.prod.yml up -d --build
 
