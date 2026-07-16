@@ -31,10 +31,10 @@
     <script>
         const GREETING = `👋 Hallo! Ich bin dein KI‑Such‑Assistent.
 
-Erzähl mir einfach, wonach du suchst — z.B.:
-• „Ein gebrauchtes Eichensofa unter 200€“
-• „Ein iPhone in München bis 500€“
-• „Gartenmöbel, günstig“`;
+        Erzähl mir einfach, wonach du suchst — z.B.:
+        • „Ein gebrauchtes Eichensofa unter 200€“
+        • „Ein iPhone in München bis 500€“
+        • „Gartenmöbel, günstig“`;
         const form = document.getElementById('chatForm');
         const input = document.getElementById('msgInput');
         const messages = document.getElementById('messages');
@@ -48,6 +48,30 @@ Erzähl mir einfach, wonach du suchst — z.B.:
         }
         // Show initial greeting
         addMessage(GREETING, 'bot');
+        // Perform LLM health check on page load
+        window.addEventListener('load', async () => {
+            try {
+                const resp = await fetch('/api/ai-search/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({messages: [{role: 'assistant', content: GREETING}]})
+                });
+                const data = await resp.json();
+                const statusDiv = document.getElementById('status');
+                if (data.llm_error) {
+                    statusDiv.textContent = data.llm_error;
+                    statusDiv.style.color = 'red';
+                } else if (data.llm_connected) {
+                    statusDiv.textContent = `LLM verbunden – ${data.model_name}`;
+                    statusDiv.style.color = 'green';
+                } else {
+                    statusDiv.textContent = 'LLM nicht aktiv';
+                    statusDiv.style.color = '#555';
+                }
+            } catch (e) {
+                // ignore errors
+            }
+        });
         form.addEventListener('submit', async e => {
             e.preventDefault();
             const query = input.value.trim();
@@ -68,6 +92,19 @@ Erzähl mir einfach, wonach du suchst — z.B.:
                     statusDiv.textContent = data.llm_error;
                     statusDiv.style.color = 'red';
                 } else if (data.llm_connected) {
+                    statusDiv.textContent = `LLM verbunden – ${data.model_name}`;
+                    statusDiv.style.color = 'green';
+                } else {
+                    statusDiv.textContent = 'LLM nicht aktiv';
+                    statusDiv.style.color = '#555';
+                }
+                addMessage(data.reply, 'bot');
+                history.push({role: 'assistant', content: data.reply});
+            } catch (err) {
+                addMessage('Fehler beim Abrufen der Antwort.', 'bot');
+            }
+        });
+
                     statusDiv.textContent = `LLM verbunden – ${data.model_name}`;
                     statusDiv.style.color = 'green';
                 } else {
