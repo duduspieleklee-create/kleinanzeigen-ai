@@ -239,8 +239,13 @@ jobs:
             export BUILD_NUMBER="${BUILD_NUMBER:-${{ github.run_number }}}"
             export BUILD_TIME="${BUILD_TIME:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
             export APP_VERSION="${APP_VERSION:-$(grep -m1 '^version' pyproject.toml | sed -E 's/version = \"(.*)\"/\1/')}"
-            docker compose -f docker-compose.prod.yml build api
-            echo "deploy-build complete"
+            docker compose -f docker-compose.prod.yml build \
+              --build-arg GIT_SHA="$GIT_SHA" \
+              --build-arg BUILD_NUMBER="$BUILD_NUMBER" \
+              --build-arg APP_VERSION="$APP_VERSION" \
+              --build-arg BUILD_TIME="$BUILD_TIME" \
+              api
+            echo "deploy-build complete (sha=$GIT_SHA)"
 
   deploy-migrate:
     runs-on: ubuntu-latest
