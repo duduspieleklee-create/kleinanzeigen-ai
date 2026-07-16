@@ -10,6 +10,7 @@ from app.ai.ai_search import parse_query, extract_keywords_for_search, generate_
 from app.ai.ai_search_chat import build_chat_response, format_results_as_chat, GREETING
 from app.shared.database import get_db
 from app.api.config import Settings
+import httpx
 from app.shared.models import ScrapeResult
 
 router = APIRouter(prefix="/api", tags=["ai_search"])
@@ -41,6 +42,8 @@ class ChatResponse(BaseModel):
     total: int = 0
     llm_connected: bool = False
     model_name: str = ""
+    llm_error: str = ""
+
 
 
 
@@ -80,11 +83,26 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
 
     # Determine if the LLM is reachable/enabled
     settings = Settings()
-    llm_connected = bool(settings.custom_model_enabled)
-    model_name = settings.custom_model_name if llm_connected else ""
+    llm_connected = False
+    model_name = ""
+    llm_error = ""
+    if settings.custom_model_enabled:
+        model_name = settings.custom_model_name or ""
+        try:
+            resp = httpx.post(f"{settings.custom_model_endpoint_resolved}/v1/models", timeout=2.0)
+            resp.raise_for_status()
+            llm_connected = True
+        except Exception:
+            llm_connected = False
+            llm_error = "LLM connection failed"
 
     if len(msgs) <= 1:
-        return ChatResponse(reply=GREETING, llm_connected=llm_connected, model_name=model_name)
+        return ChatResponse(
+            reply=GREETING,
+            llm_connected=llm_connected,
+            model_name=model_name,
+            llm_error=llm_error,
+        )
 
 
     chat_result = build_chat_response(msgs)
@@ -96,8 +114,8 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         ranked = rank_results(results, chat_result["search_text"])
 
         reply = format_results_as_chat(ranked[:15], len(ranked))
-        return ChatResponse(reply=reply, search_text=chat_result["search_text"], results=ranked[:15], total=len(ranked), llm_connected=llm_connected, model_name=model_name)
-    return ChatResponse(reply=chat_result["reply"], llm_connected=llm_connected, model_name=model_name)
+        return ChatResponse(reply=reply, search_text=chat_result["search_text"], results=ranked[:15], total=len(ranked), llm_connected=llm_connected, model_name=model_name, llm_error=llm_error)
+    return ChatResponse(reply=chat_result["reply"], llm_connected=llm_connected, model_name=model_name, llm_error=llm_error)
 
 def _fetch_matching_results(keyword: str, db: Session) -> list[dict]:
     if not keyword:
