@@ -164,17 +164,18 @@ def build_chat_response(conversation: list[dict]) -> dict:
     If the LLM request fails (e.g., the local Ollama server is unavailable),
     we fall back to a deterministic response.
     """
-    # If there is only the greeting request, return the greeting string.
-    if len(conversation) <= 1:
+    # Empty conversation: return the greeting string.
+    if not conversation:
         return {"reply": GREETING, "search_text": "", "search_results": None}
 
-    # Try the LLM first.
+    # Try the LLM first for any non-empty conversation, including the very
+    # first user message, so the assistant feels responsive immediately.
     llm_messages = _prepare_messages(conversation)
     llm_reply = _call_llm(llm_messages)
     fallback = _fallback_response(conversation)
     if _use_llm_reply(llm_reply, fallback):
         return {"reply": llm_reply, "search_text": "", "search_results": None}
-    # Otherwise return the deterministic fallback.
+    # Otherwise return the deterministic fallback (greeting for vague first msg).
     return fallback
 
 
