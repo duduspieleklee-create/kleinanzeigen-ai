@@ -62,8 +62,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      ollama:
-        condition: service_started
 
   worker:
     build:
@@ -76,8 +74,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      ollama:
-        condition: service_started
 
   beat:
     build:
@@ -90,8 +86,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      ollama:
-        condition: service_started
 
 volumes:
   postgres_data:
