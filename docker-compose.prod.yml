@@ -33,8 +33,6 @@ services:
       start_period: 2m
     stdin_open: true
     tty: true
-    ports:
-      - "127.0.0.1:11434:11434"
     command: sh -c "/docker/ollama-startup.sh"
 
   redis:
@@ -58,8 +56,6 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     env_file: .env
     depends_on:
       db:
