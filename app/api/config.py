@@ -120,8 +120,10 @@ class Settings(BaseSettings):
     custom_model_endpoint: str = ""
     custom_model_api_key: str = ""
     custom_model_name: str = ""
-    # Optional temperature / max tokens for the suggestion call.
-    custom_model_temperature: float = 0.3
+    # Optional temperature / top_p / repeat_penalty / max tokens for the suggestion call.
+    custom_model_temperature: float = 0.7
+    custom_model_top_p: float = 0.9
+    custom_model_repeat_penalty: float = 1.2
     custom_model_max_tokens: int = 256
 
     # Preset → default (endpoint, needs_api_key). Explicit config overrides these.
@@ -134,10 +136,12 @@ class Settings(BaseSettings):
     @property
     def custom_model_endpoint_resolved(self) -> str:
         """Effective endpoint: explicit setting wins, else provider preset default."""
-        if self.custom_model_endpoint:
+        # Treat empty string as not set, so the provider preset is used.
+        if self.custom_model_endpoint and self.custom_model_endpoint.strip():
             return self.custom_model_endpoint
         preset = self._PROVIDER_PRESETS.get(self.custom_model_provider.lower())
         return preset[0] if preset else ""
+
 
     @property
     def custom_model_api_key_required(self) -> bool:
