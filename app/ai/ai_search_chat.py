@@ -28,12 +28,6 @@ _CONFIRM_SEARCH = (
 )
 _NO_RESULTS = "Ich habe leider nichts passendes gefunden. Versuch es mit anderen Angaben!"
 _RESULTS_FOUND = "Ich habe {count} passende Treffer gefunden:"
-
-
-from app.api.config import Settings
-import httpx
-
-
 def _call_llm(messages: list[dict]) -> str:
     """Send the conversation to the configured LLM (Ollama/OpenAI/etc.)
     and return the assistant's reply text. If the model is not configured,
