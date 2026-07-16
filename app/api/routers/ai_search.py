@@ -90,7 +90,13 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         model_name = settings.custom_model_name or ""
         try:
             if settings.custom_model_provider == "ollama":
-                health_url = f"{settings.custom_model_endpoint_resolved}/api/tags"
+                # Ollama's /api/tags lives at the base URL, not under /v1.
+                # CUSTOM_MODEL_ENDPOINT typically points at the OpenAI-compatible
+                # /v1 root, so strip it before appending the native Ollama path.
+                base_url = settings.custom_model_endpoint_resolved.rstrip("/")
+                if base_url.endswith("/v1"):
+                    base_url = base_url[:-3]
+                health_url = f"{base_url}/api/tags"
                 resp = httpx.get(health_url, timeout=2.0)
             else:
                 health_url = f"{settings.custom_model_endpoint_resolved}/v1/models"

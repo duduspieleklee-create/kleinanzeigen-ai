@@ -212,13 +212,32 @@ jobs:
               echo "Installing Ollama..."
               curl -fsSL https://ollama.com/install.sh | sudo sh
             fi
+            # Make Ollama listen on all interfaces so Docker containers can reach it.
+            # The default systemd service binds to 127.0.0.1 only, which is unreachable
+            # from inside the API container.
+            sudo mkdir -p /etc/systemd/system/ollama.service.d
+            printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0:11434"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf >/dev/null
+            sudo systemctl daemon-reload
+            # Ensure ollama systemd service is running and uses the new binding
+            if sudo systemctl is-active --quiet ollama 2>/dev/null; then
+              sudo systemctl restart ollama
+            else
+              sudo systemctl enable --now ollama
+            fi
             # Pull model if not already loaded
             if ! ollama list 2>/dev/null | grep -q "qwen2.5:1.5b"; then
               echo "Pulling qwen2.5:1.5b..."
               ollama pull qwen2.5:1.5b
             fi
-            # Ensure ollama systemd service is running
-            sudo systemctl enable --now ollama 2>/dev/null || ollama serve &>/dev/null &
+            # Verify Ollama is listening on 0.0.0.0 (or at least not only 127.0.0.1)
+            echo "Checking Ollama bind address..."
+            if ss -tlnp | grep -q '0.0.0.0:11434\|\*:11434\|:::11434'; then
+              echo "✓ Ollama listening on all interfaces"
+            else
+              echo "✗ Ollama is not listening on all interfaces. Current bindings:"
+              ss -tlnp | grep 11434 || true
+              exit 1
+            fi
             export GIT_SHA="${{ github.sha }}"
             export BUILD_NUMBER="${{ github.run_number }}"
             export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
