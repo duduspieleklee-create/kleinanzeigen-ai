@@ -27,6 +27,12 @@ services:
       timeout: 5s
       retries: 5
 
+  # Ollama LLM service
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+
   # FastAPI Application
   api:
     build:
@@ -46,16 +52,16 @@ services:
       VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
-      CUSTOM_MODEL_ENDPOINT: http://host.docker.internal:11434
-      CUSTOM_MODEL_NAME: qwen2.5:1.5b
+      CUSTOM_MODEL_ENDPOINT: http://ollama:11434
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - .:/app
-    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
+
+
+
 
   # Celery Worker
   worker:
