@@ -93,10 +93,6 @@ services:
       ollama:
         condition: service_started
 
-networks:
-  default:
-    driver: bridge
-
 volumes:
   postgres_data:
   ollama_data:
