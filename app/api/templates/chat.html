@@ -100,6 +100,10 @@
                 }
                 addMessage(data.reply, 'bot');
                 history.push({role: 'assistant', content: data.reply});
+            } catch (err) {
+                addMessage('Fehler beim Abrufen der Antwort.', 'bot');
+            }
+        });
     </script>
 </body>
 </html>
