@@ -147,6 +147,42 @@ docker compose -f docker-compose.prod.yml ps
 All five containers (`db`, `redis`, `api`, `worker`, `beat`) should show as
 running/healthy.
 
+### Local Ollama LLM (optional)
+
+If you want AI chat / smart-search suggestions powered by a local model
+instead of a remote API, install and run Ollama directly on the VPS host
+(not in Docker) for the simplest and most reliable setup:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5:1.5b
+pgrep ollama || ollama serve &
+```
+
+Then point the app at the Docker bridge gateway and configure the model in
+`.env`:
+
+```env
+CUSTOM_MODEL_PROVIDER=ollama
+CUSTOM_MODEL_NAME=qwen2.5:1.5b
+CUSTOM_MODEL_ENDPOINT=http://172.17.0.1:11434/v1
+```
+
+To keep the model loaded in memory between requests (avoids cold-start
+latency), start the Ollama daemon with `OLLAMA_KEEP_ALIVE` set:
+
+```bash
+OLLAMA_KEEP_ALIVE=24h ollama serve
+```
+
+If you run Ollama via systemd, set it in the service unit's `Environment=`
+instead.
+
+**Note:** the production compose file does not include an `ollama` service.
+Previous versions added one in Docker, but the container repeatedly crashed
+because the default Ollama image interprets `command:` as Ollama subcommands.
+Running Ollama on the host avoids that networking and startup complexity.
+
 ## 7. Install and configure Caddy
 
 ```bash
