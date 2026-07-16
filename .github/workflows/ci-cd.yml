@@ -274,3 +274,45 @@ jobs:
               echo "FAIL: /version build mismatch. got=$VERSION expected=$EXPECTED_BUILD_NUMBER"; exit 1
             fi
             echo "Deploy smoke checks passed: healthz=ok version=$VERSION"
+
+            # ── LLM connectivity checks ──────────────────────────
+            # 1. Verify Ollama service is running and responding
+            echo ""
+            echo "=== LLM Connectivity Checks ==="
+            for i in $(seq 1 30); do
+              OLLAMA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo "000")
+              if [ "$OLLAMA_STATUS" = "200" ]; then
+                echo "Ollama service ready (attempt $i)"
+                break
+              fi
+              sleep 5
+            done
+
+            # 2. Check if model is loaded
+            OLLAMA_TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
+            MODEL_COUNT=$(echo "$OLLAMA_TAGS" | grep -o '"name":"[^"]*"' | wc -l)
+            if [ "$MODEL_COUNT" -eq 0 ]; then
+              echo "WARN: No Ollama models found. The /chat endpoint will show 'LLM nicht aktiv'."
+              echo "      Run: docker compose -f docker-compose.prod.yml exec ollama ollama pull qwen2.5:1.5b"
+            else
+              echo "Ollama models loaded: $(echo "$OLLAMA_TAGS" | grep -o '"name":"[^"]*"' | head -3)"
+            fi
+
+            # 3. Test /chat LLM connectivity
+            CHAT_RESPONSE=$(curl -s "http://127.0.0.1:8000/api/ai-search/chat" \
+              -H "Content-Type: application/json" \
+              -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/dev/null || echo '{}')
+            LLM_CONNECTED=$(echo "$CHAT_RESPONSE" | grep -o '"llm_connected":[^,}]*' | cut -d: -f2)
+            MODEL_NAME=$(echo "$CHAT_RESPONSE" | grep -o '"model_name":"[^"]*"' | cut -d'"' -f4)
+
+            if [ "$LLM_CONNECTED" = "true" ]; then
+              echo "✓ LLM connected — model: $MODEL_NAME"
+            else
+              LLM_ERROR=$(echo "$CHAT_RESPONSE" | grep -o '"llm_error":"[^"]*"' | cut -d'"' -f4)
+              echo "✗ LLM NOT connected!"
+              echo "  llm_connected: $LLM_CONNECTED"
+              echo "  model_name: $MODEL_NAME"
+              echo "  llm_error: $LLM_ERROR"
+              exit 1
+            fi
+            echo "=== LLM checks passed ==="
