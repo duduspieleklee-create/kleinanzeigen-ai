@@ -46,6 +46,7 @@ services:
       VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-onboarding@resend.dev}
+      CUSTOM_MODEL_ENDPOINT: http://host.docker.internal:11434
     depends_on:
       db:
         condition: service_healthy
