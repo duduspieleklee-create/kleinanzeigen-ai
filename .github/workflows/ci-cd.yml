@@ -281,7 +281,7 @@ jobs:
           script: |
             set -e
             cd /opt/kleinanzeigen-ai
-            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml up -d
             echo "deploy-restart complete"
 
   deploy-smoke:
