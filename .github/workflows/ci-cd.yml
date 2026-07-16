@@ -184,6 +184,11 @@ jobs:
             # Ensure a clean working tree – discard any local changes or untracked files
             git reset --hard
             git clean -fdx
+            # Install Node/npm if missing (requires sudo)
+            if ! command -v npm >/dev/null 2>&1; then
+              sudo apt-get update -y
+              sudo apt-get install -y nodejs npm
+            fi
 
 
             # Discard any uncommitted tracked changes on the VPS so the
