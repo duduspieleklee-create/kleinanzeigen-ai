@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8" />
     <title>KI‑Chat</title>
-    <style>
-        body {font-family: Arial, sans-serif; margin: 2rem;}
-        #messages {border: 1px solid #ccc; padding: 1rem; height: 400px; overflow-y: auto; margin-bottom: 1rem;}
-        .msg {margin: .5rem 0;}
-        .user {font-weight: bold; color: #0066cc;}
-        .bot {color: #333;}
-    </style>
+    <script>
+        const GREETING = `👋 Hallo! Ich bin dein KI‑Such‑Assistent.
+
+Erzähl mir einfach, wonach du suchst — z.B.:
+• „Ein gebrauchtes Eichensofa unter 200€“
+• „Ein iPhone in München bis 500€“
+• „Gartenmöbel, günstig“`;
+    </script>
 </head>
 <body>
     <h1>KI‑Chat</h1>
@@ -22,6 +23,8 @@
         const form = document.getElementById('chatForm');
         const input = document.getElementById('msgInput');
         const messages = document.getElementById('messages');
+        // Keep full conversation history to send to the backend
+        const history = [{role: 'assistant', content: GREETING}];
         function addMessage(text, author) {
             const div = document.createElement('div');
             div.className = 'msg ' + (author==='user'?'user':'bot');
@@ -29,20 +32,26 @@
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
         }
+        // Initialize with greeting
+        addMessage(GREETING, 'bot');
         form.addEventListener('submit', async e => {
             e.preventDefault();
             const query = input.value.trim();
             if (!query) return;
             addMessage(query, 'user');
+            // Append user message to history
+            history.push({role: 'user', content: query});
             input.value = '';
             try {
                 const resp = await fetch('/api/ai-search/chat', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({messages: [{role: 'user', content: query}]})
+                    body: JSON.stringify({messages: history})
                 });
                 const data = await resp.json();
                 addMessage(data.reply, 'bot');
+                // Append assistant reply to history for next turn
+                history.push({role: 'assistant', content: data.reply});
             } catch (err) {
                 addMessage('Fehler beim Abrufen der Antwort.', 'bot');
             }
