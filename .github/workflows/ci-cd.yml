@@ -340,26 +340,79 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             set -e
-            echo "=== LLM Self-Healing ==="
-            # 1. Verify Ollama running on host
-            for i in $(seq 1 15); do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo "000")
-              [ "$STATUS" = "200" ] && echo "Ollama ready (attempt $i)" && break
-              sleep 4
-            done
-            # 2. Verify model loaded
-            TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
-            echo "$TAGS" | grep -q "qwen2.5:1.5b" || { echo "✗ Model missing"; exit 1; }
-            echo "Model qwen2.5:1.5b loaded ✓"
-            # 3. Test /chat LLM connectivity
-            for attempt in $(seq 1 10); do
-              RESP=$(curl -s "http://127.0.0.1:8000/api/ai-search/chat" \
-                -H "Content-Type: application/json" \
-                -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/dev/null || echo '{}')
-              CONNECTED=$(echo "$RESP" | grep -o '"llm_connected":[^,}]*' | cut -d: -f2)
-              MODEL=$(echo "$RESP" | grep -o '"model_name":"[^"]*"' | cut -d'"' -f4)
-              [ "$CONNECTED" = "true" ] && echo "✓ LLM connected — $MODEL" && exit 0
+            echo "=== LLM Audit ==="
+            echo ""
+
+            # ── 1. Host-level Ollama check ──
+            echo "--- 1. Ollama host check ---"
+            echo "Checking ollama process:"
+            ps aux | grep ollama | grep -v grep || echo "  NO ollama process found"
+
+            echo "Checking port 11434:"
+            ss -tlnp | grep 11434 || echo "  NOTHING listening on 11434"
+
+            echo "Trying curl http://127.0.0.1:11434/api/tags:"
+            for i in $(seq 1 10); do
+              STATUS=$(curl -s -o /tmp/ollama_tags.json -w "%{http_code}" "http://127.0.0.1:11434/api/tags" 2>/tmp/ollama_curl_err || echo "000")
+              echo "  attempt $i → HTTP $STATUS"
+              [ "$STATUS" = "200" ] && break
+              cat /tmp/ollama_curl_err 2>/dev/null
               sleep 3
             done
-            echo "✗ LLM not connected after 10 retries"
+
+            if [ "$STATUS" != "200" ]; then
+              echo "✗ Ollama not reachable on host (HTTP $STATUS). Full response:"
+              cat /tmp/ollama_tags.json 2>/dev/null
+              exit 1
+            fi
+            echo "✓ Ollama host OK"
+
+            # ── 2. Model check ──
+            echo ""
+            echo "--- 2. Model check ---"
+            TAGS=$(cat /tmp/ollama_tags.json 2>/dev/null || echo '{}')
+            echo "Ollama /api/tags response:"
+            echo "$TAGS" | python3 -m json.tool 2>/dev/null || echo "$TAGS"
+            MODEL_COUNT=$(echo "$TAGS" | grep -o '"name"' | wc -l)
+            echo "Models found: $MODEL_COUNT"
+            echo "$TAGS" | grep -q "qwen2.5" && echo "✓ qwen2.5:1.5b found" || { echo "✗ qwen2.5:1.5b MISSING"; exit 1; }
+
+            # ── 3. API /chat endpoint check ──
+            echo ""
+            echo "--- 3. /chat endpoint audit ---"
+            echo "API version:"
+            curl -s "http://127.0.0.1:8000/version" | python3 -m json.tool 2>/dev/null
+
+            echo ""
+            echo "Calling /chat with full debug:"
+            for attempt in $(seq 1 10); do
+              echo "  --- attempt $attempt ---"
+              RESP=$(curl -s -w "\n%{http_code}" "http://127.0.0.1:8000/api/ai-search/chat" \
+                -H "Content-Type: application/json" \
+                -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/tmp/chat_curl_err)
+              HTTP_CODE=$(echo "$RESP" | tail -1)
+              BODY=$(echo "$RESP" | sed '$d')
+              echo "  HTTP: $HTTP_CODE"
+              echo "  Body: $BODY" | head -5
+
+              LLM_CONNECTED=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('llm_connected','N/A'))" 2>/dev/null || echo "parse_error")
+              MODEL_NAME=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('model_name','N/A'))" 2>/dev/null || echo "parse_error")
+              LLM_ERROR=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('llm_error','N/A'))" 2>/dev/null || echo "parse_error")
+
+              echo "  llm_connected: $LLM_CONNECTED"
+              echo "  model_name: $MODEL_NAME"
+              echo "  llm_error: $LLM_ERROR"
+
+              if [ "$LLM_CONNECTED" = "True" ]; then
+                echo ""
+                echo "✓✓✓ LLM CONNECTED — model: $MODEL_NAME ✓✓✓"
+                exit 0
+              fi
+              sleep 3
+            done
+
+            echo ""
+            echo "✗✗✗ LLM audit FAILED after 10 retries ✗✗✗"
+            echo "Full last response:"
+            echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
             exit 1
