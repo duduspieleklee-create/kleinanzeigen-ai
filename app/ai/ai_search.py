@@ -107,12 +107,17 @@ def parse_query(text: str) -> dict:
         match = re.search(pattern, cleaned, re.IGNORECASE)
         if match:
             loc = match.group(1)
-            # Verwerfen falls Preis-Wörter enhalten sind
+            # Verwerfen falls Preis-Wörter enthalten sind
             price_words = {"unter", "bis", "ab", "über", "max", "min"}
             loc_tokens = set(re.findall(r"[a-zäöüß]+", loc.lower()))
             if not price_words & loc_tokens:
                 result["location"] = loc
                 break
+    # Simple fallback: look for " in <city>" at the end of the string
+    if not result["location"]:
+        fallback_match = re.search(r"\bin\s+([a-zäöüß]+)\b", cleaned)
+        if fallback_match:
+            result["location"] = fallback_match.group(1).title()
 
     # Keywords extrahieren (remove stopwords, filter meaningful words)
     tokens = re.findall(r"[a-zäöüß]+", cleaned)
