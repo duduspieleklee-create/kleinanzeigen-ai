@@ -206,7 +206,7 @@ jobs:
             upsert_env TURNSTILE_SECRET_KEY "${{ secrets.TURNSTILE_SECRET_KEY }}"
             upsert_env CUSTOM_MODEL_PROVIDER "ollama"
             upsert_env CUSTOM_MODEL_NAME "qwen2.5:1.5b"
-            upsert_env CUSTOM_MODEL_ENDPOINT "http://ollama:11434/v1"
+            upsert_env CUSTOM_MODEL_ENDPOINT "http://172.17.0.1:11434/v1"
             export GIT_SHA="${{ github.sha }}"
             export BUILD_NUMBER="${{ github.run_number }}"
             export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
