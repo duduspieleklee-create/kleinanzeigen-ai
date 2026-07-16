@@ -33,7 +33,6 @@ services:
       start_period: 2m
     stdin_open: true
     tty: true
-    network_mode: host
     command: sh -c "/docker/ollama-startup.sh"
 
   redis:
@@ -58,6 +57,8 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     env_file: .env
+    dns:
+      - 127.0.0.11
     depends_on:
       db:
         condition: service_healthy
