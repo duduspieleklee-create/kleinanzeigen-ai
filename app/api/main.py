@@ -240,6 +240,11 @@ async def home(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/login", tags=["Web"])
+
+# New chat UI endpoint
+@app.get("/chat", tags=["Web"], include_in_schema=False)
+async def chat_page(request: Request):
+    return templates.TemplateResponse("chat.html", {"request": request})
 async def login_page(request: Request, db: Session = Depends(get_db)):
     try:
         get_current_user(
