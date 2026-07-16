@@ -136,12 +136,15 @@ class Settings(BaseSettings):
     @property
     def custom_model_endpoint_resolved(self) -> str:
         """Effective endpoint: explicit setting wins, else provider preset default."""
-        # Treat empty string as not set, so the provider preset is used.
+        # Explicit endpoint takes precedence
         if self.custom_model_endpoint and self.custom_model_endpoint.strip():
-            return self.custom_model_endpoint
-        preset = self._PROVIDER_PRESETS.get(self.custom_model_provider.lower())
-        return preset[0] if preset else ""
-
+            return self.custom_model_endpoint.strip()
+        # Otherwise, use provider preset if available
+        if self.custom_model_provider:
+            preset = self._PROVIDER_PRESETS.get(self.custom_model_provider.lower())
+            if preset:
+                return preset[0]
+        return ""
 
     @property
     def custom_model_api_key_required(self) -> bool:
