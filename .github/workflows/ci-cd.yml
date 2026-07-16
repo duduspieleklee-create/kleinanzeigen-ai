@@ -209,14 +209,16 @@ jobs:
             upsert_env CUSTOM_MODEL_ENDPOINT "http://172.17.0.1:11434/v1"
             # Install Ollama on host if missing (runs natively, not in Docker)
             if ! command -v ollama >/dev/null 2>&1; then
-              curl -fsSL https://ollama.com/install.sh | sh
+              echo "Installing Ollama..."
+              curl -fsSL https://ollama.com/install.sh | sudo sh
             fi
             # Pull model if not already loaded
-            if ! ollama list | grep -q "qwen2.5:1.5b"; then
+            if ! ollama list 2>/dev/null | grep -q "qwen2.5:1.5b"; then
+              echo "Pulling qwen2.5:1.5b..."
               ollama pull qwen2.5:1.5b
             fi
-            # Ensure ollama serve is running (systemd or manual)
-            pgrep -x ollama >/dev/null || ollama serve &>/dev/null &
+            # Ensure ollama systemd service is running
+            sudo systemctl enable --now ollama 2>/dev/null || ollama serve &>/dev/null &
             export GIT_SHA="${{ github.sha }}"
             export BUILD_NUMBER="${{ github.run_number }}"
             export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
