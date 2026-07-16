@@ -21,6 +21,7 @@
 <body>
     <div class="chat-container">
         <div class="header">KI‑Chat</div>
+        <div id="status" style="padding:0.5rem; text-align:center; font-size:0.9rem; color:#555;"></div>
         <div id="messages"></div>
         <form id="chatForm" class="input-area">
             <input type="text" id="msgInput" placeholder="Ihre Frage …" required />
@@ -61,6 +62,18 @@ Erzähl mir einfach, wonach du suchst — z.B.:
                     body: JSON.stringify({messages: history})
                 });
                 const data = await resp.json();
+                // Update LLM status line
+                const statusDiv = document.getElementById('status');
+                if (data.llm_error) {
+                    statusDiv.textContent = data.llm_error;
+                    statusDiv.style.color = 'red';
+                } else if (data.llm_connected) {
+                    statusDiv.textContent = `LLM verbunden – ${data.model_name}`;
+                    statusDiv.style.color = 'green';
+                } else {
+                    statusDiv.textContent = 'LLM nicht aktiv';
+                    statusDiv.style.color = '#555';
+                }
                 addMessage(data.reply, 'bot');
                 history.push({role: 'assistant', content: data.reply});
             } catch (err) {
