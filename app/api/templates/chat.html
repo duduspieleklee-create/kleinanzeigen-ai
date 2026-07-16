@@ -100,23 +100,6 @@
                 }
                 addMessage(data.reply, 'bot');
                 history.push({role: 'assistant', content: data.reply});
-            } catch (err) {
-                addMessage('Fehler beim Abrufen der Antwort.', 'bot');
-            }
-        });
-
-                    statusDiv.textContent = `LLM verbunden – ${data.model_name}`;
-                    statusDiv.style.color = 'green';
-                } else {
-                    statusDiv.textContent = 'LLM nicht aktiv';
-                    statusDiv.style.color = '#555';
-                }
-                addMessage(data.reply, 'bot');
-                history.push({role: 'assistant', content: data.reply});
-            } catch (err) {
-                addMessage('Fehler beim Abrufen der Antwort.', 'bot');
-            }
-        });
     </script>
 </body>
 </html>
