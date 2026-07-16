@@ -275,44 +275,57 @@ jobs:
             fi
             echo "Deploy smoke checks passed: healthz=ok version=$VERSION"
 
-            # ── LLM connectivity checks ──────────────────────────
-            # 1. Verify Ollama service is running and responding
+            # ── LLM self-healing checks ─────────────────────────
+            # Waits for Ollama, auto-pulls model if missing, then
+            # verifies the /chat endpoint returns llm_connected=true.
+            # Only fails if self-healing doesn't resolve the issue.
             echo ""
-            echo "=== LLM Connectivity Checks ==="
+            echo "=== LLM Self-Healing Checks ==="
+            EXPECTED_MODEL="${OLLAMA_MODEL:-qwen2.5:1.5b}"
+
+            # 1. Wait for Ollama service to be ready
             for i in $(seq 1 30); do
-              OLLAMA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo "000")
-              if [ "$OLLAMA_STATUS" = "200" ]; then
-                echo "Ollama service ready (attempt $i)"
-                break
-              fi
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo "000")
+              [ "$STATUS" = "200" ] && echo "Ollama ready (attempt $i)" && break
               sleep 5
             done
 
-            # 2. Check if model is loaded
+            # 2. Check models — auto-pull if missing
             OLLAMA_TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
             MODEL_COUNT=$(echo "$OLLAMA_TAGS" | grep -o '"name":"[^"]*"' | wc -l)
-            if [ "$MODEL_COUNT" -eq 0 ]; then
-              echo "WARN: No Ollama models found. The /chat endpoint will show 'LLM nicht aktiv'."
-              echo "      Run: docker compose -f docker-compose.prod.yml exec ollama ollama pull qwen2.5:1.5b"
-            else
-              echo "Ollama models loaded: $(echo "$OLLAMA_TAGS" | grep -o '"name":"[^"]*"' | head -3)"
+            HAS_EXPECTED=$(echo "$OLLAMA_TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
+
+            if [ "$MODEL_COUNT" -eq 0 ] || [ "$HAS_EXPECTED" != "true" ]; then
+              echo "Model '$EXPECTED_MODEL' not loaded — pulling now..."
+              docker compose -f docker-compose.prod.yml exec -T ollama ollama pull "$EXPECTED_MODEL"
+              echo "Pull complete. Verifying..."
+              OLLAMA_TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
+              HAS_EXPECTED=$(echo "$OLLAMA_TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
+              if [ "$HAS_EXPECTED" != "true" ]; then
+                echo "✗ Auto-pull failed — model '$EXPECTED_MODEL' still missing"
+                exit 1
+              fi
             fi
+            echo "Model '$EXPECTED_MODEL' loaded ✓"
 
-            # 3. Test /chat LLM connectivity
-            CHAT_RESPONSE=$(curl -s "http://127.0.0.1:8000/api/ai-search/chat" \
-              -H "Content-Type: application/json" \
-              -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/dev/null || echo '{}')
-            LLM_CONNECTED=$(echo "$CHAT_RESPONSE" | grep -o '"llm_connected":[^,}]*' | cut -d: -f2)
-            MODEL_NAME=$(echo "$CHAT_RESPONSE" | grep -o '"model_name":"[^"]*"' | cut -d'"' -f4)
+            # 3. Test /chat LLM connectivity — retry once after self-heal
+            chase_llm() {
+              for attempt in $(seq 1 10); do
+                RESP=$(curl -s "http://127.0.0.1:8000/api/ai-search/chat" \
+                  -H "Content-Type: application/json" \
+                  -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/dev/null || echo '{}')
+                CONNECTED=$(echo "$RESP" | grep -o '"llm_connected":[^,}]*' | cut -d: -f2)
+                MODEL=$(echo "$RESP" | grep -o '"model_name":"[^"]*"' | cut -d'"' -f4)
+                [ "$CONNECTED" = "true" ] && echo "✓ LLM connected — model: $MODEL" && return 0
+                sleep 3
+              done
+              return 1
+            }
 
-            if [ "$LLM_CONNECTED" = "true" ]; then
-              echo "✓ LLM connected — model: $MODEL_NAME"
+            if chase_llm; then
+              echo "=== LLM checks passed ==="
             else
-              LLM_ERROR=$(echo "$CHAT_RESPONSE" | grep -o '"llm_error":"[^"]*"' | cut -d'"' -f4)
-              echo "✗ LLM NOT connected!"
-              echo "  llm_connected: $LLM_CONNECTED"
-              echo "  model_name: $MODEL_NAME"
-              echo "  llm_error: $LLM_ERROR"
+              echo "✗ LLM still not connected after 10 retries"
+              echo "  response: $RESP"
               exit 1
             fi
-            echo "=== LLM checks passed ==="
