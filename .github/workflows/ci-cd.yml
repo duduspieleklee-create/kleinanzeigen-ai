@@ -181,6 +181,9 @@ jobs:
             # Ensure Git trusts the deployment directory regardless of the user running the SSH session
             git config --global --add safe.directory /opt/kleinanzeigen-ai
             cd /opt/kleinanzeigen-ai
+            # Ensure a clean working tree – discard any local changes or untracked files
+            git reset --hard
+            git clean -fdx
             # Discard any uncommitted tracked changes on the VPS so the
             # subsequent `git checkout main` can't abort on a dirty tree
             # (e.g. a server-side edit left uncommitted). The VPS working
