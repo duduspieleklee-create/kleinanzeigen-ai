@@ -206,7 +206,17 @@ jobs:
             upsert_env TURNSTILE_SECRET_KEY "${{ secrets.TURNSTILE_SECRET_KEY }}"
             upsert_env CUSTOM_MODEL_PROVIDER "ollama"
             upsert_env CUSTOM_MODEL_NAME "qwen2.5:1.5b"
-            upsert_env CUSTOM_MODEL_ENDPOINT "http://ollama:11434/v1"
+            upsert_env CUSTOM_MODEL_ENDPOINT "http://172.17.0.1:11434/v1"
+            # Install Ollama on host if missing (runs natively, not in Docker)
+            if ! command -v ollama >/dev/null 2>&1; then
+              curl -fsSL https://ollama.com/install.sh | sh
+            fi
+            # Pull model if not already loaded
+            if ! ollama list | grep -q "qwen2.5:1.5b"; then
+              ollama pull qwen2.5:1.5b
+            fi
+            # Ensure ollama serve is running (systemd or manual)
+            pgrep -x ollama >/dev/null || ollama serve &>/dev/null &
             export GIT_SHA="${{ github.sha }}"
             export BUILD_NUMBER="${{ github.run_number }}"
             export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -330,42 +340,26 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             set -e
-            cd /opt/kleinanzeigen-ai
             echo "=== LLM Self-Healing ==="
-            EXPECTED_MODEL="qwen2.5:1.5b"
-            # 1. Wait for Ollama
-            for i in $(seq 1 30); do
+            # 1. Verify Ollama running on host
+            for i in $(seq 1 15); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo "000")
               [ "$STATUS" = "200" ] && echo "Ollama ready (attempt $i)" && break
-              sleep 5
+              sleep 4
             done
-            # 2. Auto-pull model if missing
+            # 2. Verify model loaded
             TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
-            MODEL_COUNT=$(echo "$TAGS" | grep -o '"name":"[^"]*"' | wc -l)
-            HAS=$(echo "$TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
-            if [ "$MODEL_COUNT" -eq 0 ] || [ "$HAS" != "true" ]; then
-              echo "Model '$EXPECTED_MODEL' missing — pulling..."
-              docker compose -f docker-compose.prod.yml exec -T ollama ollama pull "$EXPECTED_MODEL"
-              TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
-              HAS=$(echo "$TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
-              [ "$HAS" != "true" ] && { echo "✗ Auto-pull failed"; exit 1; }
-            fi
-            echo "Model '$EXPECTED_MODEL' loaded ✓"
-            # 3. Verify chat endpoint
-            chase_llm() {
-              for attempt in $(seq 1 10); do
-                RESP=$(curl -s "http://127.0.0.1:8000/api/ai-search/chat" \
-                  -H "Content-Type: application/json" \
-                  -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/dev/null || echo '{}')
-                CONNECTED=$(echo "$RESP" | grep -o '"llm_connected":[^,}]*' | cut -d: -f2)
-                MODEL=$(echo "$RESP" | grep -o '"model_name":"[^"]*"' | cut -d'"' -f4)
-                [ "$CONNECTED" = "true" ] && echo "✓ LLM connected — $MODEL" && return 0
-                sleep 3
-              done
-              return 1
-            }
-            if ! chase_llm; then
-              echo "✗ LLM still not connected after 10 retries"
-              exit 1
-            fi
-            echo "deploy-llm complete"
+            echo "$TAGS" | grep -q "qwen2.5:1.5b" || { echo "✗ Model missing"; exit 1; }
+            echo "Model qwen2.5:1.5b loaded ✓"
+            # 3. Test /chat LLM connectivity
+            for attempt in $(seq 1 10); do
+              RESP=$(curl -s "http://127.0.0.1:8000/api/ai-search/chat" \
+                -H "Content-Type: application/json" \
+                -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/dev/null || echo '{}')
+              CONNECTED=$(echo "$RESP" | grep -o '"llm_connected":[^,}]*' | cut -d: -f2)
+              MODEL=$(echo "$RESP" | grep -o '"model_name":"[^"]*"' | cut -d'"' -f4)
+              [ "$CONNECTED" = "true" ] && echo "✓ LLM connected — $MODEL" && exit 0
+              sleep 3
+            done
+            echo "✗ LLM not connected after 10 retries"
+            exit 1

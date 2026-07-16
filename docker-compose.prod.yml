@@ -20,21 +20,6 @@ services:
       timeout: 5s
       retries: 5
 
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 2m
-    stdin_open: true
-    tty: true
-    command: sh -c "/docker/ollama-startup.sh"
-
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -57,8 +42,6 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     env_file: .env
-    dns:
-      - 127.0.0.11
     depends_on:
       db:
         condition: service_healthy
@@ -91,4 +74,3 @@ services:
 
 volumes:
   postgres_data:
-  ollama_data:
