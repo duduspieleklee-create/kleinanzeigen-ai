@@ -97,9 +97,10 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 resp = httpx.post(health_url, timeout=2.0)
             resp.raise_for_status()
             llm_connected = True
-        except Exception:
+        except Exception as e:
             llm_connected = False
-            llm_error = "LLM connection failed"
+            llm_error = f"LLM connection failed: {str(e)}"
+
 
     if len(msgs) <= 1:
         return ChatResponse(
