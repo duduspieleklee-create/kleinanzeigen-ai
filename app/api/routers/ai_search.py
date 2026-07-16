@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.ai.ai_search import parse_query, extract_keywords_for_search, generate_search_text, rank_results
 from app.ai.ai_search_chat import build_chat_response, format_results_as_chat, GREETING
 from app.shared.database import get_db
+from app.api.config import Settings
 from app.shared.models import ScrapeResult
 
 router = APIRouter(prefix="/api", tags=["ai_search"])
@@ -38,6 +39,9 @@ class ChatResponse(BaseModel):
     search_text: str = ""
     results: list[dict] = []
     total: int = 0
+    llm_connected: bool = False
+    model_name: str = ""
+
 
 
 @router.post("/ai-search", summary="KI-Suche mit natürlichsprachlicher Beschreibung")
@@ -74,8 +78,14 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
     """Chat: User unterhält sich, KI fragt nach, sucht, zeigt Ergebnisse."""
     msgs = [{"role": m.role, "content": m.content} for m in payload.messages]
 
+    # Determine if the LLM is reachable/enabled
+    settings = Settings()
+    llm_connected = bool(settings.custom_model_enabled)
+    model_name = settings.custom_model_name if llm_connected else ""
+
     if len(msgs) <= 1:
-        return ChatResponse(reply=GREETING)
+        return ChatResponse(reply=GREETING, llm_connected=llm_connected, model_name=model_name)
+
 
     chat_result = build_chat_response(msgs)
 
@@ -86,10 +96,8 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         ranked = rank_results(results, chat_result["search_text"])
 
         reply = format_results_as_chat(ranked[:15], len(ranked))
-        return ChatResponse(reply=reply, search_text=chat_result["search_text"], results=ranked[:15], total=len(ranked))
-
-    return ChatResponse(reply=chat_result["reply"])
-
+        return ChatResponse(reply=reply, search_text=chat_result["search_text"], results=ranked[:15], total=len(ranked), llm_connected=llm_connected, model_name=model_name)
+    return ChatResponse(reply=chat_result["reply"], llm_connected=llm_connected, model_name=model_name)
 
 def _fetch_matching_results(keyword: str, db: Session) -> list[dict]:
     if not keyword:
