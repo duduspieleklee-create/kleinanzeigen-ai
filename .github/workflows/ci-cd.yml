@@ -158,63 +158,40 @@ jobs:
           path: ${{ github.workspace }}/dashboard-mobile.png
 
   # ─────────────────────────────────────────────
-  # 3. Deploy — SSH into the VPS, pull, migrate, restart.
-  #    Only on a push to main (never on PRs); requires VPS_HOST,
-  #    VPS_USER and VPS_SSH_PASSWORD secrets (see docs/vps-deployment.md).
-  #    Also injects RESEND_API_KEY, EMAIL_FROM and the TURNSTILE_* keys into
-  #    /opt/kleinanzeigen-ai/.env (all optional — skipped if the secret is unset).
+  # 3. Deploy pipeline — split into named jobs so
+  #    GitHub Actions shows each phase separately.
+  #    Only on push to main; each job SSHes to the VPS.
   # ─────────────────────────────────────────────
-  deploy:
+  # Shared SSH config (YAML anchor — DRY)
+  .ssh_config: &ssh_config
+    host: ${{ secrets.VPS_HOST }}
+    username: ${{ secrets.VPS_USER }}
+    password: ${{ secrets.VPS_SSH_PASSWORD }}
+    port: ${{ secrets.VPS_PORT || 22 }}
+
+  deploy-pull:
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Deploy over SSH
+      - name: Pull latest code + env + frontend build
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_SSH_PASSWORD }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          <<: *ssh_config
           script: |
             set -e
-            # Ensure Git trusts the deployment directory regardless of the user running the SSH session
             git config --global --add safe.directory /opt/kleinanzeigen-ai
             cd /opt/kleinanzeigen-ai
-            # Ensure a clean working tree – discard any local changes or untracked files
             git reset --hard
             git clean -fdx
-            # Restore .env from template if needed (preserve configuration across deploys)
-            if [ -f .env.example ]; then
-              cp -f .env.example .env
-            fi
-            # Install Node/npm if missing (requires sudo)
+            [ -f .env.example ] && cp -f .env.example .env
             if ! command -v npm >/dev/null 2>&1; then
-              sudo apt-get update -y
-              sudo apt-get install -y nodejs npm
+              sudo apt-get update -y && sudo apt-get install -y nodejs npm
             fi
-
-
-            # Discard any uncommitted tracked changes on the VPS so the
-            # subsequent `git checkout main` can't abort on a dirty tree
-            # (e.g. a server-side edit left uncommitted). The VPS working
-            # tree must always reflect the committed SHA; real changes
-            # belong in a PR, not the deploy target.
-            #
-            # Then do a hard reset to origin/main instead of `git pull`.
-            # `git pull` aborts with "divergent branches" (exit 128) when the
-            # VPS `main` carries a local commit not on the remote, which
-            # breaks the whole deploy. `git fetch` + `reset --hard` makes the
-            # VPS reflect the exact committed SHA regardless of local commits.
             git checkout -- .
             git checkout main
             git fetch origin
             git reset --hard origin/main
-            # Upsert a KEY=VALUE line into .env. tr strips any CR/LF so a stray
-            # trailing newline in a GitHub secret can't corrupt the file (a
-            # newline pasted into the secret would otherwise split the line).
-            # Empty/whitespace-only secrets are skipped, leaving .env untouched.
-            # Ensure .env exists before upserting secrets
             touch .env
             upsert_env() {
               local key="$1" val
@@ -230,85 +207,125 @@ jobs:
             upsert_env EMAIL_FROM "${{ secrets.EMAIL_FROM }}"
             upsert_env TURNSTILE_SITE_KEY "${{ secrets.TURNSTILE_SITE_KEY }}"
             upsert_env TURNSTILE_SECRET_KEY "${{ secrets.TURNSTILE_SECRET_KEY }}"
-            # Export DATABASE_URL constructed from POSTGRES creds (from .env or defaults)
-            export DATABASE_URL="postgresql://${POSTGRES_USER:-kleinanzeigen}:${POSTGRES_PASSWORD:-secret}@db:5432/${POSTGRES_DB:-kleinanzeigen_ai}"
             export GIT_SHA="${{ github.sha }}"
             export BUILD_NUMBER="${{ github.run_number }}"
             export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            export APP_VERSION="$(grep -m1 '^version' pyproject.toml | sed -E 's/version = "(.*)"/\1/')"
-            # Build frontend assets (Vite) — produces app/api/static/main.js + style.css
+            APP_VERSION="$(grep -m1 '^version' pyproject.toml | sed -E 's/version = \"(.*)\"/\1/')"
+            # Persist build info for downstream jobs via a marker file
+            printf 'GIT_SHA=%s\nBUILD_NUMBER=%s\nBUILD_TIME=%s\nAPP_VERSION=%s\n' \
+              "$GIT_SHA" "$BUILD_NUMBER" "$BUILD_TIME" "$APP_VERSION" \
+              > /opt/kleinanzeigen-ai/.build_info
             cd frontend && npm ci && npm run build && cd ..
-            docker compose -f docker-compose.prod.yml build api
-            # Load environment variables from .env if present
-            if [ -f .env ]; then
-              set -a
-              . .env
-              set +a
-            fi
-            docker compose -f docker-compose.prod.yml run --rm api alembic upgrade heads
-            docker compose -f docker-compose.prod.yml up -d --build
+            echo "deploy-pull complete (sha=$GIT_SHA build=$BUILD_NUMBER)"
 
-            # Post-deploy smoke checks: must match the new build args.
-            EXPECTED_GIT_SHA="$GIT_SHA"
-            EXPECTED_APP_VERSION="$APP_VERSION"
-            EXPECTED_BUILD_NUMBER="$BUILD_NUMBER"
+  deploy-build:
+    runs-on: ubuntu-latest
+    needs: deploy-pull
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Build Docker images
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          <<: *ssh_config
+          script: |
+            set -e
+            cd /opt/kleinanzeigen-ai
+            docker compose -f docker-compose.prod.yml build api
+            echo "deploy-build complete"
+
+  deploy-migrate:
+    runs-on: ubuntu-latest
+    needs: deploy-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Run Alembic migrations
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          <<: *ssh_config
+          script: |
+            set -e
+            cd /opt/kleinanzeigen-ai
+            if [ -f .env ]; then set -a; . .env; set +a; fi
+            docker compose -f docker-compose.prod.yml run --rm api alembic upgrade heads
+            echo "deploy-migrate complete"
+
+  deploy-restart:
+    runs-on: ubuntu-latest
+    needs: deploy-migrate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Restart services
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          <<: *ssh_config
+          script: |
+            set -e
+            cd /opt/kleinanzeigen-ai
+            docker compose -f docker-compose.prod.yml up -d --build
+            echo "deploy-restart complete"
+
+  deploy-smoke:
+    runs-on: ubuntu-latest
+    needs: deploy-restart
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Smoke checks (healthz + version)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          <<: *ssh_config
+          script: |
+            set -e
+            cd /opt/kleinanzeigen-ai
+            # Read build info written by deploy-pull
+            if [ -f .build_info ]; then . ./.build_info; fi
+            GIT_SHA="${GIT_SHA:-${{ github.sha }}}"
+            BUILD_NUMBER="${BUILD_NUMBER:-${{ github.run_number }}}"
+            APP_VERSION="${APP_VERSION:-dev}"
+            # Wait for API
             for i in $(seq 1 60); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8000/healthz" 2>/dev/null || echo "000")
-              if [ "$STATUS" = "200" ]; then
-                break
-              fi
+              [ "$STATUS" = "200" ] && break
               sleep 2
             done
             HEALTH=$(curl -s "http://127.0.0.1:8000/healthz" 2>/dev/null || echo '{}')
             VERSION=$(curl -s "http://127.0.0.1:8000/version" 2>/dev/null || echo '{}')
-            if ! echo "$HEALTH" | grep -q '"status":"ok"'; then
-              echo "FAIL: /healthz did not return ok: $HEALTH"; exit 1
-            fi
-            if ! echo "$VERSION" | grep -q "\"commit\":\"${EXPECTED_GIT_SHA}\""; then
-              echo "FAIL: /version commit mismatch. got=$VERSION expected=$EXPECTED_GIT_SHA"; exit 1
-            fi
-            if ! echo "$VERSION" | grep -q "\"version\":\"${EXPECTED_APP_VERSION}\""; then
-              echo "FAIL: /version version mismatch. got=$VERSION expected=$EXPECTED_APP_VERSION"; exit 1
-            fi
-            if ! echo "$VERSION" | grep -q "\"build\":\"${EXPECTED_BUILD_NUMBER}\""; then
-              echo "FAIL: /version build mismatch. got=$VERSION expected=$EXPECTED_BUILD_NUMBER"; exit 1
-            fi
-            echo "Deploy smoke checks passed: healthz=ok version=$VERSION"
+            echo "$HEALTH" | grep -q '"status":"ok"' || { echo "FAIL: /healthz not ok: $HEALTH"; exit 1; }
+            echo "$VERSION" | grep -q "\"commit\":\"${GIT_SHA}\"" || { echo "FAIL: commit mismatch got=$VERSION expected=$GIT_SHA"; exit 1; }
+            echo "deploy-smoke complete: healthz=ok sha=$GIT_SHA"
 
-            # ── LLM self-healing checks ─────────────────────────
-            # Waits for Ollama, auto-pulls model if missing, then
-            # verifies the /chat endpoint returns llm_connected=true.
-            # Only fails if self-healing doesn't resolve the issue.
-            echo ""
-            echo "=== LLM Self-Healing Checks ==="
-            EXPECTED_MODEL="${OLLAMA_MODEL:-qwen2.5:1.5b}"
-
-            # 1. Wait for Ollama service to be ready
+  deploy-llm:
+    runs-on: ubuntu-latest
+    needs: deploy-smoke
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: LLM self-healing checks
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          <<: *ssh_config
+          script: |
+            set -e
+            cd /opt/kleinanzeigen-ai
+            echo "=== LLM Self-Healing ==="
+            EXPECTED_MODEL="qwen2.5:1.5b"
+            # 1. Wait for Ollama
             for i in $(seq 1 30); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo "000")
               [ "$STATUS" = "200" ] && echo "Ollama ready (attempt $i)" && break
               sleep 5
             done
-
-            # 2. Check models — auto-pull if missing
-            OLLAMA_TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
-            MODEL_COUNT=$(echo "$OLLAMA_TAGS" | grep -o '"name":"[^"]*"' | wc -l)
-            HAS_EXPECTED=$(echo "$OLLAMA_TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
-
-            if [ "$MODEL_COUNT" -eq 0 ] || [ "$HAS_EXPECTED" != "true" ]; then
-              echo "Model '$EXPECTED_MODEL' not loaded — pulling now..."
+            # 2. Auto-pull model if missing
+            TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
+            MODEL_COUNT=$(echo "$TAGS" | grep -o '"name":"[^"]*"' | wc -l)
+            HAS=$(echo "$TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
+            if [ "$MODEL_COUNT" -eq 0 ] || [ "$HAS" != "true" ]; then
+              echo "Model '$EXPECTED_MODEL' missing — pulling..."
               docker compose -f docker-compose.prod.yml exec -T ollama ollama pull "$EXPECTED_MODEL"
-              echo "Pull complete. Verifying..."
-              OLLAMA_TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
-              HAS_EXPECTED=$(echo "$OLLAMA_TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
-              if [ "$HAS_EXPECTED" != "true" ]; then
-                echo "✗ Auto-pull failed — model '$EXPECTED_MODEL' still missing"
-                exit 1
-              fi
+              TAGS=$(curl -s "http://127.0.0.1:11434/api/tags" 2>/dev/null || echo '{"models":[]}')
+              HAS=$(echo "$TAGS" | grep -q "\"name\":\"${EXPECTED_MODEL}" && echo true || echo false)
+              [ "$HAS" != "true" ] && { echo "✗ Auto-pull failed"; exit 1; }
             fi
             echo "Model '$EXPECTED_MODEL' loaded ✓"
-
-            # 3. Test /chat LLM connectivity — retry once after self-heal
+            # 3. Verify chat endpoint
             chase_llm() {
               for attempt in $(seq 1 10); do
                 RESP=$(curl -s "http://127.0.0.1:8000/api/ai-search/chat" \
@@ -316,16 +333,13 @@ jobs:
                   -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/dev/null || echo '{}')
                 CONNECTED=$(echo "$RESP" | grep -o '"llm_connected":[^,}]*' | cut -d: -f2)
                 MODEL=$(echo "$RESP" | grep -o '"model_name":"[^"]*"' | cut -d'"' -f4)
-                [ "$CONNECTED" = "true" ] && echo "✓ LLM connected — model: $MODEL" && return 0
+                [ "$CONNECTED" = "true" ] && echo "✓ LLM connected — $MODEL" && return 0
                 sleep 3
               done
               return 1
             }
-
-            if chase_llm; then
-              echo "=== LLM checks passed ==="
-            else
+            if ! chase_llm; then
               echo "✗ LLM still not connected after 10 retries"
-              echo "  response: $RESP"
               exit 1
             fi
+            echo "deploy-llm complete"
