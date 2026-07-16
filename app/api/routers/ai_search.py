@@ -97,10 +97,10 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 if base_url.endswith("/v1"):
                     base_url = base_url[:-3]
                 health_url = f"{base_url}/api/tags"
-                resp = httpx.get(health_url, timeout=2.0)
+                resp = httpx.get(health_url, timeout=5.0)
             else:
                 health_url = f"{settings.custom_model_endpoint_resolved}/v1/models"
-                resp = httpx.post(health_url, timeout=2.0)
+                resp = httpx.post(health_url, timeout=5.0)
             resp.raise_for_status()
             llm_connected = True
         except Exception as e:
