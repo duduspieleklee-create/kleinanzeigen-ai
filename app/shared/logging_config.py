@@ -10,7 +10,7 @@ def setup_logging():
     """
 
     # Create logs directory if it doesn't exist
-    log_dir = "logs"
+    log_dir = "/tmp/logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
