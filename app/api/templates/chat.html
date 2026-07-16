@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <title>KI‑Chat</title>
+    <style>
+        body {font-family: Arial, sans-serif; margin: 2rem;}
+        #messages {border: 1px solid #ccc; padding: 1rem; height: 400px; overflow-y: auto; margin-bottom: 1rem;}
+        .msg {margin: .5rem 0;}
+        .user {font-weight: bold; color: #0066cc;}
+        .bot {color: #333;}
+    </style>
+</head>
+<body>
+    <h1>KI‑Chat</h1>
+    <div id="messages"></div>
+    <form id="chatForm">
+        <input type="text" id="msgInput" placeholder="Ihre Frage ..." required style="width:80%"/>
+        <button type="submit">Senden</button>
+    </form>
+    <script>
+        const form = document.getElementById('chatForm');
+        const input = document.getElementById('msgInput');
+        const messages = document.getElementById('messages');
+        function addMessage(text, author) {
+            const div = document.createElement('div');
+            div.className = 'msg ' + (author==='user'?'user':'bot');
+            div.textContent = (author==='user'?'Sie: ':'Bot: ') + text;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const query = input.value.trim();
+            if (!query) return;
+            addMessage(query, 'user');
+            input.value = '';
+            try {
+                const resp = await fetch('/api/ai-search/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query})
+                });
+                const data = await resp.json();
+                addMessage(data.reply, 'bot');
+            } catch (err) {
+                addMessage('Fehler beim Abrufen der Antwort.', 'bot');
+            }
+        });
+    </script>
+</body>
+</html>
