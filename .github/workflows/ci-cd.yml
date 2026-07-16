@@ -230,6 +230,9 @@ jobs:
             upsert_env EMAIL_FROM "${{ secrets.EMAIL_FROM }}"
             upsert_env TURNSTILE_SITE_KEY "${{ secrets.TURNSTILE_SITE_KEY }}"
             upsert_env TURNSTILE_SECRET_KEY "${{ secrets.TURNSTILE_SECRET_KEY }}"
+            # LLM configuration for Ollama (CPU-only, internal Docker network)
+            upsert_env CUSTOM_MODEL_PROVIDER "ollama"
+            upsert_env CUSTOM_MODEL_NAME "qwen2.5:1.5b"
             # Export DATABASE_URL constructed from POSTGRES creds (from .env or defaults)
             export DATABASE_URL="postgresql://${POSTGRES_USER:-kleinanzeigen}:${POSTGRES_PASSWORD:-secret}@db:5432/${POSTGRES_DB:-kleinanzeigen_ai}"
             export GIT_SHA="${{ github.sha }}"
