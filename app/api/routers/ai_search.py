@@ -108,7 +108,7 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
             llm_error = f"LLM connection failed: {str(e)}"
 
 
-    if len(msgs) <= 1:
+    if not msgs:
         return ChatResponse(
             reply=GREETING,
             llm_connected=llm_connected,
