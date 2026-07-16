@@ -67,7 +67,7 @@ def build_chat_response(conversation: list[dict]) -> dict:
 
     # Try the LLM first.
     llm_reply = _call_llm(conversation)
-    if llm_reply and not llm_reply.startswith("[Error"):
+    if llm_reply and not llm_reply.startswith("["):
         # Successful LLM call – we keep the original behaviour.
         return {"reply": llm_reply, "search_text": "", "search_results": None}
 
