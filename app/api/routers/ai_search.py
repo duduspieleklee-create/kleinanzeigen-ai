@@ -89,7 +89,12 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
     if settings.custom_model_enabled:
         model_name = settings.custom_model_name or ""
         try:
-            resp = httpx.post(f"{settings.custom_model_endpoint_resolved}/v1/models", timeout=2.0)
+            if settings.custom_model_provider == "ollama":
+                health_url = f"{settings.custom_model_endpoint_resolved}/api/tags"
+                resp = httpx.get(health_url, timeout=2.0)
+            else:
+                health_url = f"{settings.custom_model_endpoint_resolved}/v1/models"
+                resp = httpx.post(health_url, timeout=2.0)
             resp.raise_for_status()
             llm_connected = True
         except Exception:
