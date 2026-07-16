@@ -6,7 +6,8 @@ erfragt und dann passende Ergebnisse liefert — iterativ verfeinerbar.
 """
 
 import logging
-from app.ai.ai_search import parse_query
+from app.api.config import Settings
+import httpx
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
