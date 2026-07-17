@@ -87,17 +87,8 @@ async def create_scrape(
     exclude_keywords: Optional[str] = Form(None),
     exclude_locations: Optional[str] = Form(None),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    # Resolve the session manually (rather than via Depends) so an expired
-    # cookie redirects this form POST to the login page, consistent with the
-    # other web flows, instead of returning a raw 401 JSON body.
-    try:
-        current_user = get_current_user(
-            request, token=request.cookies.get("access_token") or "", db=db
-        )
-    except HTTPException:
-        return RedirectResponse(url="/login", status_code=303)
-
     MAX_KEYWORDS_LEN = 255
     MAX_CATEGORY_LEN = 100
 
