@@ -28,23 +28,16 @@ _CONFIRM_SEARCH = (
 )
 _NO_RESULTS = "Ich habe leider nichts passendes gefunden. Versuch es mit anderen Angaben!"
 _RESULTS_FOUND = "Ich habe {count} passende Treffer gefunden:"
-SYSTEM_PROMPT = """
-You are a helpful, concise AI assistant specialized in the Kleinanzeigen‑AI web‑app. 
-- Answer technical questions about the project, Docker‑Compose stack, OAuth, etc. 
-- Ask clarifying questions when the request is ambiguous. 
-- Keep responses short (max 3 sentences) unless the user asks for details. 
-- Never fabricate data; if you don't know, say so.
+SYSTEM_PROMPT = """You are a helpful, concise AI assistant for the Kleinanzeigen‑AI web app.
+Rules:
+- Answer in 1‑2 short sentences. Never more than 50 words.
+- Do not output code blocks, SSH commands, or file paths unless explicitly asked.
+- For project/Docker/OAuth questions, give only the single most important command or step.
+- Never invent listings, prices, URLs, or contact details. If you don't know, say so.
 """
 
-EXAMPLE_DIALOGS = [
-    {"role": "user", "content": "Wie starte ich den Docker‑Compose‑Stack?"},
-    {"role": "assistant", "content": "1️⃣ `docker compose up -d` starten.\n2️⃣ Prüfe mit `docker compose ps`, ob alle Container laufen.\n3️⃣ Bei Problemen schaue in die Logs: `docker compose logs <service>`."},
-    {"role": "user", "content": "Wie setze ich GOOGLE_CLIENT_ID in .env?"},
-    {"role": "assistant", "content": "Öffne die Datei `.env` und füge die Zeile `GOOGLE_CLIENT_ID=dein_client_id` hinzu. Danach den API‑Container neustarten."}
-]
-
-_MAX_DOC_SNIPPET_CHARS = 2000
-_MAX_MATCHED_DOCS = 2
+_MAX_DOC_SNIPPET_CHARS = 500
+_MAX_MATCHED_DOCS = 1
 
 
 def _fetch_relevant_docs(query: str) -> list[dict]:
@@ -75,21 +68,20 @@ def _fetch_relevant_docs(query: str) -> list[dict]:
             break
     return docs
 
+
 def _prepare_messages(user_messages: list[dict]) -> list[dict]:
-    """Combine system prompt, few‑shot examples and the user messages.
+    """Combine system prompt, optional relevant docs and the user messages.
     If we can find relevant docs we add them as an additional system message.
     """
-    system_msg = {"role": "system", "content": SYSTEM_PROMPT}
-    messages = [system_msg]
-    for ex in EXAMPLE_DIALOGS:
-        messages.append({"role": ex["role"], "content": ex["content"]})
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     query_text = " ".join(m["content"] for m in user_messages if m["role"] == "user")
     docs = _fetch_relevant_docs(query_text)
     if docs:
-        docs_content = "\n---\n".join(f"Title: {d['title']}\n\n{d['content']}" for d in docs[:3])
+        docs_content = "\n---\n".join(f"Title: {d['title']}\n\n{d['content']}" for d in docs)
         messages.append({"role": "system", "content": f"Relevant project documentation:\n{docs_content}"})
     messages.extend(user_messages)
     return messages
+
 
 def _call_llm(messages: list[dict]) -> str:
     """Send the conversation to the configured LLM (Ollama/OpenAI/etc.)
@@ -116,6 +108,7 @@ def _call_llm(messages: list[dict]) -> str:
     except Exception as e:
         logger.error("LLM request failed: %s", e)
         return "[Error contacting LLM]"
+
 
 def _fallback_response(conversation: list[dict]) -> dict:
     """Deterministic fallback used when the LLM is unavailable or when we
