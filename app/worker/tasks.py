@@ -65,6 +65,14 @@ def extract_seller_info_from_listing(url: str) -> Optional[dict]:
     the error and return ``None``.
     """
     try:
+        parsed_url = requests.utils.urlparse(url)
+        if parsed_url.hostname not in ("www.kleinanzeigen.de", "kleinanzeigen.de"):
+            logger.warning("Refusing seller extraction for non-kleinanzeigen URL: %s", url)
+            return None
+    except Exception:
+        return None
+
+    try:
         cached = _get_cached_seller_page(url)
         if cached is None:
             start = time.monotonic()

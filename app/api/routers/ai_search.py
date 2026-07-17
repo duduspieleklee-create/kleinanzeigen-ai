@@ -10,6 +10,7 @@ from app.ai.ai_search import parse_query, extract_keywords_for_search, generate_
 from app.ai.ai_search_chat import build_chat_response, format_results_as_chat, GREETING
 from app.shared.database import get_db
 from app.api.config import Settings
+from app.api.dependencies import get_current_user
 from app.shared.models import ScrapeResult
 
 router = APIRouter(prefix="/api", tags=["ai_search"])
@@ -47,7 +48,7 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/ai-search", summary="KI-Suche mit natürlichsprachlicher Beschreibung")
-def ai_search(payload: AISearchRequest, db: Session = Depends(get_db)):
+def ai_search(payload: AISearchRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     if not payload.query or len(payload.query.strip()) < 3:
         raise HTTPException(status_code=400, detail="Bitte gib eine Beschreibung ein (min. 3 Zeichen)")
     parsed = parse_query(payload.query)
@@ -66,7 +67,7 @@ def ai_search(payload: AISearchRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/ai-search/feedback", summary="Feedback geben und Suche verfeinern")
-def ai_search_feedback(payload: AISearchFeedback, db: Session = Depends(get_db)):
+def ai_search_feedback(payload: AISearchFeedback, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     parsed = parse_query(payload.query)
     keyword = extract_keywords_for_search(parsed)
     results = _fetch_matching_results(keyword, db)
@@ -76,7 +77,7 @@ def ai_search_feedback(payload: AISearchFeedback, db: Session = Depends(get_db))
 
 
 @router.post("/ai-search/chat", summary="Chat-basierte KI-Suche")
-def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
+def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Chat: User unterhält sich, KI fragt nach, sucht, zeigt Ergebnisse."""
     msgs = [{"role": m.role, "content": m.content} for m in payload.messages]
     settings = Settings()

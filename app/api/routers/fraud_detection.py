@@ -17,6 +17,7 @@ from app.ai.fraud_detection import (
     check_image_for_fake,
 )
 from app.shared.database import get_db
+from app.api.dependencies import get_current_user
 from app.shared.models import FraudAlert
 
 router = APIRouter(prefix="/api", tags=["fraud_detection"])
@@ -41,7 +42,7 @@ class SellerDataPayload(BaseModel):
 
 
 @router.post("/fraud-check", summary="Manuelle Betrugsprüfung einer Anzeige")
-def fraud_check(payload: AdDataPayload, db: Session = Depends(get_db)):
+def fraud_check(payload: AdDataPayload, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """
     Prüft eine Anzeige auf Betrug und speichert das Ergebnis.
 
@@ -73,7 +74,7 @@ def fraud_check(payload: AdDataPayload, db: Session = Depends(get_db)):
 
 
 @router.get("/ad/{ad_id}/fraud-status", summary="Gespeicherte Betrugsprüfung einer Anzeige")
-def get_fraud_status(ad_id: int, db: Session = Depends(get_db)):
+def get_fraud_status(ad_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """
     Ruft die letzte Betrugsprüfung für eine Anzeige aus der DB ab.
     """
@@ -103,7 +104,7 @@ def get_fraud_status(ad_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/fraud-check/link", summary="Link auf Phishing prüfen")
-def check_link(url: str):
+def check_link(url: str, current_user: dict = Depends(get_current_user)):
     """Prüft einen Link auf Phishing-Indikatoren (Issue #267)."""
     is_suspicious = check_link_for_phishing(url)
     return {
@@ -114,7 +115,7 @@ def check_link(url: str):
 
 
 @router.post("/fraud-check/image", summary="Bild auf Duplikate prüfen")
-def check_image(image_url: str):
+def check_image(image_url: str, current_user: dict = Depends(get_current_user)):
     """Prüft ob ein Bild bereits in anderen Anzeigen verwendet wurde."""
     is_known = check_image_for_fake(image_url)
     return {
@@ -125,7 +126,7 @@ def check_image(image_url: str):
 
 
 @router.post("/fraud-check/seller", summary="Verkäufer auf Betrug prüfen")
-def check_seller(payload: SellerDataPayload):
+def check_seller(payload: SellerDataPayload, current_user: dict = Depends(get_current_user)):
     """Prüft ein Verkäuferprofil auf verdächtige Muster."""
     result = check_seller_for_fraud(payload.model_dump())
     return result

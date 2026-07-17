@@ -102,7 +102,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if settings.environment == "dev" else [],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -240,11 +240,6 @@ async def home(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/login", tags=["Web"])
-
-# New chat UI endpoint
-@app.get("/chat", tags=["Web"], include_in_schema=False)
-async def chat_page(request: Request):
-    return templates.TemplateResponse("chat.html", {"request": request})
 async def login_page(request: Request, db: Session = Depends(get_db)):
     try:
         get_current_user(
@@ -256,6 +251,11 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
             "login.html",
             {"request": request, "google_enabled": bool(settings.google_client_id)},
         )
+
+
+@app.get("/chat", tags=["Web"], include_in_schema=False)
+async def chat_page(request: Request):
+    return templates.TemplateResponse("chat.html", {"request": request})
 
 
 @app.get("/dashboard", tags=["Web"])

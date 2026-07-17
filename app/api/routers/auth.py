@@ -157,33 +157,30 @@ async def login(
                  "google_enabled": bool(settings.google_client_id)},
                 status_code=401,
             )
-    elif (
-        settings.bootstrap_admin_enabled
-        and username == settings.app_username
-        and password == settings.app_password
-    ):
-        # Settings-based bootstrap admin — create only if missing.
-        # If the row already exists but is not admin, reject instead of
-        # silently escalating it; otherwise this shared credential becomes
-        # an unintended privilege-escalation path.
-        user = db.query(User).filter(User.username == settings.app_username).first()
-        if not user:
-            user = User(
-                username=settings.app_username,
-                email="admin@local",
-                hashed_password=_hash(password),
-                is_active=1,
-                is_admin=True,
-                daily_limit=0,  # admin is exempt from the daily search cap
-                email_verified=True,  # bootstrap admin has no real inbox
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            return _issue_cookie(user.id, user.username)
-        if user.is_admin:
-            return _issue_cookie(user.id, user.username)
     else:
+        _verify(password, "$2b$12$dummy.hash.for.timing.attack.prevention")
+        if (
+            settings.bootstrap_admin_enabled
+            and username == settings.app_username
+            and password == settings.app_password
+        ):
+            user = db.query(User).filter(User.username == settings.app_username).first()
+            if not user:
+                user = User(
+                    username=settings.app_username,
+                    email="admin@local",
+                    hashed_password=_hash(password),
+                    is_active=1,
+                    is_admin=True,
+                    daily_limit=0,
+                    email_verified=True,
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                return _issue_cookie(user.id, user.username)
+            if user.is_admin:
+                return _issue_cookie(user.id, user.username)
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Invalid username or password",
