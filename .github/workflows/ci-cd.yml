@@ -420,11 +420,30 @@ jobs:
             echo "API version:"
             curl -s "http://127.0.0.1:8000/version" | python3 -m json.tool 2>/dev/null
 
+            # /api/ai-search/chat is authenticated (see #355). Obtain a session
+            # cookie via the bootstrap-admin login before probing the endpoint.
+            cd /opt/kleinanzeigen-ai
+            if [ -f .env ]; then set -a; . ./.env; set +a; fi
+            COOKIE_JAR=/tmp/klz_llm_cookies.txt
+            rm -f "$COOKIE_JAR"
+            LOGIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -c "$COOKIE_JAR" \
+              -X POST "http://127.0.0.1:8000/auth/login" \
+              --data-urlencode "username=${APP_USERNAME}" \
+              --data-urlencode "password=${APP_PASSWORD}")
+            echo "Login HTTP: $LOGIN_STATUS"
+            if ! grep -q "access_token" "$COOKIE_JAR" 2>/dev/null; then
+              echo "✗ Could not obtain auth cookie via bootstrap-admin login (HTTP $LOGIN_STATUS)."
+              echo "  Ensure APP_USERNAME/APP_PASSWORD are set in .env, BOOTSTRAP_ADMIN_ENABLED is not false,"
+              echo "  and Turnstile is not enforced for this internal check."
+              exit 1
+            fi
+            echo "✓ Auth cookie obtained"
+
             echo ""
             echo "Calling /chat with full debug:"
             for attempt in $(seq 1 10); do
               echo "  --- attempt $attempt ---"
-              RESP=$(curl -s -w "\n%{http_code}" "http://127.0.0.1:8000/api/ai-search/chat" \
+              RESP=$(curl -s -w "\n%{http_code}" -b "$COOKIE_JAR" "http://127.0.0.1:8000/api/ai-search/chat" \
                 -H "Content-Type: application/json" \
                 -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/tmp/chat_curl_err)
               HTTP_CODE=$(echo "$RESP" | tail -1)
