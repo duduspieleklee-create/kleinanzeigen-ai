@@ -19,6 +19,7 @@ from pathlib import Path
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.api.config import settings
+from app.shared.proxy import is_safe_proxy_url
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
@@ -123,6 +124,11 @@ class SmartSearchSuggestions:
             return []
 
         url = settings.custom_model_endpoint_resolved.rstrip("/") + "/chat/completions"
+        safe, reason = is_safe_proxy_url(url)
+        if not safe:
+            logger.warning("Refusing custom model request to unsafe endpoint: %s (%s)", url, reason)
+            return []
+
         headers = {"Content-Type": "application/json"}
         if settings.custom_model_api_key_resolved:
             headers["Authorization"] = f"Bearer {settings.custom_model_api_key_resolved}"

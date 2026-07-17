@@ -23,6 +23,9 @@ def get_search_suggestions(request: Request, query: str, current_user: dict = De
     """Generiert Suchvorschläge für eine Nutzeranfrage."""
     try:
         suggestions = smart_search.get_suggestions(query)
+        # Normalize keyword to lowercase for consistent storage
+        normalized_keyword = query.lower()
+        _persist_suggestions(normalized_keyword, suggestions, db)
         return {"query": query, "suggestions": suggestions}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

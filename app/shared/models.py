@@ -34,7 +34,7 @@ class User(Base):
     auto_topup_enabled = Column(Boolean, nullable=False, server_default="false")
     # Stripe billing references (set once the user has been through checkout).
     stripe_customer_id = Column(String(100), index=True)
-    stripe_subscription_id = Column(String(100))
+    stripe_subscription_id = Column(String(100), index=True)
     # True once the user has ever started a subscription (set by the billing
     # webhook). The 3-day Core trial is for first-time subscribers only.
     trial_used = Column(Boolean, nullable=False, server_default="false")
@@ -74,7 +74,7 @@ class ScrapeTask(Base):
     __tablename__ = "scrape_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     url = Column(Text, nullable=False)
     status = Column(String(20), default="pending")  # pending, running, completed, failed, partial_failed
     parameters = Column(JSON)                       # Stores search parameters as JSON

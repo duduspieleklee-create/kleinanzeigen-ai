@@ -60,26 +60,27 @@ def get_token_usage_by_task(
         TokenUsage.task_id
     ).all()
     
-    # Now fetch task parameters for each aggregated result
+    # Now fetch task parameters for each aggregated result in one batch
     usage_list = []
-    for task_id, total_tokens, last_used in token_agg:
-        task = db.query(ScrapeTask.parameters).filter(
-            ScrapeTask.id == task_id
-        ).first()
+    if token_agg:
+        task_ids = [row[0] for row in token_agg]
+        tasks = db.query(ScrapeTask.id, ScrapeTask.parameters).filter(
+            ScrapeTask.id.in_(task_ids)
+        ).all()
+        task_params = {tid: params for tid, params in tasks}
         
-        params = task[0] if task else None
-        
-        # Extract search keywords from parameters
-        keywords = ""
-        if params and isinstance(params, dict):
-            keywords = params.get("keywords", "")
-        
-        usage_list.append({
-            "task_id": task_id,
-            "keywords": keywords,
-            "total_tokens": total_tokens or 0,
-            "last_used": last_used,
-        })
+        for task_id, total_tokens, last_used in token_agg:
+            params = task_params.get(task_id)
+            keywords = ""
+            if params and isinstance(params, dict):
+                keywords = params.get("keywords", "")
+            
+            usage_list.append({
+                "task_id": task_id,
+                "keywords": keywords,
+                "total_tokens": total_tokens or 0,
+                "last_used": last_used,
+            })
     
     return usage_list
 
