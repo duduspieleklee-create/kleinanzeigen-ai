@@ -330,10 +330,9 @@ async def _build_dashboard(
     credits = 0
     credits_reset_at = None
     active_searches = 0
-    if db_user and not is_admin:
-        ensure_weekly_credits(db, db_user)
-        credits = db_user.credits
-        credits_reset_at = db_user.credits_reset_at
+    if db_user:
+        # Active-search count is shown for admins too (they get an unlimited
+        # plan bar), so compute it regardless of admin status.
         active_searches = (
             db.query(ScrapeTask)
             .filter(
@@ -343,6 +342,12 @@ async def _build_dashboard(
             )
             .count()
         )
+        # Credits and the weekly reset only apply to non-admin plans; admins
+        # are exempt (unlimited).
+        if not is_admin:
+            ensure_weekly_credits(db, db_user)
+            credits = db_user.credits
+            credits_reset_at = db_user.credits_reset_at
 
     # ── "My Results" tab: latest listings across all of the user's searches ──
     recent_rows = (
@@ -385,7 +390,7 @@ async def _build_dashboard(
         for r, t in recent_rows:
             # Attach extra context to each result for the template
             r.deal = deal_badge(r.price_value, medians.get(t.id)) if show_deals else None
-            r.search_keywords = (t.parameters or {}).get("keywords") or f"Search #{t.id}"
+            r.search_keywords = (t.parameters or {}).get("keywords") or f"Suche #{t.id}"
             r.relative_time = _relative_time_de(r.created_at)
             r.is_new = _is_recent(r.created_at)
             recent_results.append(r)

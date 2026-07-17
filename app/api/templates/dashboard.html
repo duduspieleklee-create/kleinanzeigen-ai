@@ -165,14 +165,20 @@
         <div class="header-row">
             <div class="brand-block">
                 <h2 style="margin:0">kleinanzeigen-ai</h2>
+                {% if is_admin %}
+                <span class="plan-badge plan-admin">Admin</span>
+                {% else %}
                 <span class="plan-badge plan-{{ plan_name|lower }}">{{ plan_label }}</span>
+                {% endif %}
             </div>
-            <div style="display:flex;align-items:center;gap:16px">
+            <div class="header-actions">
+                {% if not is_admin %}
                 <div class="credit-pill" title="Verbleibende Credits diese Woche">
                     <span class="credit-icon">⚡</span>
                     <span class="credit-count">{{ credits }}</span>
                     <span class="credit-label">Credits</span>
                 </div>
+                {% endif %}
                 <a href="/settings" class="notif-icon" title="Einstellungen">⚙️</a>
                 {% if is_admin %}
                 <a class="admin-link" href="#tab-admin" onclick="showTab('admin', document.querySelector('.tab-btn[data-tab=admin]')); return false;">Admin</a>
@@ -232,6 +238,22 @@
         <!-- ── TAB: My Searches ── -->
         <div id="tab-my-searches" class="tab-pane active">
             <!-- Credits hero — the headline metric (pay-as-you-go) -->
+            {% if is_admin %}
+            <!-- Admins are exempt from credits and the active-search cap. -->
+            <div class="credits-hero">
+                <div class="ch-main">
+                    <span class="ch-label">Credits</span>
+                    <span class="ch-value">∞</span>
+                    <span class="ch-tag">Admin</span>
+                </div>
+                <div class="ch-side">
+                    <div class="ch-mini">
+                        <span class="ch-mini-num">{{ active_searches }}</span>
+                        <span class="ch-mini-cap">Aktive Suchen</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
             <div class="credits-hero">
                 <div class="ch-main">
                     <span class="ch-label">Credits</span>
@@ -246,6 +268,7 @@
                     <a href="/billing/credits" class="ch-topup">Credits aufladen →</a>
                 </div>
             </div>
+            {% endif %}
 
             <!-- Primary action: start a new search -->
             <button type="button" class="new-search-cta" onclick="goToNewSearchTab()">
@@ -279,7 +302,11 @@
             <!-- Feature overview: every capability at a glance -->
             <div class="features-head">
                 <h3>Deine Funktionen</h3>
+                {% if is_admin %}
+                <span class="features-plan">Admin · Alle Funktionen</span>
+                {% else %}
                 <a href="/billing" class="features-plan">{{ plan_label }} · Upgrade →</a>
+                {% endif %}
             </div>
             <div class="feature-tiles">
                 {# Each tile: icon, name, one-line benefit, and a status badge.
@@ -372,7 +399,6 @@
                     <thead>
                         <tr>
                             <th>Suche</th>
-                            <th>Intervall</th>
                             <th>Ergebnisse</th>
                             <th></th>
                         </tr>
@@ -411,7 +437,7 @@
                                 <div class="task-error-detail">{{ task.error_message }}</div>
                                 {% endif %}
                             </td>
-                            <td data-label="Intervall" class="search-result-count" data-iv="{{ task.parameters.get('interval_seconds', '') }}">
+                            <td data-label="Ergebnisse" class="search-result-count" data-iv="{{ task.parameters.get('interval_seconds', '') }}">
                                 <a href="/scrapes/{{ task.id }}/results" title="Alle gelieferten Ergebnisse anzeigen">{{ task.result_count }}</a>
                                 {% if task.last_summary %}
                                 <div class="task-smart-summary" title="Smart Alert der letzten Ausführung">✨ {{ task.last_summary }}</div>
