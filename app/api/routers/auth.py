@@ -146,14 +146,14 @@ async def login(
         if not user.is_active:
             return templates.TemplateResponse(
                 "login.html",
-                {"request": request, "error": "Invalid username or password",
+                {"request": request, "error": "Ungültiger Benutzername oder Passwort",
                  "google_enabled": bool(settings.google_client_id)},
                 status_code=401,
             )
         if not _verify(password, user.hashed_password):
             return templates.TemplateResponse(
                 "login.html",
-                {"request": request, "error": "Invalid username or password",
+                {"request": request, "error": "Ungültiger Benutzername oder Passwort",
                  "google_enabled": bool(settings.google_client_id)},
                 status_code=401,
             )
@@ -183,7 +183,7 @@ async def login(
                 return _issue_cookie(user.id, user.username)
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Invalid username or password",
+            {"request": request, "error": "Ungültiger Benutzername oder Passwort",
              "google_enabled": bool(settings.google_client_id)},
             status_code=401,
         )
@@ -228,7 +228,7 @@ async def register(
             "register.html",
             {
                 "request": request,
-                "error": "Passwords do not match",
+                "error": "Passwörter stimmen nicht überein",
                 "username": username,
                 "email": email,
                 "google_enabled": bool(settings.google_client_id),
@@ -240,7 +240,7 @@ async def register(
             "register.html",
             {
                 "request": request,
-                "error": "Password must be at least 8 characters",
+                "error": "Das Passwort muss mindestens 8 Zeichen lang sein",
                 "username": username,
                 "email": email,
                 "google_enabled": bool(settings.google_client_id),
@@ -253,7 +253,7 @@ async def register(
             "register.html",
             {
                 "request": request,
-                "error": "Username already taken",
+                "error": "Benutzername bereits vergeben",
                 "email": email,
                 "google_enabled": bool(settings.google_client_id),
             },
@@ -264,7 +264,7 @@ async def register(
             "register.html",
             {
                 "request": request,
-                "error": "Email already registered",
+                "error": "E-Mail-Adresse bereits registriert",
                 "username": username,
                 "google_enabled": bool(settings.google_client_id),
             },
@@ -326,8 +326,8 @@ async def verify_email(
     if not user:
         return _dashboard_flash(
             "flash_error",
-            "This verification link is invalid or was already used. "
-            "Use 'Resend verification email' to get a fresh one.",
+            "Dieser Bestätigungslink ist ungültig oder wurde bereits verwendet. "
+            "Nutze 'Bestätigungs-E-Mail erneut senden', um einen neuen zu erhalten.",
         )
 
     expires_at = user.verify_token_expires_at
@@ -336,8 +336,8 @@ async def verify_email(
     if expires_at is None or expires_at < datetime.now(timezone.utc):
         return _dashboard_flash(
             "flash_error",
-            "This verification link has expired. "
-            "Use 'Resend verification email' to get a fresh one.",
+            "Dieser Bestätigungslink ist abgelaufen. "
+            "Nutze 'Bestätigungs-E-Mail erneut senden', um einen neuen zu erhalten.",
         )
 
     user.email_verified = True
@@ -359,17 +359,18 @@ async def resend_verification(
 ):
     user = db.query(User).filter(User.id == current_user["id"]).first()
     if not user or user.email_verified:
-        return _dashboard_flash("flash_success", "Your email is already verified.")
+        return _dashboard_flash("flash_success", "Deine E-Mail ist bereits bestätigt.")
 
     sent, send_error = _start_verification(request, user, db)
     if sent:
         return _dashboard_flash(
             "flash_success",
-            f"Verification email sent to {user.email} - the link is valid "
-            f"for {VERIFY_TOKEN_TTL_HOURS} hours.",
+            f"Bestätigungs-E-Mail an {user.email} gesendet – der Link ist "
+            f"{VERIFY_TOKEN_TTL_HOURS} Stunden gültig.",
         )
     return _dashboard_flash(
-        "flash_error", f"Could not send the verification email: {send_error}."
+        "flash_error",
+        f"Die Bestätigungs-E-Mail konnte nicht gesendet werden: {send_error}.",
     )
 
 
@@ -397,7 +398,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         logger.exception("Google OAuth callback failed: %s", exc)
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": f"Google sign-in failed: {exc}",
+            {"request": request, "error": f"Google-Anmeldung fehlgeschlagen: {exc}",
              "google_enabled": bool(settings.google_client_id)},
             status_code=401,
         )
@@ -408,7 +409,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     if not email or not email_verified:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Google did not return a verified email.",
+            {"request": request, "error": "Google hat keine bestätigte E-Mail-Adresse zurückgegeben.",
              "google_enabled": bool(settings.google_client_id)},
             status_code=401,
         )
@@ -418,7 +419,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     if allow and email not in allow:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "This Google account is not authorised.",
+            {"request": request, "error": "Dieses Google-Konto ist nicht berechtigt.",
              "google_enabled": bool(settings.google_client_id)},
             status_code=403,
         )

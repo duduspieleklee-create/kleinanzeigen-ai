@@ -70,7 +70,7 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   let data = {
     title: 'kleinanzeigen-ai',
-    body: 'New results found',
+    body: 'Neue Treffer gefunden',
     icon: '/static/icons/icon-192.png',
     badge: '/static/icons/icon-72.png',
     tag: 'notification',

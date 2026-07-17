@@ -159,7 +159,9 @@ async def security_middleware(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "img-src 'self' data: https:; "
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com "
+        "https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
         "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com "
         "https://cdnjs.cloudflare.com; "
         "frame-src https://challenges.cloudflare.com; "
@@ -251,11 +253,6 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
             "login.html",
             {"request": request, "google_enabled": bool(settings.google_client_id)},
         )
-
-
-@app.get("/chat", tags=["Web"], include_in_schema=False)
-async def chat_page(request: Request):
-    return templates.TemplateResponse("chat.html", {"request": request})
 
 
 @app.get("/dashboard", tags=["Web"])
