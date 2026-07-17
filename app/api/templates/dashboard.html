@@ -173,10 +173,7 @@
                     <span class="credit-count">{{ credits }}</span>
                     <span class="credit-label">Credits</span>
                 </div>
-                <div id="notification-badge" class="notif-badge" title="Neue Benachrichtigungen">
-                    <span id="notif-count" style="display:none">0</span>
-                    <a href="/settings" class="notif-icon">⚙️</a>
-                </div>
+                <a href="/settings" class="notif-icon" title="Einstellungen">⚙️</a>
                 {% if is_admin %}
                 <a class="admin-link" href="#tab-admin" onclick="showTab('admin', document.querySelector('.tab-btn[data-tab=admin]')); return false;">Admin</a>
                 {% endif %}
@@ -1995,40 +1992,6 @@
                 }
             });
         })();
-
-        // ── Notification tracking & badge ──
-        function updateNotificationBadge() {
-            var count = parseInt(localStorage.getItem('notification_count') || '0');
-            var badge = document.getElementById('notif-count');
-            if (count > 0) {
-                badge.textContent = count > 99 ? '99+' : count;
-                badge.style.display = 'block';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-
-        function incrementNotificationCount() {
-            var count = parseInt(localStorage.getItem('notification_count') || '0');
-            localStorage.setItem('notification_count', count + 1);
-            updateNotificationBadge();
-        }
-
-        // Update badge on page load
-        updateNotificationBadge();
-
-        // Listen for service worker messages
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('message', function(event) {
-                var type = event.data.type;
-                if (type === 'notificationClicked' || type === 'notificationDismissed') {
-                    localStorage.setItem('notification_count', '0');
-                    updateNotificationBadge();
-                } else if (type === 'notificationShown') {
-                    incrementNotificationCount();
-                }
-            });
-        }
 
         // Service worker registration
         if ('serviceWorker' in navigator) {
