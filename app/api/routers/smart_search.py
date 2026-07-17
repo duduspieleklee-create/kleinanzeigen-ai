@@ -19,7 +19,12 @@ router = APIRouter(prefix="/api", tags=["smart_search"])
 
 @router.get("/search-suggestions", summary="Generiere Suchvorschläge")
 @limiter.limit("20/minute")
-def get_search_suggestions(request: Request, query: str, current_user: dict = Depends(get_current_user)):
+def get_search_suggestions(
+    request: Request,
+    query: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Generiert Suchvorschläge für eine Nutzeranfrage."""
     try:
         suggestions = smart_search.get_suggestions(query)
