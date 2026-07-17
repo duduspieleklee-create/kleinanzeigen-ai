@@ -201,6 +201,8 @@ jobs:
                 printf '\n%s=%s\n' "$key" "$val" >> .env
               fi
             }
+            upsert_env ENVIRONMENT "${{ secrets.ENVIRONMENT }}"
+            upsert_env SECRET_KEY "${{ secrets.SECRET_KEY }}"
             upsert_env SENDGRID_API_KEY "${{ secrets.SENDGRID_API_KEY }}"
             upsert_env EMAIL_FROM "${{ secrets.EMAIL_FROM }}"
             upsert_env GOOGLE_CLIENT_ID "${{ secrets.GOOGLE_CLIENT_ID }}"
