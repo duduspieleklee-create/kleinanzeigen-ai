@@ -29,6 +29,9 @@ class User(Base):
     # Pay-as-you-go purchased credits — consumed AFTER weekly credits run out,
     # giving Basic users a way to extend usage without a subscription.
     credits_paid = Column(Integer, nullable=False, server_default="0")
+    # True when the user wants auto-topup: when paid credits run out, the
+    # smallest credit package is auto-purchased via the saved Stripe card.
+    auto_topup_enabled = Column(Boolean, nullable=False, server_default="false")
     # Stripe billing references (set once the user has been through checkout).
     stripe_customer_id = Column(String(100), index=True)
     stripe_subscription_id = Column(String(100))

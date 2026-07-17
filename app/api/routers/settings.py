@@ -28,6 +28,7 @@ class NotificationSettingsPayload(BaseModel):
     # prevents unrelated settings saves from force-enabling push (issue #187).
     push_enabled: bool | None = None
     email_enabled: bool = False
+    auto_topup_enabled: bool | None = None
 
 
 @router.get("/settings")
@@ -69,6 +70,7 @@ def settings_page(
             "user_settings": {
                 "push_notifications_enabled": db_user.push_notifications_enabled,
                 "email_notifications_enabled": db_user.email_notifications_enabled,
+                "auto_topup_enabled": db_user.auto_topup_enabled,
             },
         },
     )
@@ -90,6 +92,8 @@ def update_notification_settings(
     if payload.push_enabled is not None:
         db_user.push_notifications_enabled = payload.push_enabled
     db_user.email_notifications_enabled = payload.email_enabled
+    if payload.auto_topup_enabled is not None:
+        db_user.auto_topup_enabled = payload.auto_topup_enabled
     db.commit()
     return {"status": "saved"}
 

@@ -253,3 +253,110 @@ def consume_credit(db, user) -> bool:
         )
     )
     return bool(spent)
+
+
+def auto_topup_credits(user) -> bool:
+    """Auto-purchase the smallest credit package when credits are exhausted.
+
+    Called OUTSIDE any database transaction — performs a Stripe API call
+    and then writes the purchase record in its own session. Returns True
+    if credits were successfully added, False otherwise.
+    """
+    from app.api.config import settings
+
+    if not (user.auto_topup_enabled and user.stripe_customer_id):
+        return False
+
+    package_id = settings.stripe_auto_topup_package
+    if package_id not in PAYG_PACKAGES:
+        logger.warning(f"Auto-topup: unknown package {package_id}")
+        return False
+
+    price_map = {
+        "credits_500": settings.stripe_price_credits_500,
+        "credits_1500": settings.stripe_price_credits_1500,
+        "credits_5000": settings.stripe_price_credits_5000,
+    }
+    price_id = price_map.get(package_id, "")
+    if not price_id:
+        logger.warning(f"Auto-topup: no price ID for {package_id}")
+        return False
+
+    pkg = PAYG_PACKAGES[package_id]
+    credits_amount = pkg["credits"]
+
+    # Get customer's default payment method from Stripe
+    try:
+        import stripe
+        stripe.api_key = settings.stripe_secret_key
+        customer = stripe.Customer.retrieve(user.stripe_customer_id)
+        payment_method = None
+        if customer.get("invoice_settings", {}).get("default_payment_method"):
+            payment_method = customer["invoice_settings"]["default_payment_method"]
+        if not payment_method:
+            methods = stripe.PaymentMethod.list(
+                customer=user.stripe_customer_id, type="card", limit=1
+            )
+            if methods.data:
+                payment_method = methods.data[0].id
+        if not payment_method:
+            logger.warning(f"Auto-topup: no payment method for user {user.id}")
+            return False
+
+        intent = stripe.PaymentIntent.create(
+            amount=pkg.get("amount", 500),  # fallback 5 EUR in cents
+            currency=pkg.get("currency", "eur").lower(),
+            customer=user.stripe_customer_id,
+            payment_method=payment_method,
+            off_session=True,
+            confirm=True,
+            metadata={
+                "user_id": str(user.id),
+                "package_id": package_id,
+                "type": "auto_topup",
+            },
+        )
+
+        if intent.status != "succeeded":
+            logger.warning(
+                f"Auto-topup: payment failed for user {user.id} "
+                f"(status={intent.status})"
+            )
+            return False
+
+    except Exception as exc:
+        logger.error(f"Auto-topup: Stripe error for user {user.id}: {exc}")
+        return False
+
+    # Credit the user — own session to avoid the worker's open transaction
+    from app.shared.database import SessionLocal
+    from app.shared.models import CreditPurchase, User
+
+    db = SessionLocal()
+    try:
+        db_user = db.query(User).filter(User.id == user.id).first()
+        if not db_user:
+            return False
+        db_user.credits_paid = (db_user.credits_paid or 0) + credits_amount
+        purchase = CreditPurchase(
+            user_id=user.id,
+            stripe_payment_intent_id=intent.id,
+            package_id=package_id,
+            credits_amount=credits_amount,
+            amount_paid=intent.amount,
+            currency=intent.currency.upper(),
+            status="completed",
+        )
+        db.add(purchase)
+        db.commit()
+        logger.info(
+            f"Auto-topup: user {user.id} charged {intent.amount/100:.2f} "
+            f"{intent.currency.upper()} for {credits_amount} credits"
+        )
+        return True
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Auto-topup: DB error for user {user.id}: {exc}")
+        return False
+    finally:
+        db.close()

@@ -23,7 +23,7 @@ from app.shared.metrics_prom import job_duration
 from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary, build_push_notification
 from app.shared.category_profiles import NO_PRICE_PROFILES, resolve_profile
-from app.shared.plans import ensure_weekly_credits, plan_config, consume_credit
+from app.shared.plans import ensure_weekly_credits, plan_config, consume_credit, auto_topup_credits
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
 from app.shared.proxy import proxies_for_requests
 from app.shared.token_tracking import log_token_usage
@@ -714,11 +714,20 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                     continue  # already seen on a previous run — not new
                 if metered and not is_baseline:
                     if not consume_credit(db, owner):
-                        logger.info(
-                            f"Credits exhausted for user {owner.id} "
-                            f"(task_id={resolved_task_id}) — skipping remaining new listings"
-                        )
-                        break
+                        if auto_topup_credits(owner):
+                            db.refresh(owner)
+                            if not consume_credit(db, owner):
+                                logger.info(
+                                    f"Credits exhausted for user {owner.id} "
+                                    f"(task_id={resolved_task_id}) — skipping remaining new listings"
+                                )
+                                break
+                        else:
+                            logger.info(
+                                f"Credits exhausted for user {owner.id} "
+                                f"(task_id={resolved_task_id}) — skipping remaining new listings"
+                            )
+                            break
                 seen_keys.add(key)
 
                 seller_info = None

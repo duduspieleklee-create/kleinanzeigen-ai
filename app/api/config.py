@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     stripe_price_credits_500: str = ""  # e.g. 5.00 EUR for 500 credits
     stripe_price_credits_1500: str = ""  # e.g. 12.99 EUR for 1500 credits
     stripe_price_credits_5000: str = ""  # e.g. 34.99 EUR for 5000 credits
+    # Auto-topup package: when credits run out and auto_topup_enabled is True,
+    # this package is auto-purchased. Defaults to "credits_500".
+    stripe_auto_topup_package: str = "credits_500"
     # Public origin used for Stripe redirect URLs, e.g. https://app.example.com.
     # Falls back to the request base URL when empty.
     public_base_url: str = ""

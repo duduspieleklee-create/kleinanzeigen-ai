@@ -541,6 +541,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 except (TypeError, ValueError):
                     credits_amount = PAYG_PACKAGES.get(package_id, {}).get("credits", 0)
                 user.credits_paid = (user.credits_paid or 0) + credits_amount
+                user.auto_topup_enabled = True  # enable auto-topup after first purchase
                 purchase = CreditPurchase(
                     user_id=user.id,
                     stripe_payment_intent_id=obj.get("payment_intent"),
