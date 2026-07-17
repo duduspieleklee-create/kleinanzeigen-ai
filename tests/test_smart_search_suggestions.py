@@ -319,11 +319,14 @@ def test_get_suggestions_cache_hit(sss, monkeypatch):
 # ── API-Endpoint ───────────────────────────────────────────────────────────
 def test_api_endpoint_returns_suggestions(monkeypatch):
     from app.api.routers.smart_search import get_search_suggestions
+    from starlette.requests import Request
 
     monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", lambda *a, **k: SimpleNamespace(
         raise_for_status=lambda: None, json=lambda: []
     ))
-    resp = get_search_suggestions("Auto kaufen")
+    scope = {"type": "http", "method": "GET", "path": "/api/search-suggestions", "headers": []}
+    request = Request(scope)
+    resp = get_search_suggestions(request, "Auto kaufen", current_user={"id": 1, "is_admin": False})
     assert resp["query"] == "Auto kaufen"
     assert isinstance(resp["suggestions"], dict)
     # data/trends.json liefert Trends für "Auto" ohne Netz

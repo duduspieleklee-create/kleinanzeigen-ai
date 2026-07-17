@@ -3,21 +3,23 @@ API-Endpunkte für Smart Search Suggestions.
 """
 
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.config import settings
-from app.api.dependencies import require_admin
+from app.api.dependencies import require_admin, get_current_user
 from app.ai.smart_search_suggestions import smart_search
 from app.shared.database import get_db
 from app.shared.models import SearchSuggestion, SystemSetting
+from app.api.security import limiter
 
 router = APIRouter(prefix="/api", tags=["smart_search"])
 
 
 @router.get("/search-suggestions", summary="Generiere Suchvorschläge")
-def get_search_suggestions(query: str):
+@limiter.limit("20/minute")
+def get_search_suggestions(request: Request, query: str, current_user: dict = Depends(get_current_user)):
     """Generiert Suchvorschläge für eine Nutzeranfrage."""
     try:
         suggestions = smart_search.get_suggestions(query)
