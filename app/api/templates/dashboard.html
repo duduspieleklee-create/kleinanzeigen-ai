@@ -2765,36 +2765,51 @@
 }
 </style>
 
-<button id="ai-chat-btn" onclick="toggleChat()">🤖</button>
-<div id="ai-chat-panel">
+<button id="ai-chat-btn" onclick="toggleChat()" aria-label="KI-Agent öffnen" title="KI-Agent">🤖</button>
+<div id="ai-chat-panel" role="dialog" aria-label="KI-Agent Chat">
   <div id="ai-chat-header">
     <span>🤖 KI-Agent</span>
-    <span onclick="toggleChat()" style="cursor:pointer;opacity:.8">✕</span>
+    <span style="display:flex;align-items:center;gap:12px">
+      <span id="ai-chat-status" style="font-size:11px;font-weight:400;opacity:.9"></span>
+      <span onclick="toggleChat()" style="cursor:pointer;opacity:.8" aria-label="Schließen">✕</span>
+    </span>
   </div>
   <div id="ai-chat-messages"></div>
   <div id="ai-chat-input-area">
-    <input id="ai-chat-input" placeholder="Erzähl mir, was du suchst…" onkeydown="if(event.key==='Enter')sendChatMsg()">
+    <input id="ai-chat-input" placeholder="Erzähl mir, was du suchst…" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMsg();}">
     <button id="ai-chat-send" onclick="sendChatMsg()">Senden</button>
   </div>
 </div>
 <script>
-var chatMessages = [{role:'assistant', content:'Hallo! Ich bin dein KI-Agent. Wie kann ich dir helfen?'}, {role:'assistant', content:''}];  // greeting loaded dynamically
+var chatMessages = [];  // starts empty; greeting loaded on first open
 var chatLiked = [];
 var chatDisliked = [];
+var chatBusy = false;
+var chatGreetingLoaded = false;
 
-// Inline KI-Agent box on the dashboard: opens the chat panel and forwards
-// the typed request straight into it, so the user never leaves the page.
+function setChatStatus(text, color) {
+    var el = document.getElementById('ai-chat-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = color || '';
+}
+
+// Legacy helper (inline agent box was removed). Kept as no-op-safe so any
+// residual onclick handlers don't throw.
 function askAgent(e) {
     if (e) e.preventDefault();
-    var el = document.getElementById('agent-inline-input');
-    if (!el) return false;
-    var text = el.value.trim();
-    if (!text) return false;
-    el.value = '';
     var panel = document.getElementById('ai-chat-panel');
     if (panel && !panel.classList.contains('open')) toggleChat();
+    var el = document.getElementById('agent-inline-input');
     var chatInput = document.getElementById('ai-chat-input');
-    if (chatInput) { chatInput.value = text; sendChatMsg(); }
+    if (el && chatInput) {
+        var text = (el.value || '').trim();
+        if (text) {
+            el.value = '';
+            chatInput.value = text;
+            sendChatMsg();
+        }
+    }
     return false;
 }
 
@@ -2803,63 +2818,108 @@ function toggleChat() {
     var b = document.getElementById('ai-chat-btn');
     var open = p.classList.toggle('open');
     b.classList.toggle('open', open);
-    if (open && chatMessages.length === 1 && !chatMessages[0].content) {
-        fetch('/api/ai-search/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[]})})
-            .then(function(r){return r.json()})
-            .then(function(data){
-                chatMessages[0].content = data.reply;
+    if (open && !chatGreetingLoaded) {
+        chatGreetingLoaded = true;
+        fetch('/api/ai-search/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({messages: []})
+        })
+            .then(function(r) {
+                if (r.status === 401) throw new Error('auth');
+                return r.json();
+            })
+            .then(function(data) {
+                chatMessages = [{role: 'assistant', content: data.reply || 'Hallo! Ich bin dein KI-Agent. Wie kann ich dir helfen?'}];
+                if (data.llm_connected) {
+                    setChatStatus(data.model_name ? ('LLM · ' + data.model_name) : 'LLM verbunden', '#e8fff0');
+                } else if (data.llm_error) {
+                    setChatStatus(data.llm_error, '#ffd6d6');
+                } else {
+                    setChatStatus('Geführte Suche aktiv', '#e8fff0');
+                }
+                renderChat();
+            })
+            .catch(function(err) {
+                chatMessages = [{
+                    role: 'assistant',
+                    content: err && err.message === 'auth'
+                        ? 'Bitte melde dich an, um den KI-Agenten zu nutzen.'
+                        : '👋 Hallo! Ich bin dein KI-Such-Assistent.\n\nErzähl mir, wonach du suchst — z.B. „Sofa unter 200€ in Berlin“.'
+                }];
                 renderChat();
             });
     }
-    if (open) setTimeout(function(){document.getElementById('ai-chat-messages').scrollTop=9999},100);
+    if (open) {
+        setTimeout(function() {
+            var box = document.getElementById('ai-chat-messages');
+            if (box) box.scrollTop = 9999;
+            var input = document.getElementById('ai-chat-input');
+            if (input) input.focus();
+        }, 100);
+    }
 }
 
 function renderChat() {
     var el = document.getElementById('ai-chat-messages');
+    if (!el) return;
     el.innerHTML = '';
-    chatMessages.forEach(function(m, i){
-        if (i === 0 && !m.content) return;
+    chatMessages.forEach(function(m) {
+        if (!m || !m.content) return;
         var div = document.createElement('div');
-        div.className = 'chat-msg ' + m.role;
+        div.className = 'chat-msg ' + (m.role === 'user' ? 'user' : 'assistant');
         div.textContent = m.content;
         el.appendChild(div);
         // Results nach der Nachricht anzeigen
         if (m.results && m.results.length) {
-            m.results.forEach(function(r){
+            m.results.forEach(function(r) {
                 var card = document.createElement('div');
                 card.className = 'chat-result-card';
-                card.onclick = function(){ if(r.url) window.open(r.url,'_blank'); };
+                card.onclick = function() { if (r.url) window.open(r.url, '_blank'); };
                 var imgDiv = document.createElement('div');
                 imgDiv.className = 'chat-result-img';
-                if (r.image_url) { var img=document.createElement('img'); img.src=r.image_url; imgDiv.appendChild(img); }
-                else { imgDiv.textContent = '📷'; }
+                if (r.image_url) {
+                    var img = document.createElement('img');
+                    img.src = r.image_url;
+                    img.alt = '';
+                    imgDiv.appendChild(img);
+                } else {
+                    imgDiv.textContent = '📷';
+                }
                 card.appendChild(imgDiv);
                 var info = document.createElement('div');
                 info.className = 'chat-result-info';
                 var title = document.createElement('a');
                 title.className = 'chat-result-title';
-                title.href = r.url||'#'; title.target='_blank';
-                title.textContent = r.title||'—';
+                title.href = r.url || '#';
+                title.target = '_blank';
+                title.rel = 'noopener';
+                title.textContent = r.title || '—';
                 info.appendChild(title);
                 var meta = document.createElement('div');
                 var price = document.createElement('span');
                 price.className = 'chat-result-price';
-                price.textContent = r.price||(r.price_value ? r.price_value+'€' : '—');
+                price.textContent = r.price || (r.price_value ? r.price_value + '€' : '—');
                 meta.appendChild(price);
-                if (r.location) { var loc=document.createElement('span'); loc.className='chat-result-loc'; loc.textContent='📍 '+r.location; meta.appendChild(loc); }
+                if (r.location) {
+                    var loc = document.createElement('span');
+                    loc.className = 'chat-result-loc';
+                    loc.textContent = '📍 ' + r.location;
+                    meta.appendChild(loc);
+                }
                 info.appendChild(meta);
-                // Like/Dislike
                 var actions = document.createElement('div');
                 actions.style.marginTop = '6px';
                 var like = document.createElement('button');
-                like.className = 'chat-fb-btn' + (chatLiked.indexOf(r.id)!==-1?' active':'');
+                like.className = 'chat-fb-btn' + (chatLiked.indexOf(r.id) !== -1 ? ' active' : '');
                 like.textContent = '👍 Mehr';
-                like.onclick = function(e){ e.stopPropagation(); toggleChatLike(r.id); };
+                like.onclick = function(e) { e.stopPropagation(); toggleChatLike(r.id); };
                 actions.appendChild(like);
                 var dislike = document.createElement('button');
-                dislike.className = 'chat-fb-btn' + (chatDisliked.indexOf(r.id)!==-1?' active':'');
+                dislike.className = 'chat-fb-btn' + (chatDisliked.indexOf(r.id) !== -1 ? ' active' : '');
                 dislike.textContent = '👎 Weniger';
-                dislike.onclick = function(e){ e.stopPropagation(); toggleChatDislike(r.id); };
+                dislike.onclick = function(e) { e.stopPropagation(); toggleChatDislike(r.id); };
                 actions.appendChild(dislike);
                 info.appendChild(actions);
                 card.appendChild(info);
@@ -2872,29 +2932,33 @@ function renderChat() {
 
 function toggleChatLike(id) {
     var idx = chatLiked.indexOf(id);
-    if (idx === -1) chatLiked.push(id); else chatLiked.splice(idx,1);
-    chatDisliked = chatDisliked.filter(function(d){return d!==id});
+    if (idx === -1) chatLiked.push(id); else chatLiked.splice(idx, 1);
+    chatDisliked = chatDisliked.filter(function(d) { return d !== id; });
     refineChatSearch();
 }
 
 function toggleChatDislike(id) {
     var idx = chatDisliked.indexOf(id);
-    if (idx === -1) chatDisliked.push(id); else chatDisliked.splice(idx,1);
-    chatLiked = chatLiked.filter(function(l){return l!==id});
+    if (idx === -1) chatDisliked.push(id); else chatDisliked.splice(idx, 1);
+    chatLiked = chatLiked.filter(function(l) { return l !== id; });
     refineChatSearch();
 }
 
 function refineChatSearch() {
-    var userText = chatMessages.filter(function(m){return m.role==='user'}).map(function(m){return m.content}).join(' ');
-    fetch('/api/ai-search/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:userText,liked:chatLiked,disliked:chatDisliked})})
-        .then(function(r){return r.json()})
-        .then(function(data){
+    var userText = chatMessages.filter(function(m) { return m.role === 'user'; }).map(function(m) { return m.content; }).join(' ');
+    fetch('/api/ai-search/feedback', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({query: userText, liked: chatLiked, disliked: chatDisliked})
+    })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
             if (!data.results) return;
-            // Letzte assistant-Nachricht mit Ergebnissen aktualisieren
-            for (var i=chatMessages.length-1; i>=0; i--) {
+            for (var i = chatMessages.length - 1; i >= 0; i--) {
                 if (chatMessages[i].role === 'assistant' && chatMessages[i].results) {
                     chatMessages[i].results = data.results;
-                    chatMessages[i].content = 'Verfeinert! ' + data.total + ' Treffer' + (data.removed ? ' ('+data.removed+' ausgeblendet)' : '');
+                    chatMessages[i].content = 'Verfeinert! ' + data.total + ' Treffer' + (data.removed ? ' (' + data.removed + ' ausgeblendet)' : '');
                     break;
                 }
             }
@@ -2903,28 +2967,77 @@ function refineChatSearch() {
 }
 
 function sendChatMsg() {
+    if (chatBusy) return;
     var input = document.getElementById('ai-chat-input');
-    var text = input.value.trim();
+    var text = (input.value || '').trim();
     if (!text) return;
     input.value = '';
-    chatMessages.push({role:'user',content:text});
+    chatMessages.push({role: 'user', content: text});
     renderChat();
-    document.getElementById('ai-chat-send').disabled = true;
-    document.getElementById('ai-chat-send').textContent = '…';
-    fetch('/api/ai-search/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:chatMessages})})
-        .then(function(r){return r.json()})
-        .then(function(data){
-            var msg = {role:'assistant', content:data.reply};
-            if (data.results) msg.results = data.results;
+    chatBusy = true;
+    var sendBtn = document.getElementById('ai-chat-send');
+    sendBtn.disabled = true;
+    sendBtn.textContent = '…';
+    // Typing indicator
+    var typing = {role: 'assistant', content: '… denke nach'};
+    chatMessages.push(typing);
+    renderChat();
+
+    // Only send role+content; strip client-only fields like results.
+    var payload = chatMessages
+        .filter(function(m) { return m !== typing && m.content && m.role; })
+        .map(function(m) { return {role: m.role, content: m.content}; });
+
+    fetch('/api/ai-search/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({messages: payload})
+    })
+        .then(function(r) {
+            if (r.status === 401) throw new Error('auth');
+            if (!r.ok) throw new Error('http');
+            return r.json();
+        })
+        .then(function(data) {
+            // Remove typing indicator
+            chatMessages = chatMessages.filter(function(m) { return m !== typing; });
+            var msg = {role: 'assistant', content: data.reply || 'Keine Antwort erhalten.'};
+            if (data.results && data.results.length) msg.results = data.results;
             chatMessages.push(msg);
+            if (data.llm_connected) {
+                setChatStatus(data.model_name ? ('LLM · ' + data.model_name) : 'LLM verbunden', '#e8fff0');
+            } else if (data.llm_error) {
+                setChatStatus(data.llm_error, '#ffd6d6');
+            }
             renderChat();
         })
-        .catch(function(){
-            chatMessages.push({role:'assistant', content:'❌ Fehler bei der Suche. Versuch es nochmal.'});
+        .catch(function(err) {
+            chatMessages = chatMessages.filter(function(m) { return m !== typing; });
+            var text = '❌ Fehler bei der Suche. Versuch es nochmal.';
+            if (err && err.message === 'auth') {
+                text = 'Bitte melde dich an, um den KI-Agenten zu nutzen.';
+            }
+            chatMessages.push({role: 'assistant', content: text});
             renderChat();
         })
-        .finally(function(){document.getElementById('ai-chat-send').disabled = false;document.getElementById('ai-chat-send').textContent = 'Senden';});
+        .finally(function() {
+            chatBusy = false;
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Senden';
+            input.focus();
+        });
 }
+
+// Deep-link: /dashboard?open_chat=1 opens the panel on load.
+(function() {
+    try {
+        var params = new URLSearchParams(window.location.search || '');
+        if (params.get('open_chat') === '1') {
+            setTimeout(function() { toggleChat(); }, 200);
+        }
+    } catch (e) { /* ignore */ }
+})();
 </script>
 {% endif %}
 

@@ -256,8 +256,18 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/chat", tags=["Web"], include_in_schema=False)
-async def chat_page(request: Request):
-    return templates.TemplateResponse("chat.html", {"request": request})
+async def chat_page(request: Request, db: Session = Depends(get_db)):
+    """Standalone chat entry — send logged-in users to the dashboard panel,
+    guests to login. The old chat.html template was removed; the dashboard
+    floating KI-Agent is the canonical chat UI.
+    """
+    try:
+        get_current_user(
+            request, token=request.cookies.get("access_token") or "", db=db
+        )
+        return RedirectResponse(url="/dashboard?open_chat=1", status_code=302)
+    except HTTPException:
+        return RedirectResponse(url="/login?next=/dashboard?open_chat=1", status_code=302)
 
 
 @app.get("/dashboard", tags=["Web"])

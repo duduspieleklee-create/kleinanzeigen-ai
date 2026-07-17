@@ -2,7 +2,16 @@
 Tests fuer den Chat-basierten Such-Assistenten (app/ai/ai_search_chat.py).
 """
 
-from app.ai.ai_search_chat import build_chat_response, format_results_as_chat, GREETING
+from app.ai.ai_search_chat import (
+    build_chat_response,
+    format_results_as_chat,
+    GREETING,
+    _user_messages_text,
+    _sanitize_messages,
+    _use_llm_reply,
+    _MISSING_KEYWORDS,
+    _MISSING_PRICE,
+)
 
 
 def test_greeting_non_empty():
@@ -46,6 +55,50 @@ def test_all_params_triggers_search():
     ]
     r = build_chat_response(conv)
     assert r["search_text"] and len(r["search_text"]) > 3
+
+
+def test_multi_turn_accumulates_params():
+    """Multi-step answers must accumulate (Sofa → bis 200 → Berlin)."""
+    conv = [
+        {"role": "assistant", "content": GREETING},
+        {"role": "user", "content": "Ich suche ein Sofa"},
+        {"role": "assistant", "content": "Hast du einen Preisrahmen im Kopf?"},
+        {"role": "user", "content": "bis 200 Euro"},
+        {"role": "assistant", "content": "In welcher Stadt?"},
+        {"role": "user", "content": "Berlin"},
+    ]
+    r = build_chat_response(conv)
+    assert r["search_text"], "expected search to fire after multi-turn funnel"
+    assert "sofa" in r["search_text"].lower() or "möbel" in r["search_text"].lower() or "moebel" in r["search_text"].lower()
+    assert "200" in r["search_text"] or "berlin" in r["search_text"].lower()
+
+
+def test_user_messages_text_merges_turns():
+    conv = [
+        {"role": "user", "content": "Sofa"},
+        {"role": "assistant", "content": "Preis?"},
+        {"role": "user", "content": "bis 100"},
+        {"role": "user", "content": " in München"},
+    ]
+    assert _user_messages_text(conv) == "Sofa bis 100 in München"
+
+
+def test_sanitize_messages_drops_empty_and_caps():
+    msgs = [{"role": "user", "content": ""}] + [
+        {"role": "user", "content": f"m{i}"} for i in range(20)
+    ]
+    cleaned = _sanitize_messages(msgs)
+    assert all(m["content"] for m in cleaned)
+    assert len(cleaned) <= 12
+
+
+def test_use_llm_reply_defers_to_funnel_when_search_ready():
+    assert _use_llm_reply("Ich suche jetzt ...", {"reply": "ok", "search_text": "sofa"}) is False
+    assert _use_llm_reply("Wonach suchst du?", {"reply": _MISSING_KEYWORDS, "search_text": ""}) is False
+    assert _use_llm_reply("Hast du Budget?", {"reply": _MISSING_PRICE, "search_text": ""}) is False
+    assert _use_llm_reply("[Error contacting LLM]", {"reply": "x", "search_text": ""}) is False
+    # Healthy LLM with non-funnel fallback can still be preferred
+    assert _use_llm_reply("Klar, gerne!", {"reply": "custom freeform", "search_text": ""}) is True
 
 
 def test_format_results_no_results():

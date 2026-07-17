@@ -101,7 +101,13 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db), current_
     )
 
     if chat_result["search_text"]:
-        parsed = parse_query(" ".join(m["content"] for m in msgs if m["role"] == "user"))
+        # Prefer the merged funnel state over raw join — already done inside
+        # build_chat_response / _fallback_response. Re-parse all user turns so
+        # multi-message answers ("Sofa" then "Berlin") still search correctly.
+        user_blob = " ".join(
+            m["content"] for m in msgs if m.get("role") == "user" and m.get("content")
+        )
+        parsed = parse_query(user_blob)
         keyword = extract_keywords_for_search(parsed)
         results = _fetch_matching_results(keyword, db)
         ranked = rank_results(results, chat_result["search_text"])

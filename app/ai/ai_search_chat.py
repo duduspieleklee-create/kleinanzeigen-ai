@@ -66,14 +66,17 @@ Wenn die Kategorie aus der Antwort klar hervorgeht, nicht extra nachfragen.
    - **Fahrzeuge**: Frage nach Ort/PLZ + Umkreis (Preis meist nicht relevant).
    - **Moebel, Elektronik, Garten, Kleidung** (Items): Frage nach Preis \
      ('Hast du einen Preisrahmen?') UND nach Ort/PLZ+Umkreis.
-   - Wenn der Nutzer bereits Preis oder Ort in seiner ersten Antwort \
-     erwaehnt hat, nicht erneut danach fragen - nur die fehlenden Parameter \
+   - Wenn der Nutzer bereits Preis oder Ort erwaehnt hat (auch in frueheren \
+     Nachrichten), nicht erneut danach fragen - nur die fehlenden Parameter \
      erfragen.
-4. **Suche ausloesen** - Sobald die Pflicht-Parameter (Was + Kategorie) \
-   erfasst sind, bestaetige kurz die Suchparameter und leite die Suche ein. \
+4. **Suche ausloesen** - Sobald ALLE noetigen Parameter erfasst sind \
+   (Was + Kategorie + bei Items Preis und Ort, bei Fahrzeugen Ort), \
+   bestaetige kurz und leite die Suche ein. \
    Antwort-Format hierbei: \
    'Ich suche jetzt nach: **[Stichwort] [Kategorie] [Preis] [Ort]**. \
    Einen Moment bitte ...'
+   Beziehe dich IMMER auf den gesamten bisherigen Chat-Verlauf, nicht nur \
+   auf die letzte Nachricht.
 
 ## Wenn der Nutzer 'keine Ahnung' oder 'keine Idee' sagt
 Schlage konkrete Suchbegriffe vor. Verwende dabei die weiter unten \
@@ -118,38 +121,32 @@ Assistent: Alles passt! Ich suche jetzt nach: \
 </Beispiel 3>
 """
 
-_MAX_DOC_SNIPPET_CHARS = 500
-_MAX_MATCHED_DOCS = 1
 _MAX_PAST_SEARCHES = 5
+# Keep the prompt short for the small host-native model (qwen2.5:1.5b).
+_MAX_HISTORY_MESSAGES = 12
 
 
-def _fetch_relevant_docs(query: str) -> list[dict]:
-    """Very simple RAG: read all *.md files in the repository and return
-    those that contain any word from the query. Returns a list of dicts with
-    'title' and 'content' fields that can be injected as a system message.
-    This is lightweight and does not require an external vector store.
-    """
-    import os
-    docs = []
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    for root, _, files in os.walk(repo_root):
-        for f in files:
-            if f.lower().endswith('.md'):
-                path = os.path.join(root, f)
-                try:
-                    with open(path, 'r', encoding='utf-8') as fp:
-                        text = fp.read()
-                    keywords = [w.lower() for w in query.split() if len(w) > 2]
-                    if any(kw in text.lower() for kw in keywords):
-                        title = os.path.relpath(path, repo_root)
-                        docs.append({"title": title, "content": text[:_MAX_DOC_SNIPPET_CHARS]})
-                        if len(docs) >= _MAX_MATCHED_DOCS:
-                            break
-                except Exception:
-                    continue
-        if len(docs) >= _MAX_MATCHED_DOCS:
-            break
-    return docs
+def _user_messages_text(conversation: list[dict]) -> str:
+    """Join all non-empty user turns so multi-step funnel answers accumulate."""
+    parts = [
+        (m.get("content") or "").strip()
+        for m in conversation
+        if m.get("role") == "user" and (m.get("content") or "").strip()
+    ]
+    return " ".join(parts)
+
+
+def _sanitize_messages(user_messages: list[dict]) -> list[dict]:
+    """Drop empty messages and cap history for the small model."""
+    cleaned = [
+        {"role": m["role"], "content": (m.get("content") or "").strip()}
+        for m in user_messages
+        if m.get("role") in {"user", "assistant", "system"}
+        and (m.get("content") or "").strip()
+    ]
+    if len(cleaned) > _MAX_HISTORY_MESSAGES:
+        cleaned = cleaned[-_MAX_HISTORY_MESSAGES:]
+    return cleaned
 
 
 def _fetch_past_searches() -> list[str]:
@@ -221,12 +218,11 @@ def _fetch_past_searches() -> list[str]:
 
 
 def _prepare_messages(user_messages: list[dict]) -> list[dict]:
-    """Combine system prompt, past-search context, optional relevant docs
-    and the user messages.
+    """Combine system prompt, past-search context and the user messages.
 
-    If we can find relevant docs we add them as an additional system message.
-    If we can fetch past searches from the DB, we inject them as context
-    so the LLM can suggest real, previously-searched terms.
+    Project markdown RAG is intentionally skipped: it polluted product-search
+    chats with repo docs and confused the small model. Past searches from the
+    DB remain the only extra context (for 'no idea' suggestions).
     """
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -236,16 +232,11 @@ def _prepare_messages(user_messages: list[dict]) -> list[dict]:
         past_context = (
             "Bisherige beliebte Suchen auf dieser Plattform "
             "(nutze diese als Inspiration, wenn der Nutzer keine Idee hat):\n"
-            + "\n".join(f"- {s}" for s in past_searches)
+            + "\n".join(f"- {s}" for s in past_searches[:8])
         )
         messages.append({"role": "system", "content": past_context})
 
-    query_text = " ".join(m["content"] for m in user_messages if m["role"] == "user")
-    docs = _fetch_relevant_docs(query_text)
-    if docs:
-        docs_content = "\n---\n".join(f"Title: {d['title']}\n\n{d['content']}" for d in docs)
-        messages.append({"role": "system", "content": f"Relevant project documentation:\n{docs_content}"})
-    messages.extend(user_messages)
+    messages.extend(_sanitize_messages(user_messages))
     return messages
 
 
@@ -297,14 +288,20 @@ def _fallback_response(conversation: list[dict]) -> dict:
 
     Implements the same guided funnel as the system prompt:
     item -> category -> (location or price) -> confirm & search.
+
+    Multi-turn: all user messages are merged so answers like
+    "Sofa" → "bis 200" → "Berlin" accumulate correctly.
     """
     from app.ai.ai_search import parse_query, generate_search_text
 
-    # Use only the latest user message for parsing.
-    user_msg = conversation[-1]["content"] if conversation else ""
+    user_msg = ""
+    for m in reversed(conversation or []):
+        if m.get("role") == "user" and (m.get("content") or "").strip():
+            user_msg = m["content"].strip()
+            break
 
-    # -- 'No idea' -> suggest past searches -------------------------------
-    if _check_no_idea(user_msg):
+    # -- 'No idea' -> suggest past searches (latest turn only) -----------
+    if user_msg and _check_no_idea(user_msg):
         past = _fetch_past_searches()
         if past:
             items = ", ".join(past[:8])
@@ -323,7 +320,9 @@ def _fallback_response(conversation: list[dict]) -> dict:
             "search_results": None,
         }
 
-    parsed = parse_query(user_msg)
+    # Merge all user turns so the funnel remembers prior answers.
+    merged = _user_messages_text(conversation or [])
+    parsed = parse_query(merged)
 
     # Step 1: If the query is too vague (no article keyword at all), ask.
     if not parsed.get("keywords"):
@@ -356,15 +355,27 @@ def _fallback_response(conversation: list[dict]) -> dict:
 def _use_llm_reply(llm_reply: str, fallback: dict) -> bool:
     """Return True if the LLM produced a useful answer we should prefer.
 
-    We prefer the LLM unless it errored out, or the user has not even told us
-    what kind of item they are looking for yet (the _MISSING_KEYWORDS
-    clarifying question). Once the user mentions an article, let the LLM
-    answer naturally - it can ask for price/location itself if needed.
+    Prefer the deterministic funnel when:
+    - LLM errored / empty
+    - user has not named an item yet (keywords missing)
+    - funnel is ready to search (search_text set) — guarantees results fire
+    - fallback is asking for a concrete missing field (price/location/category)
+
+    Once the user is mid-funnel and the LLM is healthy, prefer the LLM for
+    natural phrasing of clarifying questions.
     """
     if not llm_reply or llm_reply.startswith("["):
         return False
-    # Keep only the 'what item?' clarifying question deterministic.
-    if fallback["reply"] == _MISSING_KEYWORDS:
+    # Deterministic path wins when search is ready — don't let the LLM stall.
+    if fallback.get("search_text"):
+        return False
+    # Keep clarifying questions deterministic for predictable funnel progress.
+    if fallback["reply"] in {
+        _MISSING_KEYWORDS,
+        _MISSING_CATEGORY,
+        _MISSING_PRICE,
+        _MISSING_LOCATION,
+    }:
         return False
     return True
 

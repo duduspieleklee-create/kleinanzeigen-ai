@@ -2,7 +2,7 @@
 Tests für den KI-gestützten Such-Assistenten (app/ai/ai_search.py).
 """
 
-from app.ai.ai_search import parse_query, extract_keywords_for_search, generate_search_text, rank_results, feedback_to_refinement
+from app.ai.ai_search import parse_query, extract_keywords_for_search, generate_search_text, rank_results
 
 
 def test_parse_simple_keywords():
@@ -30,6 +30,16 @@ def test_parse_with_location():
     """Ortsangabe → location extrahiert."""
     result = parse_query("bike in München")
     assert "münchen" in result["location"].lower() or "muenchen" in result["location"].lower()
+
+
+def test_parse_bare_city_and_plz():
+    """Multi-turn follow-ups like 'Berlin' or '10115' must count as location."""
+    assert parse_query("Berlin")["location"].lower() == "berlin"
+    assert parse_query("10115")["location"] == "10115"
+    # City token must not pollute keywords
+    r = parse_query("sofa unter 200 berlin")
+    assert r["location"].lower() == "berlin"
+    assert "berlin" not in r["keywords"]
 
 
 def test_parse_empty():

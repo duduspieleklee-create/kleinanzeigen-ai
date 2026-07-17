@@ -30,6 +30,27 @@ _LOCATION_PATTERNS = [
     r"(?:in|bei|um|nahe|aus)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s[A-ZÄÖÜ][a-zäöüß]+)*)",
 ]
 
+# Common German cities so bare follow-up answers like "Berlin" still count
+# as a location in multi-turn chat (no "in ..." prefix required).
+_KNOWN_CITIES = {
+    "berlin", "hamburg", "münchen", "muenchen", "köln", "koeln", "frankfurt",
+    "stuttgart", "düsseldorf", "duesseldorf", "leipzig", "dortmund", "essen",
+    "bremen", "dresden", "hannover", "nürnberg", "nuernberg", "duisburg",
+    "bochum", "wuppertal", "bielefeld", "bonn", "münster", "muenster",
+    "karlsruhe", "mannheim", "augsburg", "wiesbaden", "gelsenkirchen",
+    "mönchengladbach", "moenchengladbach", "braunschweig", "chemnitz",
+    "kiel", "aachen", "halle", "magdeburg", "freiburg", "krefeld", "lübeck",
+    "luebeck", "oberhausen", "erfurt", "mainz", "rostock", "kassel",
+    "hagen", "hamm", "saarbrücken", "saarbruecken", "mülheim", "muelheim",
+    "potsdam", "ludwigshafen", "oldenburg", "leverkusen", "osnabrück",
+    "osnabrueck", "solingen", "heidelberg", "herne", "neuss", "darmstadt",
+    "paderborn", "regensburg", "ingolstadt", "würzburg", "wuerzburg",
+    "fürth", "fuerth", "wolfsburg", "offenbach", "ulm", "heilbronn",
+    "pforzheim", "göttingen", "goettingen", "bottrop", "trier", "reutlingen",
+    "koblenz", "remscheid", "bergisch", "jena", "reutlingen", "erlangen",
+    "moers", "siegen", "hildesheim", "salzgitter",
+}
+
 # Stopwörter für Keyword-Extraktion
 _STOPWORDS = {
     "der", "die", "das", "ein", "eine", "einen", "einer", "eines",
@@ -118,10 +139,39 @@ def parse_query(text: str) -> dict:
         fallback_match = re.search(r"\bin\s+([a-zäöüß]+)\b", cleaned)
         if fallback_match:
             result["location"] = fallback_match.group(1).title()
+    # Bare city / PLZ (multi-turn chat: user replies just "Berlin" or "10115")
+    if not result["location"]:
+        plz_match = re.search(r"\b(\d{5})\b", cleaned)
+        if plz_match:
+            result["location"] = plz_match.group(1)
+        else:
+            tokens = re.findall(r"[a-zäöüß]+", cleaned)
+            for t in tokens:
+                if t in _KNOWN_CITIES:
+                    result["location"] = t.title()
+                    break
+            # Single-token follow-up that looks like a place name (not a known item)
+            if not result["location"] and len(tokens) == 1:
+                token = tokens[0]
+                known_items = {h for hints in _CATEGORY_HINTS.values() for h in hints}
+                if (
+                    token not in _STOPWORDS
+                    and token not in _PRICE_CONSUMED
+                    and token not in known_items
+                    and len(token) >= 3
+                ):
+                    result["location"] = token.title()
 
     # Keywords extrahieren (remove stopwords, filter meaningful words)
     tokens = re.findall(r"[a-zäöüß]+", cleaned)
-    keywords = [t for t in tokens if t not in _STOPWORDS and len(t) > 2 and t not in _PRICE_CONSUMED]
+    keywords = [
+        t for t in tokens
+        if t not in _STOPWORDS
+        and len(t) > 2
+        and t not in _PRICE_CONSUMED
+        and t not in _KNOWN_CITIES
+        and not re.fullmatch(r"\d{5}", t)
+    ]
 
     # Kategorie erkennen (exakte Token-Matches + Compound-Substrings)
     token_set = set(re.findall(r"[a-zäöüß]+", cleaned))
