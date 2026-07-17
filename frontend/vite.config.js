@@ -4,7 +4,13 @@ import { resolve } from 'path'
 // Path B: Vite as asset bundler.
 // Keeps Jinja2 SSR untouched. Vite compiles SCSS -> app/api/static/style.css
 // and bundles ES modules -> app/api/static/main.js.
-// Built assets are committed to the repo (Option 1) — no CI change needed.
+//
+// NOTE: the built style.css / main.js are NOT committed to the repo (they are
+// gitignored). The API Dockerfile runs `npm ci && npm run build` at image build
+// time to produce them. If you run the API outside Docker (e.g. plain
+// `uvicorn`), run `cd frontend && npm ci && npm run build` first, or the app is
+// served with no stylesheet and no client JS (password toggle, PWA install,
+// service-worker registration, smart-search suggestions all inert).
 
 export default defineConfig({
   root: resolve(__dirname, 'src'),

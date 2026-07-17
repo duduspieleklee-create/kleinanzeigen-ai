@@ -6,7 +6,7 @@
     <title>Einstellungen - kleinanzeigen-ai</title>
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#2fbf71">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
 </head>
@@ -251,7 +251,7 @@
         </div>
 
         <div class="settings-item">
-            <button onclick="saveCMModel()" style="padding:10px 20px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;">Speichern</button>
+            <button onclick="saveCMModel()" style="padding:10px 20px;background:#2fbf71;color:#fff;border:none;border-radius:6px;cursor:pointer;">Speichern</button>
             <span id="cm-save-result" style="margin-left:12px;"></span>
         </div>
     </div>
@@ -463,6 +463,20 @@
         loadPushSubscriptions();
 
         // Save notification settings
+        // Transient toast for save feedback (styling in style.css).
+        function showToast(message, isError) {
+            var el = document.createElement('div');
+            el.className = 'app-toast' + (isError ? ' app-toast-error' : '');
+            el.setAttribute('role', 'status');
+            el.textContent = message;
+            document.body.appendChild(el);
+            requestAnimationFrame(function() { el.classList.add('show'); });
+            setTimeout(function() {
+                el.classList.remove('show');
+                setTimeout(function() { el.remove(); }, 250);
+            }, 2600);
+        }
+
         function saveNotificationSettings() {
             var settings = {
                 email_enabled: document.getElementById('email-notifications-toggle').checked,
@@ -472,10 +486,23 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
-            }).catch(err => console.error('Error saving notification settings:', err));
+            })
+                .then(function(r) {
+                    if (r.status === 401) { window.location.href = '/login'; return; }
+                    if (r.ok) {
+                        showToast('Einstellungen gespeichert.');
+                    } else {
+                        showToast('Einstellungen konnten nicht gespeichert werden.', true);
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Error saving notification settings:', err);
+                    showToast('Einstellungen konnten nicht gespeichert werden.', true);
+                });
         }
 
         document.getElementById('email-notifications-toggle').addEventListener('change', saveNotificationSettings);
+        document.getElementById('auto-topup-toggle').addEventListener('change', saveNotificationSettings);
 
         // Send test notification
         function sendTestNotification() {
@@ -483,14 +510,14 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        alert('✓ Test notification sent! Check your device.');
+                        alert('✓ Test-Benachrichtigung gesendet! Prüfe dein Gerät.');
                     } else {
-                        alert('⚠ Test notification could not be sent. Make sure push notifications are enabled. Subscriptions: ' + (data.summary?.total || 0));
+                        alert('⚠ Test-Benachrichtigung konnte nicht gesendet werden. Stelle sicher, dass Push-Benachrichtigungen aktiviert sind. Abos: ' + (data.summary?.total || 0));
                     }
                 })
                 .catch(err => {
                     console.error('Test notification error:', err);
-                    alert('Error sending test notification');
+                    alert('Fehler beim Senden der Test-Benachrichtigung');
                 });
         }
 

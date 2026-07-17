@@ -263,10 +263,11 @@ async def create_checkout(
         return RedirectResponse(url="/", status_code=303)
 
     if plan not in ("core", "pro"):
-        return _flash_redirect("/billing", error="Unknown plan.")
+        return _flash_redirect("/billing", error="Unbekannter Plan.")
     if not _billing_enabled():
         return _flash_redirect(
-            "/billing", error="Billing is not configured yet. Please try again later."
+            "/billing",
+            error="Die Abrechnung ist noch nicht eingerichtet. Bitte versuche es später erneut.",
         )
 
     user = db.query(User).filter(User.id == current["id"]).first()
@@ -290,7 +291,7 @@ async def create_checkout(
             logger.error(f"Stripe portal (plan switch) failed for user {user.id}: {e}")
             return _flash_redirect(
                 "/billing",
-                error="You already have a subscription - use Manage billing to switch plans.",
+                error="Du hast bereits ein Abo – nutze „Abrechnung verwalten“, um den Plan zu wechseln.",
             )
 
     try:
@@ -324,7 +325,7 @@ async def create_checkout(
     except stripe.error.StripeError as e:
         logger.error(f"Stripe checkout failed for user {user.id}: {e}")
         return _flash_redirect(
-            "/billing", error="Could not start checkout. Please try again."
+            "/billing", error="Checkout konnte nicht gestartet werden. Bitte versuche es erneut."
         )
 
     return RedirectResponse(url=session["url"], status_code=303)
@@ -334,7 +335,7 @@ async def create_checkout(
 async def checkout_success():
     return _flash_redirect(
         "/dashboard",
-        success="Payment received - your plan will be upgraded within a few seconds.",
+        success="Zahlung eingegangen – dein Plan wird in wenigen Sekunden aktualisiert.",
     )
 
 
@@ -399,13 +400,13 @@ async def create_credit_checkout(
         return RedirectResponse(url="/", status_code=303)
 
     if package_id not in PAYG_PACKAGES:
-        return _flash_redirect("/billing/credits", error="Unknown credit package.")
+        return _flash_redirect("/billing/credits", error="Unbekanntes Credit-Paket.")
 
     price_id = _payg_price_map().get(package_id, "")
     if not price_id:
         return _flash_redirect(
             "/billing/credits",
-            error="Credit purchases are not configured yet.",
+            error="Credit-Käufe sind noch nicht eingerichtet.",
         )
 
     user = db.query(User).filter(User.id == current["id"]).first()
@@ -437,7 +438,7 @@ async def create_credit_checkout(
     except stripe.error.StripeError as e:
         logger.error(f"Stripe credit checkout failed for user {user.id}: {e}")
         return _flash_redirect(
-            "/billing/credits", error="Could not start checkout. Please try again."
+            "/billing/credits", error="Checkout konnte nicht gestartet werden. Bitte versuche es erneut."
         )
 
     return RedirectResponse(url=session["url"], status_code=303)
@@ -451,7 +452,7 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.id == current["id"]).first()
     if not user.stripe_customer_id or not settings.stripe_secret_key:
-        return _flash_redirect("/billing", error="No billing account found.")
+        return _flash_redirect("/billing", error="Kein Abrechnungskonto gefunden.")
 
     stripe.api_key = settings.stripe_secret_key
     try:
@@ -462,7 +463,8 @@ async def billing_portal(request: Request, db: Session = Depends(get_db)):
     except stripe.error.StripeError as e:
         logger.error(f"Stripe portal failed for user {user.id}: {e}")
         return _flash_redirect(
-            "/billing", error="Could not open the billing portal. Please try again."
+            "/billing",
+            error="Das Abrechnungsportal konnte nicht geöffnet werden. Bitte versuche es erneut.",
         )
     return RedirectResponse(url=session["url"], status_code=303)
 

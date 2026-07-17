@@ -812,6 +812,32 @@ body.dashboard-page {
   font-size: 13px;
 }
 
+/* Transient toast for client-side action feedback (save/error confirmations). */
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 4000;
+  max-width: min(90vw, 420px);
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: #fff;
+  background: var(--color-accent, #2fbf71);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.app-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.app-toast.app-toast-error {
+  background: #c0392b;
+}
+
 .flash-info {
   background: var(--color-accent-soft, #eef2ff);
   border: 1px solid var(--color-accent-soft-border, #c7d2fe);
@@ -4084,6 +4110,19 @@ body.landing-page {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+}
+
+.lp-nav-login {
+  color: var(--lp-navy);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 6px;
+  white-space: nowrap;
+}
+
+.lp-nav-login:hover {
+  color: var(--lp-green-dark);
 }
 
 .lp-nav-cta {
