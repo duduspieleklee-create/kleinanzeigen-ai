@@ -95,14 +95,9 @@ async def create_scrape(
     errors: list = []
 
     keywords = _clean_str(keywords)
-    if not keywords:
-        errors.append("Please enter search keywords")
-
-    # Cap free-text length BEFORE the DB commit — the String columns in
-    # ScrapeTask.parameters would otherwise raise a raw 500 on overflow.
+    category_v = _clean_str(category)
     if keywords and len(keywords) > MAX_KEYWORDS_LEN:
         errors.append("Search keywords are too long (max 255 characters)")
-    category_v = _clean_str(category)
     if category_v and len(category_v) > MAX_CATEGORY_LEN:
         errors.append("Category is too long (max 100 characters)")
 

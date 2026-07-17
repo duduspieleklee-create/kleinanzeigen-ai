@@ -1308,7 +1308,10 @@
             var pane = document.getElementById('tab-' + name);
             if (pane) pane.classList.add('active');
             document.querySelectorAll('[data-tab="' + name + '"]').forEach(function(b) { b.classList.add('active'); });
-            if (history.replaceState) history.replaceState(null, '', '#tab-' + name);
+            var hash = '#tab-' + name;
+            var m = window.location.hash.match(/[&?]task=(\d+)/);
+            if (m) hash += '&task=' + m[1];
+            if (history.replaceState) history.replaceState(null, '', hash);
         }
 
         // NEW: used by the empty-state CTA to jump straight into the wizard.
@@ -1518,6 +1521,186 @@
             var saved = null;
             try { saved = localStorage.getItem('resultsView'); } catch (e) {}
             if (saved) setResultsView(saved);
+        })();
+
+        // ── Real-time dashboard updates via SSE ──
+        (function() {
+            var taskStates = {};
+            var lastResultCounts = {};
+            var updateBannerTimeout = null;
+
+            function getTaskRow(taskId) {
+                var rows = document.querySelectorAll('#tasks-tbody tr');
+                for (var i = 0; i < rows.length; i++) {
+                    var nameEl = rows[i].querySelector('.search-name');
+                    if (nameEl && nameEl.textContent.indexOf('#' + taskId) !== -1) {
+                        return rows[i];
+                    }
+                }
+                return null;
+            }
+
+            function updateTaskRow(task) {
+                var row = getTaskRow(task.id);
+                if (!row) return;
+                
+                var badge = row.querySelector('.badge');
+                if (badge) {
+                    badge.textContent = task.status || '';
+                    badge.className = 'badge badge-' + (task.status || '');
+                }
+                
+                var resultLink = row.querySelector('.search-result-count a');
+                if (resultLink) {
+                    resultLink.textContent = task.result_count || '0';
+                }
+
+                if (task.status === 'failed' && task.error_message) {
+                    var existingError = row.querySelector('.task-error-detail');
+                    if (!existingError) {
+                        var errorDiv = document.createElement('div');
+                        errorDiv.className = 'task-error-detail';
+                        errorDiv.textContent = task.error_message;
+                        row.querySelector('.row-title').appendChild(errorDiv);
+                    } else {
+                        existingError.textContent = task.error_message;
+                    }
+                }
+            }
+
+            function showResultsUpdateBanner(newCount, taskId) {
+                var existing = document.getElementById('sse-update-banner');
+                if (existing) existing.remove();
+                clearTimeout(updateBannerTimeout);
+
+                var banner = document.createElement('div');
+                banner.id = 'sse-update-banner';
+                banner.className = 'flash-info';
+                banner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer';
+                banner.innerHTML = '<span>' + newCount + ' neue Treffer — Ergebnisse aktualisieren</span><span>&rarr;</span>';
+                banner.addEventListener('click', function() {
+                    refreshResultsForTask(taskId);
+                    banner.remove();
+                });
+                document.querySelector('#tab-my-results .card').prepend(banner);
+
+                updateBannerTimeout = setTimeout(function() {
+                    if (banner.parentNode) {
+                        banner.remove();
+                    }
+                }, 8000);
+            }
+
+            function refreshResultsForTask(taskId) {
+                var grid = document.getElementById('results-grid');
+                if (!grid) return;
+                grid.innerHTML = '<p style="padding:20px;text-align:center;color:#666">Aktualisiere Ergebnisse…</p>';
+                setTimeout(function() {
+                    window.location.reload();
+                }, 500);
+            }
+
+            function handleStreamMessage(data) {
+                var task = data;
+                if (!task || !task.id) return;
+
+                var prevCount = lastResultCounts[task.id] || 0;
+                var newCount = task.result_count || 0;
+                lastResultCounts[task.id] = newCount;
+
+                if (taskStates[task.id] && taskStates[task.id].result_count !== newCount && newCount > prevCount) {
+                    var currentFilter = document.querySelector('.sub-tab-filter.active');
+                    var isFilteredToTask = currentFilter && currentFilter.dataset.filter === 'task-' + task.id;
+                    var isOnResultsTab = document.getElementById('tab-my-results') && document.getElementById('tab-my-results').classList.contains('active');
+                    
+                    if (isOnResultsTab && (isFilteredToTask || !currentFilter)) {
+                        showResultsUpdateBanner(newCount - prevCount, task.id);
+                    }
+                }
+
+                taskStates[task.id] = task;
+                updateTaskRow(task);
+            }
+
+            var eventSource = null;
+            function connectStream() {
+                if (eventSource) return;
+                eventSource = new EventSource('/scrapes/stream');
+                eventSource.onmessage = function(e) {
+                    try {
+                        var data = JSON.parse(e.data);
+                        if (Array.isArray(data)) {
+                            data.forEach(handleStreamMessage);
+                        } else {
+                            handleStreamMessage(data);
+                        }
+                    } catch (_) {}
+                };
+                eventSource.onerror = function() {
+                    eventSource.close();
+                    eventSource = null;
+                    setTimeout(connectStream, 3000);
+                };
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', connectStream);
+            } else {
+                connectStream();
+            }
+
+            window.addEventListener('beforeunload', function() {
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            });
+        })();
+
+        // ── Parse taskId from URL hash and auto-filter results ──
+        (function() {
+            function getHashParams() {
+                var hash = window.location.hash;
+                if (!hash || hash.indexOf('#tab-') !== 0) return {};
+                var parts = hash.slice(5).split('&');
+                var params = { tab: parts[0] };
+                parts.slice(1).forEach(function(p) {
+                    var kv = p.split('=');
+                    if (kv.length === 2) params[kv[0]] = kv[1];
+                });
+                return params;
+            }
+
+            function applyTaskFilter(taskId) {
+                var resultsTab = document.getElementById('tab-my-results');
+                if (resultsTab && !resultsTab.classList.contains('active')) {
+                    var btn = document.querySelector('.tab-btn[data-tab="my-results"]') || document.querySelector('.bottom-nav-item[data-tab="my-results"]');
+                    if (btn) showTab('my-results', btn);
+                }
+                var filterBtn = document.querySelector('.sub-tab-filter[data-filter="task-' + taskId + '"]');
+                if (filterBtn) {
+                    filterBtn.click();
+                    setTimeout(function() {
+                        var grid = document.getElementById('results-grid');
+                        if (grid) grid.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                }
+            }
+
+            function checkHashTask() {
+                var params = getHashParams();
+                if (params.task) {
+                    setTimeout(function() { applyTaskFilter(params.task); }, 300);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', checkHashTask);
+            } else {
+                checkHashTask();
+            }
+
+            window.addEventListener('hashchange', checkHashTask);
         })();
 
         // ── Location autocomplete (PLZ/Ort) & radius gating ──
