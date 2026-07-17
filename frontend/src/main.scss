@@ -414,6 +414,10 @@ body.dashboard-page {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* Allow the right-hand action cluster to wrap onto a second line on very
+     narrow phones instead of being clipped off the edge (e.g. "Abmelden"). */
+  flex-wrap: wrap;
+  gap: 8px 12px;
   /* Mobile: sticky header that hides on scroll-down and reveals on
      scroll-up (JS toggles .header-hidden). Negative margins bleed it
      across the container padding so it spans the full viewport width. */
@@ -436,6 +440,7 @@ body.dashboard-page {
 
 .header-row h2 {
   font-size: 18px; /* slightly smaller on mobile */
+  white-space: nowrap; /* keep the wordmark on one line */
 }
 
 @media (min-width: 561px) {
@@ -810,6 +815,32 @@ body.dashboard-page {
   border-radius: var(--radius-md);
   margin-bottom: 18px;
   font-size: 13px;
+}
+
+/* Transient toast for client-side action feedback (save/error confirmations). */
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 4000;
+  max-width: min(90vw, 420px);
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: #fff;
+  background: var(--color-accent, #2fbf71);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.app-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.app-toast.app-toast-error {
+  background: #c0392b;
 }
 
 .flash-info {
@@ -4086,6 +4117,19 @@ body.landing-page {
   flex-shrink: 0;
 }
 
+.lp-nav-login {
+  color: var(--lp-navy);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 6px;
+  white-space: nowrap;
+}
+
+.lp-nav-login:hover {
+  color: var(--lp-green-dark);
+}
+
 .lp-nav-cta {
   border: 1px solid var(--lp-green);
   color: var(--lp-green-dark);
@@ -4696,6 +4740,29 @@ body.landing-page {
 }
 .plan-badge.plan-pro { background: #eef2ff; color: #3b5bfd; border-color: #c7d2fe; }
 .plan-badge.plan-basic { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+.plan-badge.plan-admin { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+
+/* Right-hand header cluster (credits pill, settings, admin, logout). Wraps to
+   a second line on narrow phones so nothing is clipped off the viewport edge. */
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .header-actions {
+    gap: 12px;
+  }
+  /* Credits are already the headline metric in the credits hero right below,
+     so the header pill is redundant on mobile and only crowds the row. */
+  .credit-pill {
+    display: none;
+  }
+}
 
 .credit-pill {
   display: inline-flex;
@@ -4886,6 +4953,16 @@ body.landing-page {
   padding: 20px 0 28px;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
+}
+
+/* On mobile the fixed bottom nav overlays the page bottom; without extra
+   clearance it covers the footer's links and version line. Reserve the nav's
+   full footprint plus a little breathing room. Reset on wider screens where
+   the bottom nav is hidden. */
+@media (max-width: 560px) {
+  .app-footer {
+    margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
 }
 .footer-inner {
   max-width: 960px;

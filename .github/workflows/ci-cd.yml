@@ -420,12 +420,34 @@ jobs:
             echo "API version:"
             curl -s "http://127.0.0.1:8000/version" | python3 -m json.tool 2>/dev/null
 
+            # /api/ai-search/chat is authenticated (see #355). The public login
+            # form is Turnstile-guarded and can't be driven from CI, so mint a
+            # short-lived Bearer token directly with the API's own signing key
+            # (SECRET_KEY) for an existing active user, inside the api container.
+            cd /opt/kleinanzeigen-ai
+            TOKEN=$(docker compose -f docker-compose.prod.yml exec -T api python -c '
+            from datetime import timedelta
+            from app.api.dependencies import create_access_token
+            from app.shared.database import SessionLocal
+            from app.shared.models import User
+            db = SessionLocal()
+            u = db.query(User).filter(User.is_active == 1).order_by(User.id).first()
+            print(create_access_token(data={"sub": str(u.id), "username": u.username}, expires_delta=timedelta(minutes=5)))
+            ' 2>/tmp/token_err | tr -d '\r\n')
+            if [ -z "$TOKEN" ]; then
+              echo "✗ Could not mint an auth token in the api container:"
+              cat /tmp/token_err 2>/dev/null
+              exit 1
+            fi
+            echo "✓ Auth token minted"
+
             echo ""
             echo "Calling /chat with full debug:"
             for attempt in $(seq 1 10); do
               echo "  --- attempt $attempt ---"
               RESP=$(curl -s -w "\n%{http_code}" "http://127.0.0.1:8000/api/ai-search/chat" \
                 -H "Content-Type: application/json" \
+                -H "Authorization: Bearer $TOKEN" \
                 -d '{"messages":[{"role":"user","content":"ping"}]}' 2>/tmp/chat_curl_err)
               HTTP_CODE=$(echo "$RESP" | tail -1)
               BODY=$(echo "$RESP" | sed '$d')

@@ -7,7 +7,7 @@
     <meta name="description" content="Suchergebnisse für deine kleinanzeigen.de-Suche. Überwache neue Treffer in Echtzeit mit kleinanzeigen-ai.">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#2fbf71">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
 </head>
@@ -28,7 +28,6 @@
             </div>
             <button type="button" class="results-new-search-btn" onclick="resultsStartSearch()">Suchen</button>
         </div>
-        <script type="module" src="/static/main.js?v={{ build_info.commit_short }}"></script>
 
         <div class="summary">
             <h1>{{ task.parameters.get('keywords', 'Suche') }}
@@ -82,7 +81,7 @@
         {% if results %}
         <div class="grid">
             {% for r in results %}
-            <a class="result-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
+            {% if r.url %}<a class="result-card" href="{{ r.url }}" target="_blank" rel="noopener">{% else %}<div class="result-card">{% endif %}
                 {% if r.image_url %}
                 <img class="thumb" src="{{ r.image_url }}" alt="" loading="lazy"
                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
@@ -103,7 +102,7 @@
                         <span>{{ r.created_at.strftime('%d.%m %H:%M') if r.created_at else '' }}</span>
                     </span>
                 </div>
-            </a>
+            {% if r.url %}</a>{% else %}</div>{% endif %}
             {% endfor %}
         </div>
 
