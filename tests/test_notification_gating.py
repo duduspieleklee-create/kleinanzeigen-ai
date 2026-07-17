@@ -12,7 +12,7 @@ The deals-only and quiet-hours gating branches are intentionally absent —
 both features were removed entirely (issues #185, #184), so the simplified
 gating is the only contract these tests assert.
 
-External clients (pywebpush, Resend) are stubbed so no network is needed.
+External clients (pywebpush, SendGrid) are stubbed so no network is needed.
 """
 
 import sys
@@ -52,9 +52,8 @@ _pywebpush.webpush = _webpush_stub
 _pywebpush.WebPushException = Exception
 sys.modules["pywebpush"] = _pywebpush
 
-# Stub resend (email send) — app.shared.email_notifications calls requests.post
-# directly, so we patch requests.post in the test via monkeypatch. No module
-# stub needed for resend itself.
+# Stub sendgrid (email send) — app.shared.email_notifications calls SMTP,
+# so we patch the module attributes via monkeypatch. No module stub needed.
 
 from app.api.main import app  # noqa: E402
 from app.shared.database import Base, get_db  # noqa: E402
@@ -124,7 +123,7 @@ def test_email_fires_when_enabled(db_session, monkeypatch):
     # via names bound into worker_tasks at import (from app.shared.email_notifications
     # import ...), NOT via the email_notifications module — so patch them on
     # worker_tasks. Patching the module attribute alone is a no-op and makes
-    # these tests depend on the global settings.resend_api_key (flaky by
+    # these tests depend on the global settings.sendgrid_api_key (flaky by
     # test-ordering).
     monkeypatch.setattr(worker_tasks, "email_configured", lambda: True)
     monkeypatch.setattr(worker_tasks, "send_email_notification",

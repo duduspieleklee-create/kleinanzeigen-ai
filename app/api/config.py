@@ -65,15 +65,18 @@ class Settings(BaseSettings):
     # Falls back to the request base URL when empty.
     public_base_url: str = ""
 
-    # ── Email sending via Resend (verification emails) ────────────────────────
-    # API key from https://resend.com/api-keys. Leave empty to disable email
+    # ── Email sending via SendGrid SMTP (verification + notifications) ───────
+    # SendGrid API key scoped to "Mail Send". Used as the SMTP password
+    # (username is always "apikey" for SendGrid). Leave empty to disable email
     # sending — in dev, password signups are then auto-verified for convenience;
     # outside dev they stay unverified (and cannot search) until a key is set.
-    resend_api_key: str = ""
-    # From address. The Resend sandbox sender works without domain verification
-    # but can only deliver to the Resend account owner's own inbox — verify a
-    # domain in Resend and change this before opening registration to others.
-    email_from: str = "onboarding@resend.dev"
+    sendgrid_api_key: str = ""
+    # SMTP relay host and port. Defaults are SendGrid's standard relay.
+    smtp_host: str = "smtp.sendgrid.net"
+    smtp_port: int = 587
+    # From address. Must be a verified sender in SendGrid (single-sender or
+    # domain). Defaults to a sensible placeholder that should be overridden.
+    email_from: str = "noreply@example.com"
 
     # Build/version metadata — injected at image build time via Docker build args.
     app_version: str = "dev"
