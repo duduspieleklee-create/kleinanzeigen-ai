@@ -177,6 +177,7 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             set -e
+            sudo chown -R debian:debian /opt/kleinanzeigen-ai
             git config --global --add safe.directory /opt/kleinanzeigen-ai
             cd /opt/kleinanzeigen-ai
             git reset --hard

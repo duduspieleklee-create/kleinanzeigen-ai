@@ -66,8 +66,12 @@ class Settings(BaseSettings):
     public_base_url: str = ""
 
     # ── Email sending via Resend (verification emails) ────────────────────────
-    # Alternate SendGrid email sending. Provide API key and a verified from address.
-    sendgrid_api_key: str = ""
+    # SendGrid via SMTP relay (preferred email provider).
+    # Provide the SMTP host, port, username, password, and a verified FROM address.
+    sendgrid_smtp_host: str = ""
+    sendgrid_smtp_port: int = 587
+    sendgrid_smtp_user: str = ""
+    sendgrid_smtp_password: str = ""
     sendgrid_email_from: str = ""
 
     # Alternate free email sending via a LambdaFunctionURL (generic HTTP endpoint).
