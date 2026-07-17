@@ -144,6 +144,9 @@ self.addEventListener('notificationclick', e => {
     default: notifData.url || '/dashboard'
   };
 
+  const taskId = notifData.taskId;
+  const finalUrl = taskId ? `${urls[action] || urls.default}&task=${taskId}` : (urls[action] || urls.default);
+
   e.notification.close();
 
   // Notify clients about click
@@ -152,7 +155,8 @@ self.addEventListener('notificationclick', e => {
       client.postMessage({
         type: 'notificationClicked',
         action: action,
-        url: urls[action] || urls.default
+        url: finalUrl,
+        taskId: taskId
       });
     });
   });
@@ -160,12 +164,11 @@ self.addEventListener('notificationclick', e => {
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.url.includes('/dashboard') && 'focus' in c);
-      const url = urls[action] || urls.default;
       if (existing) {
-        existing.navigate(url);
+        existing.navigate(finalUrl);
         return existing.focus();
       }
-      return clients.openWindow(url);
+      return clients.openWindow(finalUrl);
     })
   );
 });

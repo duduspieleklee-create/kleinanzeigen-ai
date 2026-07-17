@@ -89,12 +89,6 @@ def create_admin_search(
 ):
     keywords = keywords or None
     category = category or None
-    if not keywords and not category:
-        response = RedirectResponse(url="/dashboard#tab-admin", status_code=303)
-        response.set_cookie(
-            "flash_error", "Bitte Stichwörter oder Kategorie angeben", max_age=10
-        )
-        return response
 
     # ── Input hardening (mirrors the user-facing flow) ──────────────────────
     if keywords and len(keywords) > 255:
