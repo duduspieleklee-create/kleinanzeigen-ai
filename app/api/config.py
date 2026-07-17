@@ -65,33 +65,18 @@ class Settings(BaseSettings):
     # Falls back to the request base URL when empty.
     public_base_url: str = ""
 
-    # ── Email sending via Resend (verification emails) ────────────────────────
-    # SendGrid via SMTP relay (preferred email provider).
-    # Provide the SMTP host, port, username, password, and a verified FROM address.
-    sendgrid_smtp_host: str = ""
-    sendgrid_smtp_port: int = 587
-    sendgrid_smtp_user: str = ""
-    sendgrid_smtp_password: str = ""
-    sendgrid_email_from: str = ""
-
-    # Alternate free email sending via a LambdaFunctionURL (generic HTTP endpoint).
-    # Provide the full URL (including any query parameters or auth token) in the
-    # environment variable LAMBDA_EMAIL_URL. The lambda is expected to accept a
-    # JSON payload compatible with Resend (keys: from, to, subject, html, text).
-    # Leave empty to disable the fallback.
-    lambda_email_url: str = ""
-    # End of email settings block.
-    
-    # Build/version metadata — injected at image build time via Docker build args.
-    app_version: str = "dev"
-    # API key from https://resend.com/api-keys. Leave empty to disable email
+    # ── Email sending via SendGrid SMTP (verification + notifications) ───────
+    # SendGrid API key scoped to "Mail Send". Used as the SMTP password
+    # (username is always "apikey" for SendGrid). Leave empty to disable email
     # sending — in dev, password signups are then auto-verified for convenience;
     # outside dev they stay unverified (and cannot search) until a key is set.
-    resend_api_key: str = ""
-    # From address. The Resend sandbox sender works without domain verification
-    # but can only deliver to the Resend account owner's own inbox — verify a
-    # domain in Resend and change this before opening registration to others.
-    email_from: str = "onboarding@resend.dev"
+    sendgrid_api_key: str = ""
+    # SMTP relay host and port. Defaults are SendGrid's standard relay.
+    smtp_host: str = "smtp.sendgrid.net"
+    smtp_port: int = 587
+    # From address. Must be a verified sender in SendGrid (single-sender or
+    # domain). Defaults to a sensible placeholder that should be overridden.
+    email_from: str = "noreply@example.com"
 
     # Build/version metadata — injected at image build time via Docker build args.
     app_version: str = "dev"

@@ -413,7 +413,7 @@ def _send_email_notifications(
 
     if not email_configured():
         summary["configured"] = False
-        summary["errors"].append("RESEND_API_KEY is not configured on the server.")
+        summary["errors"].append("SENDGRID_API_KEY is not configured on the server.")
         return summary
 
     user = db.query(User).filter(User.id == user_id).first()
@@ -455,7 +455,7 @@ def _send_email_notifications(
             raise RuntimeError("Email send failed; see server logs.")
         return True
 
-    ok, last = _retry_with_backoff(email_policy, f"resend(user={user.id},task={task_id})", _do_send)
+    ok, last = _retry_with_backoff(email_policy, f"sendgrid(user={user.id},task={task_id})", _do_send)
     summary["sent"] = bool(ok)
     if summary["sent"]:
         metric("notifications.email_sent", 1)

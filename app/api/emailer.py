@@ -1,4 +1,4 @@
-"""Transactional email sending via the Resend HTTP API.
+"""Transactional email sending via SendGrid SMTP relay.
 
 Only the API container sends email (verification links); the worker and beat
 never import this module. Sending is synchronous and returns an explicit
@@ -6,152 +6,82 @@ never import this module. Sending is synchronous and returns an explicit
 of pretending the mail went out.
 """
 import logging
-
-import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from app.api.config import settings
 
 logger = logging.getLogger(__name__)
 
-def email_configured() -> bool:
-    """True when any email backend is properly configured.
+SENDGRID_USERNAME = "apikey"
 
-    Supported backends:
-    - Resend (RESEND_API_KEY)
-    - SendGrid via SMTP (SMTP host/user/password + valid FROM address)
-    - LambdaFunctionURL fallback
-    """
-    if settings.resend_api_key:
-        return True
-    # SendGrid SMTP backend
-    if (
-        settings.sendgrid_smtp_host
-        and settings.sendgrid_smtp_user
-        and settings.sendgrid_smtp_password
-        and settings.sendgrid_email_from
-    ):
-        return True
-    return bool(settings.lambda_email_url)
+
+def email_configured() -> bool:
+    """True when a SendGrid API key is set and email can actually be sent."""
+    return bool(settings.sendgrid_api_key)
+
+
+def _send_smtp(from_addr: str, to_addrs: list[str], subject: str,
+               html_body: str, text_body: str) -> tuple[bool, str]:
+    """Send an email via SendGrid SMTP. Returns (ok, error_message)."""
+    msg = MIMEMultipart("alternative")
+    msg["From"] = from_addr
+    msg["To"] = ", ".join(to_addrs)
+    msg["Subject"] = subject
+    msg.attach(MIMEText(text_body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15)
+        server.starttls()
+        server.login(SENDGRID_USERNAME, settings.sendgrid_api_key)
+        server.sendmail(from_addr, to_addrs, msg.as_string())
+        server.quit()
+    except smtplib.SMTPException as exc:
+        logger.error("SMTP send failed: %s", exc)
+        return False, "Could not reach the email service"
+    except Exception as exc:
+        logger.error("SMTP send failed: %s", exc)
+        return False, "Could not reach the email service"
+
+    return True, ""
 
 
 def send_verification_email(to_email: str, username: str, verify_url: str) -> tuple[bool, str]:
-    def send_verification_email(to_email: str, username: str, verify_url: str) -> tuple[bool, str]:
-        """Send verification email.
+    """Send the verify-your-address email. Returns (ok, error_message).
 
-        Preferred method: SendGrid via SMTP relay (requires SMTP host/port/user/password).
-        If any of those SMTP settings are missing, fall back to the existing Resend / SendGrid API / Lambda flow.
-        """
-        # If SMTP settings are configured, use them
-        if settings.sendgrid_smtp_host and settings.sendgrid_smtp_user and settings.sendgrid_smtp_password:
-            try:
-                # Build email message
-                from email.message import EmailMessage
-                msg = EmailMessage()
-                msg["Subject"] = "Verify your email address"
-                msg["From"] = settings.sendgrid_email_from
-                msg["To"] = to_email
-                # Plain‑text body
-                text_body = (
-                    f"Hi {username},\n\n"
-                    "Welcome to kleinanzeigen‑ai! Please confirm your email address to activate searching on your account by opening this link:\n\n"
-                    f"{verify_url}\n\n"
-                    "The link is valid for 24 hours. If you did not create this account, you can ignore this email."
-                )
-                # HTML body
-                html_body = (
-                    f"<p>Hi {username},</p>"
-                    "<p>Welcome to kleinanzeigen‑ai! Please confirm your email address to activate searching on your account:</p>"
-                    f"<p><a href='{verify_url}'>Verify my email</a></p>"
-                    f"<p>{verify_url}</p>"
-                    "<p>The link is valid for 24 hours. If you did not create this account, you can ignore this email.</p>"
-                )
-                msg.set_content(text_body)
-                msg.add_alternative(html_body, subtype='html')
+    Never raises: network/SMTP failures are logged and returned so the caller
+    can show an honest error and offer a resend.
+    """
+    if not email_configured():
+        return False, "Email sending is not configured (SENDGRID_API_KEY is empty)"
 
-                # Connect to SMTP server
-                import smtplib
-                with smtplib.SMTP(settings.sendgrid_smtp_host, settings.sendgrid_smtp_port, timeout=15) as server:
-                    server.starttls()
-                    server.login(settings.sendgrid_smtp_user, settings.sendgrid_smtp_password)
-                    server.send_message(msg)
-                return True, ""
-            except Exception as exc:
-                logger.error("Verification email to %s failed (SMTP): %s", to_email, exc)
-                return False, "Could not send email via SMTP"
-        # Existing flows (Resend, SendGrid API, Lambda) remain unchanged
-        if not email_configured():
-            return False, "Email sending is not configured (no RESEND_API_KEY or LAMBDA_EMAIL_URL)"
-        payload = {
-            "from": f"kleinanzeigen-ai <{settings.email_from}>",
-            "to": [to_email],
-            "subject": "Verify your email address",
-            "html": (
-                f"<p>Hi {username},</p>"
-                "<p>Welcome to kleinanzeigen-ai! Please confirm your email address "
-                "to activate searching on your account:</p>"
-                f'<p><a href="{verify_url}">Verify my email</a></p>'
-                "<p>Or open this link:</p>"
-                f"<p>{verify_url}</p>"
-                "<p>The link is valid for 24 hours. If you did not create this "
-                "account, you can ignore this email.</p>"
-            ),
-            "text": (
-                f"Hi {username},\n\n"
-                "Welcome to kleinanzeigen-ai! Please confirm your email address to "
-                "activate searching on your account by opening this link:\n\n"
-                f"{verify_url}\n\n"
-                "The link is valid for 24 hours. If you did not create this "
-                "account, you can ignore this email.\n"
-            ),
-        }
-        if settings.resend_api_key:
-            try:
-                resp = requests.post(
-                    RESEND_API_URL,
-                    json=payload,
-                    headers={"Authorization": f"Bearer {settings.resend_api_key}"},
-                    timeout=15,
-                )
-            except requests.RequestException as exc:
-                logger.error("Verification email to %s failed (Resend): %s", to_email, exc)
-                return False, "Could not reach the email service"
-        elif settings.sendgrid_api_key:
-            try:
-                resp = requests.post(
-                    SENDGRID_API_URL,
-                    json={
-                        "personalizations": [{"to": [{"email": to_email}]}],
-                        "from": {"email": settings.sendgrid_email_from},
-                        "subject": payload["subject"],
-                        "content": [
-                            {"type": "text/plain", "value": payload["text"]},
-                            {"type": "text/html", "value": payload["html"]},
-                        ],
-                    },
-                    headers={"Authorization": f"Bearer {settings.sendgrid_api_key}"},
-                    timeout=15,
-                )
-            except requests.RequestException as exc:
-                logger.error("Verification email to %s failed (SendGrid API): %s", to_email, exc)
-                return False, "Could not reach the email service"
-        else:
-            try:
-                resp = requests.post(
-                    settings.lambda_email_url,
-                    json=payload,
-                    timeout=15,
-                )
-            except requests.RequestException as exc:
-                logger.error("Verification email to %s failed (Lambda URL): %s", to_email, exc)
-                return False, "Could not reach the email service"
-        if resp.status_code >= 400:
-            logger.error(
-                "Verification email to %s rejected (%s): %s",
-                to_email, resp.status_code, resp.text[:500],
-            )
-            from app.shared.email_status import mark_email_failed
-            mark_email_failed()
-            return False, "The email service rejected the message"
-        return True, ""
+    from_addr = f"kleinanzeigen-ai <{settings.email_from}>"
+    html_body = (
+        f"<p>Hi {username},</p>"
+        "<p>Welcome to kleinanzeigen-ai! Please confirm your email address "
+        "to activate searching on your account:</p>"
+        f'<p><a href="{verify_url}">Verify my email</a></p>'
+        "<p>Or open this link:</p>"
+        f"<p>{verify_url}</p>"
+        "<p>The link is valid for 24 hours. If you did not create this "
+        "account, you can ignore this email.</p>"
+    )
+    text_body = (
+        f"Hi {username},\n\n"
+        "Welcome to kleinanzeigen-ai! Please confirm your email address to "
+        "activate searching on your account by opening this link:\n\n"
+        f"{verify_url}\n\n"
+        "The link is valid for 24 hours. If you did not create this "
+        "account, you can ignore this email.\n"
+    )
+
+    ok, error = _send_smtp(from_addr, [to_email],
+                           "Verify your email address", html_body, text_body)
+    if not ok:
+        from app.shared.email_status import mark_email_failed
+        mark_email_failed()
+        return False, error
 
     return True, ""

@@ -1,6 +1,6 @@
-"""Shared email-service health signal for the temporary Resend outage.
+"""Shared email-service health signal for temporary SendGrid outages.
 
-Resend can suspend/rate-limit the account, leaving every email send failing
+SendGrid can suspend/rate-limit the account, leaving every email send failing
 (verification + new-results). When that happens we don't want to silently drop
 mail — we surface a non-blocking in-app banner ("E-Mail-Versand vorübergehend
 nicht verfügbar") so users understand why no mail arrives and retries don't

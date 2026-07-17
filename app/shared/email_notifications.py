@@ -1,21 +1,22 @@
 """Email notification system for new search results.
 
-Sends via the Resend HTTP API, the same provider and credentials
-(`settings.resend_api_key`) already used for verification emails in
+Sends via SendGrid SMTP relay using the same credentials
+(`settings.sendgrid_api_key`) already used for verification emails in
 app/api/emailer.py.
 """
 import html
 import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
 from dataclasses import dataclass
-
-import requests
 
 from app.api.config import settings
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
-RESEND_API_URL = "https://api.resend.com/emails"
+SENDGRID_USERNAME = "apikey"
 
 
 @dataclass
@@ -28,54 +29,43 @@ class EmailNotification:
 
 
 def email_configured() -> bool:
-    """True when a Resend API key is set and email can actually be sent."""
-    return bool(settings.resend_api_key)
+    """True when a SendGrid API key is set and email can actually be sent."""
+    return bool(settings.sendgrid_api_key)
 
 
 def send_email_notification(notification: EmailNotification) -> bool:
-    """Send an email notification via Resend. Never raises.
+    """Send an email notification via SendGrid SMTP. Never raises.
 
     Returns True if sent successfully, False otherwise (and logs why).
     """
     if not email_configured():
         logger.warning(
-            "Skipping email to %s: RESEND_API_KEY is not configured", notification.recipient
+            "Skipping email to %s: SENDGRID_API_KEY is not configured",
+            notification.recipient,
         )
         return False
 
-    payload = {
-        "from": f"kleinanzeigen-ai <{settings.email_from}>",
-        "to": [notification.recipient],
-        "subject": notification.subject,
-        "html": notification.body_html,
-        "text": notification.body_text or "",
-    }
+    from_addr = f"kleinanzeigen-ai <{settings.email_from}>"
+    msg = MIMEMultipart("alternative")
+    msg["From"] = from_addr
+    msg["To"] = notification.recipient
+    msg["Subject"] = notification.subject
+    msg.attach(MIMEText(notification.body_text or "", "plain", "utf-8"))
+    msg.attach(MIMEText(notification.body_html, "html", "utf-8"))
+
     try:
-        resp = requests.post(
-            RESEND_API_URL,
-            json=payload,
-            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
-            timeout=15,
-        )
-    except requests.RequestException as exc:
-        logger.error("New-results email to %s failed: %s", notification.recipient, exc)
+        server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15)
+        server.starttls()
+        server.login(SENDGRID_USERNAME, settings.sendgrid_api_key)
+        server.sendmail(from_addr, [notification.recipient], msg.as_string())
+        server.quit()
+    except smtplib.SMTPException as exc:
+        logger.error("New-results email to %s failed: %s",
+                     notification.recipient, exc)
         return False
-
-    if resp.status_code >= 400:
-        # Surface Resend's machine-readable error name (e.g. suspended_api_key,
-        # invalid_api_key) so incidents are self-diagnosing in logs/Sentry.
-        detail = resp.text[:500]
-        try:
-            j = resp.json()
-            name = j.get("name")
-            if name:
-                detail = f"{name}: {j.get('message', detail)}"
-        except Exception:
-            pass
-        logger.error(
-            "New-results email to %s rejected (%s): %s",
-            notification.recipient, resp.status_code, detail,
-        )
+    except Exception as exc:
+        logger.error("New-results email to %s failed: %s",
+                     notification.recipient, exc)
         return False
 
     logger.info("New-results email sent to %s", notification.recipient)
