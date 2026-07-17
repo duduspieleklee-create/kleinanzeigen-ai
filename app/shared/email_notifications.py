@@ -185,6 +185,7 @@ def create_new_results_email(
 
 def _get_trust_badge_html(trust_score: Optional[int]) -> str:
     """Generate HTML badge for trust score."""
+    import html as html_module
     if trust_score is None:
         return ""
     
@@ -201,8 +202,9 @@ def _get_trust_badge_html(trust_score: Optional[int]) -> str:
         color = "#F44336"
         label = "Warnung"
     
+    safe_label = html_module.escape(label)
     return f"""
     <span style="background-color: {color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px;">
-        Trust Score: {trust_score}/100 ({label})
+        Trust Score: {trust_score}/100 ({safe_label})
     </span><br>
     """

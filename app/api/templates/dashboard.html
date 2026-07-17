@@ -165,20 +165,14 @@
         <div class="header-row">
             <div class="brand-block">
                 <h2 style="margin:0">kleinanzeigen-ai</h2>
-                {% if is_admin %}
-                <span class="plan-badge plan-admin">Admin</span>
-                {% else %}
                 <span class="plan-badge plan-{{ plan_name|lower }}">{{ plan_label }}</span>
-                {% endif %}
             </div>
-            <div class="header-actions">
-                {% if not is_admin %}
-                <div class="credit-pill" title="Verbleibende Credits diese Woche">
+            <div style="display:flex;align-items:center;gap:16px">
+                <div class="credit-pill" title="Verbleibende Credits">
                     <span class="credit-icon">⚡</span>
-                    <span class="credit-count">{{ credits }}</span>
+                    <span class="credit-count">{{ credits + credits_paid }}</span>
                     <span class="credit-label">Credits</span>
                 </div>
-                {% endif %}
                 <a href="/settings" class="notif-icon" title="Einstellungen">⚙️</a>
                 {% if is_admin %}
                 <a class="admin-link" href="#tab-admin" onclick="showTab('admin', document.querySelector('.tab-btn[data-tab=admin]')); return false;">Admin</a>
@@ -238,22 +232,6 @@
         <!-- ── TAB: My Searches ── -->
         <div id="tab-my-searches" class="tab-pane active">
             <!-- Credits hero — the headline metric (pay-as-you-go) -->
-            {% if is_admin %}
-            <!-- Admins are exempt from credits and the active-search cap. -->
-            <div class="credits-hero">
-                <div class="ch-main">
-                    <span class="ch-label">Credits</span>
-                    <span class="ch-value">∞</span>
-                    <span class="ch-tag">Admin</span>
-                </div>
-                <div class="ch-side">
-                    <div class="ch-mini">
-                        <span class="ch-mini-num">{{ active_searches }}</span>
-                        <span class="ch-mini-cap">Aktive Suchen</span>
-                    </div>
-                </div>
-            </div>
-            {% else %}
             <div class="credits-hero">
                 <div class="ch-main">
                     <span class="ch-label">Credits</span>
@@ -268,45 +246,15 @@
                     <a href="/billing/credits" class="ch-topup">Credits aufladen →</a>
                 </div>
             </div>
-            {% endif %}
 
-            <!-- Primary action: start a new search -->
-            <button type="button" class="new-search-cta" onclick="goToNewSearchTab()">
-                <span class="ns-plus">+</span> Neue Suche erstellen
-            </button>
 
-            <!-- KI-Agent — message the agent directly, right here -->
-            <div class="agent-card">
-                <div class="agent-head">
-                    <span class="agent-icon">🤖</span>
-                    <div class="agent-head-text">
-                        <span class="agent-title">KI-Agent{% if not show_smart_search %} <span class="ft-badge ft-locked">Pro</span>{% endif %}</span>
-                        <span class="agent-sub">Beschreib einfach, was du suchst — der Agent durchsucht Kleinanzeigen live für dich.</span>
-                    </div>
-                </div>
-                {% if show_smart_search %}
-                <form class="agent-input-row" onsubmit="return askAgent(event)">
-                    <input id="agent-inline-input" type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" autocomplete="off">
-                    <button type="submit" class="agent-send" aria-label="Agent fragen">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                    </button>
-                </form>
-                {% else %}
-                <div class="agent-input-row">
-                    <input type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" disabled>
-                    <a href="/billing" class="agent-send agent-upsell">Pro freischalten</a>
-                </div>
-                {% endif %}
-            </div>
+
+
 
             <!-- Feature overview: every capability at a glance -->
             <div class="features-head">
                 <h3>Deine Funktionen</h3>
-                {% if is_admin %}
-                <span class="features-plan">Admin · Alle Funktionen</span>
-                {% else %}
                 <a href="/billing" class="features-plan">{{ plan_label }} · Upgrade →</a>
-                {% endif %}
             </div>
             <div class="feature-tiles">
                 {# Each tile: icon, name, one-line benefit, and a status badge.
@@ -399,6 +347,7 @@
                     <thead>
                         <tr>
                             <th>Suche</th>
+                            <th>Intervall</th>
                             <th>Ergebnisse</th>
                             <th></th>
                         </tr>
@@ -437,7 +386,7 @@
                                 <div class="task-error-detail">{{ task.error_message }}</div>
                                 {% endif %}
                             </td>
-                            <td data-label="Ergebnisse" class="search-result-count" data-iv="{{ task.parameters.get('interval_seconds', '') }}">
+                            <td data-label="Intervall" class="search-result-count" data-iv="{{ task.parameters.get('interval_seconds', '') }}">
                                 <a href="/scrapes/{{ task.id }}/results" title="Alle gelieferten Ergebnisse anzeigen">{{ task.result_count }}</a>
                                 {% if task.last_summary %}
                                 <div class="task-smart-summary" title="Smart Alert der letzten Ausführung">✨ {{ task.last_summary }}</div>
@@ -707,7 +656,7 @@
                 {% macro rc_card(r, is_favorite=False) %}
         <div class="rc-card-wrapper result-card-wrapper" data-task-id="task-{{ r.task_id }}" data-price="{{ r.price_value or 0 }}" data-trust="{{ r.trust_score or 0 }}" data-date="{{ r.created_at.timestamp() if r.created_at else 0 }}" data-result-id="{{ r.id }}" data-search="{{ r.search_keywords or '' }}" data-location="{{ r.location or '' }}">
             <button class="favorite-btn rc-fav-btn{% if is_favorite %} favorited{% endif %}" onclick="toggleFavorite({{ r.id }}, this)" title="{% if is_favorite %}Aus Favoriten entfernen{% else %}Zu Favoriten hinzufügen{% endif %}">{% if is_favorite %}♥{% else %}♡{% endif %}</button>
-            {% if r.url %}<a class="rc-card" href="{{ r.url }}" target="_blank" rel="noopener">{% else %}<div class="rc-card">{% endif %}
+            <a class="rc-card" {% if r.url %}href="{{ r.url }}" target="_blank" rel="noopener"{% endif %}>
                 <div class="rc-thumb">
                     {% if r.is_new %}<span class="rc-neu-badge">NEU</span>{% endif %}
                     {% if r.image_url %}
@@ -740,7 +689,7 @@
                         {% endif %}
                     </div>
                 </div>
-            {% if r.url %}</a>{% else %}</div>{% endif %}
+            </a>
         </div>
         {% endmacro %}
         <div id="tab-my-results" class="tab-pane">
@@ -767,7 +716,7 @@
                         <button class="sub-tab-filter active" data-filter="all" onclick="filterResultsBySearch('all')">Alle Suchen</button>
                         {% for task in tasks %}
                         <button class="sub-tab-filter" data-filter="task-{{ task.id }}" onclick="filterResultsBySearch('task-{{ task.id }}')">
-                            {{ task.parameters.get('keywords', 'Suche #' ~ task.id) | truncate(20) }}
+                            {{ task.parameters.get('keywords', 'Search #' ~ task.id) | truncate(20) }}
                         </button>
                         {% endfor %}
                     </div>
@@ -777,7 +726,7 @@
                     <div class="rc-controls-row">
                         <div class="rc-sort-wrap">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
-                            <select id="sort-by" aria-label="Ergebnisse sortieren" onchange="sortResults(this.value)">
+                            <select id="sort-by" onchange="sortResults(this.value)">
                                 <option value="newest">Neueste zuerst</option>
                                 <option value="oldest">Älteste zuerst</option>
                                 <option value="price-low">Preis: Niedrig → Hoch</option>
@@ -827,7 +776,7 @@
                         <p class="rc-upsell-title">Trust Score freischalten</p>
                         <p class="rc-upsell-desc">Sieh Verkäufer-Vertrauenswerte mit Core oder Pro.</p>
                     </div>
-                    <a href="/billing" class="rc-upsell-cta">Core holen</a>
+                    <a href="/billing" class="rc-upsell-cta">Get Core</a>
                 </div>
                 {% endif %}
 
@@ -863,7 +812,7 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="rc-empty-state" id="empty-state-results">
+                <div class="rc-empty-state" id="empty-state">
                     <div class="empty-state-icon">🔍</div>
                     <p>Noch keine Ergebnisse – erstelle deine erste Suche, um automatisch benachrichtigt zu werden.</p>
                     <button type="button" class="empty-state-cta-btn" onclick="goToNewSearchTab()">+ Neue Suche erstellen</button>
@@ -1292,8 +1241,7 @@
 
             render();
             open();
-        })();
-    </script>
+
 
     <script>
         // ── First-search notification prompt ──
@@ -1321,21 +1269,9 @@
         })();
     </script>
 
+        })();
+    </script>
     <script>
-        // Transient toast for client-side action feedback (styling in style.css).
-        function showToast(message, isError) {
-            var el = document.createElement('div');
-            el.className = 'app-toast' + (isError ? ' app-toast-error' : '');
-            el.setAttribute('role', 'status');
-            el.textContent = message;
-            document.body.appendChild(el);
-            requestAnimationFrame(function() { el.classList.add('show'); });
-            setTimeout(function() {
-                el.classList.remove('show');
-                setTimeout(function() { el.remove(); }, 250);
-            }, 2600);
-        }
-
         // ── Tab Navigation ──
         // CHANGED: now keeps both the top .tab-btn set and the bottom-nav
         // set in sync, since either one can be tapped depending on
@@ -1413,14 +1349,8 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
-            .then(r => {
-                // Session expired mid-session — send the user to log in again
-                // instead of silently failing.
-                if (r.status === 401) { window.location.href = '/login'; return null; }
-                return r.json();
-            })
+            .then(r => r.json())
             .then(data => {
-                if (!data) return;
                 if (data.status === 'success') {
                     if (data.favorite === 'added') {
                         btn.classList.add('favorited');
@@ -1444,10 +1374,7 @@
                     }
                 }
             })
-            .catch(err => {
-                console.error('Favorite toggle failed:', err);
-                showToast('Favorit konnte nicht gespeichert werden.', true);
-            });
+            .catch(err => console.error('Favorite toggle failed:', err));
         }
 
         // ── Results Filtering & Sorting ──
@@ -1671,22 +1598,10 @@
             }
 
             var eventSource = null;
-            // The stream requires a valid session cookie. When it expires the
-            // endpoint returns 401 and the connection fails permanently, so cap
-            // the reconnect attempts and send the user to the login page instead
-            // of looping forever. A still-valid session that briefly dropped
-            // (server restart) reconnects and resets the counter; if it hits the
-            // cap while still authenticated, /login just redirects back here.
-            var streamFailures = 0;
-            var STREAM_MAX_FAILURES = 5;
             function connectStream() {
                 if (eventSource) return;
                 eventSource = new EventSource('/scrapes/stream');
-                eventSource.onopen = function() {
-                    streamFailures = 0;
-                };
                 eventSource.onmessage = function(e) {
-                    streamFailures = 0;
                     try {
                         var data = JSON.parse(e.data);
                         if (Array.isArray(data)) {
@@ -1699,11 +1614,6 @@
                 eventSource.onerror = function() {
                     eventSource.close();
                     eventSource = null;
-                    streamFailures++;
-                    if (streamFailures >= STREAM_MAX_FAILURES) {
-                        window.location.href = '/login';
-                        return;
-                    }
                     setTimeout(connectStream, 3000);
                 };
             }
@@ -2436,7 +2346,7 @@
             if (isResultNew(createdAt, search)) {
                 var badge = document.createElement('div');
                 badge.className = 'new-badge';
-                badge.textContent = 'NEU';
+                badge.textContent = 'NEW';
                 wrapper.appendChild(badge);
                 newCountsBySearch[search] = (newCountsBySearch[search] || 0) + 1;
             }
@@ -2450,7 +2360,7 @@
                     var count = newCountsBySearch[search];
                     var oldText = tab.textContent.trim();
                     if (!oldText.includes('(')) {
-                        tab.textContent = oldText + ' (' + count + ' neu)';
+                        tab.textContent = oldText + ' (' + count + ' new)';
                     }
                 }
             });
@@ -2501,6 +2411,90 @@
 }
 </style>
 
+
+<script>
+// Category searchable dropdown
+(function() {
+    var select = document.getElementById('category');
+    var input = document.getElementById('category-search');
+    if (!select || !input) return;
+
+    // Store all options
+    var options = [];
+    for (var i = 0; i < select.options.length; i++) {
+        var opt = select.options[i];
+        options.push({value: opt.value, text: opt.text});
+    }
+
+    function filterOptions() {
+        var query = input.value.trim().toLowerCase();
+        // Clear datalist? we'll create a temporary dropdown
+        var dropdown = document.getElementById('category-dropdown');
+        if (!dropdown) {
+            dropdown = document.createElement('div');
+            dropdown.id = 'category-dropdown';
+            dropdown.className = 'category-dropdown';
+            input.parentNode.insertBefore(dropdown, input.nextSibling);
+        }
+        dropdown.innerHTML = '';
+        if (query === '') {
+            dropdown.style.display = 'none';
+            return;
+        }
+        var matched = options.filter(function(o) {
+            return o.text.toLowerCase().indexOf(query) !== -1;
+        });
+        if (matched.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        dropdown.style.display = 'block';
+        matched.forEach(function(o) {
+            var div = document.createElement('div');
+            div.className = 'category-dropdown-item';
+            div.textContent = o.text;
+            div.dataset.value = o.value;
+            div.addEventListener('click', function() {
+                input.value = this.textContent;
+                select.value = this.dataset.value;
+                dropdown.style.display = 'none';
+                // trigger change event in case any listeners
+                var event = new Event('change');
+                select.dispatchEvent(event);
+            });
+            dropdown.appendChild(dropdown);
+        });
+        // Position dropdown below input
+        var rect = input.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+        dropdown.style.left = (rect.left + window.scrollX) + 'px';
+        dropdown.style.width = rect.width + 'px';
+    });
+
+    input.addEventListener('input', function() {
+        // debounce
+        clearTimeout(input._debounceTimer);
+        input._debounceTimer = setTimeout(filterOptions, 150);
+    });
+    input.addEventListener('focus', filterOptions);
+    input.addEventListener('blur', function() {
+        // hide dropdown after a short delay to allow click
+        setTimeout(function() {
+            var dropdown = document.getElementById('category-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }, 200);
+    });
+    // Hide dropdown on scroll or resize
+    window.addEventListener('scroll', function() {
+        var dropdown = document.getElementById('category-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    });
+    window.addEventListener('resize', function() {
+        var dropdown = document.getElementById('category-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    });
+})();
+</script>
 
 {% if show_smart_search %}
 <script>
@@ -2771,11 +2765,11 @@
 }
 </style>
 
-<button id="ai-chat-btn" onclick="toggleChat()">💬</button>
+<button id="ai-chat-btn" onclick="toggleChat()">🤖</button>
 <div id="ai-chat-panel">
   <div id="ai-chat-header">
-    <span>🤖 KI-Suche</span>
-    <button type="button" onclick="toggleChat()" aria-label="Chat schließen" style="cursor:pointer;opacity:.8;background:none;border:none;color:inherit;font-size:inherit;padding:0">✕</button>
+    <span>🤖 KI-Agent</span>
+    <span onclick="toggleChat()" style="cursor:pointer;opacity:.8">✕</span>
   </div>
   <div id="ai-chat-messages"></div>
   <div id="ai-chat-input-area">
@@ -2784,7 +2778,7 @@
   </div>
 </div>
 <script>
-var chatMessages = [{role:'assistant', content:''}];  // greeting loaded dynamically
+var chatMessages = [{role:'assistant', content:'Hallo! Ich bin dein KI-Agent. Wie kann ich dir helfen?'}, {role:'assistant', content:''}];  // greeting loaded dynamically
 var chatLiked = [];
 var chatDisliked = [];
 

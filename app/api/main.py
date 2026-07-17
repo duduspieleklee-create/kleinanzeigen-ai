@@ -255,6 +255,11 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
         )
 
 
+@app.get("/chat", tags=["Web"], include_in_schema=False)
+async def chat_page(request: Request):
+    return templates.TemplateResponse("chat.html", {"request": request})
+
+
 @app.get("/dashboard", tags=["Web"])
 async def dashboard(
     request: Request,

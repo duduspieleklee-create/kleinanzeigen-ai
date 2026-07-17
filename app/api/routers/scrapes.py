@@ -47,7 +47,7 @@ def _clean_int(value: Optional[str], label: str, errors: list) -> Optional[int]:
     try:
         return int(value)
     except ValueError:
-        errors.append(f"{label} muss eine ganze Zahl sein")
+        errors.append(f"{label} must be a whole number")
         return None
 
 
@@ -97,15 +97,15 @@ async def create_scrape(
     keywords = _clean_str(keywords)
     category_v = _clean_str(category)
     if keywords and len(keywords) > MAX_KEYWORDS_LEN:
-        errors.append("Suchbegriffe sind zu lang (max. 255 Zeichen)")
+        errors.append("Search keywords are too long (max 255 characters)")
     if category_v and len(category_v) > MAX_CATEGORY_LEN:
-        errors.append("Kategorie ist zu lang (max. 100 Zeichen)")
+        errors.append("Category is too long (max 100 characters)")
 
-    location_id_v = _clean_int(location_id, "Ort", errors)
-    price_min_v = _clean_int(price_min, "Mindestpreis", errors)
-    price_max_v = _clean_int(price_max, "Höchstpreis", errors)
-    radius_v = _clean_int(radius, "Umkreis", errors)
-    interval_v = _clean_int(interval_seconds, "Intervall", errors)
+    location_id_v = _clean_int(location_id, "Location", errors)
+    price_min_v = _clean_int(price_min, "Minimum price", errors)
+    price_max_v = _clean_int(price_max, "Maximum price", errors)
+    radius_v = _clean_int(radius, "Radius", errors)
+    interval_v = _clean_int(interval_seconds, "Interval", errors)
 
     # ── Server-side location resolution (issue #168 hardening) ──────────────
     # The wizard normally submits a concrete location_id from a picked
@@ -135,19 +135,19 @@ async def create_scrape(
     # Reject negative magnitudes — a negative price/radius is meaningless and
     # would otherwise reach url_builder unchanged.
     if price_min_v is not None and price_min_v < 0:
-        errors.append("Mindestpreis darf nicht negativ sein")
+        errors.append("Minimum price cannot be negative")
     if price_max_v is not None and price_max_v < 0:
-        errors.append("Höchstpreis darf nicht negativ sein")
+        errors.append("Maximum price cannot be negative")
     if radius_v is not None and radius_v < 0:
-        errors.append("Umkreis darf nicht negativ sein")
+        errors.append("Radius cannot be negative")
 
     if price_min_v is not None and price_max_v is not None and price_min_v > price_max_v:
-        errors.append("Mindestpreis darf nicht größer als der Höchstpreis sein")
+        errors.append("Minimum price cannot be greater than maximum price")
 
     # Radius only scopes a search when a concrete location is known — without
     # a location_id the canonical URL can't carry the radius segment.
     if radius_v is not None and radius_v > 0 and location_id_v is None:
-        errors.append("Für einen Umkreis muss ein Ort ausgewählt sein")
+        errors.append("A radius requires a selected location")
 
     # On any bad input, go back to the dashboard with a readable message
     # instead of returning a raw 422 JSON body.
@@ -168,9 +168,8 @@ async def create_scrape(
         # before they can consume scraping capacity / farm weekly credits.
         if not user.email_verified:
             return _flash_error(
-                "Bitte bestätige zuerst deine E-Mail-Adresse, bevor du Suchen "
-                "startest – prüfe dein Postfach oder nutze oben "
-                "'Bestätigungs-E-Mail erneut senden'."
+                "Please verify your email address before starting searches - "
+                "check your inbox or use 'Resend verification email' above."
             )
 
         ensure_weekly_credits(db, user)
@@ -183,12 +182,12 @@ async def create_scrape(
             reset_str = (
                 user.credits_reset_at.strftime("%d.%m. %H:%M UTC")
                 if user.credits_reset_at
-                else "nächste Woche"
+                else "next week"
             )
             return _flash_error(
-                f"Keine Credits mehr im {cfg['label']}-Plan – jeder neu gefundene "
-                f"Eintrag verbraucht 1 Credit. Credits werden am {reset_str} "
-                "zurückgesetzt. Upgrade unter „Plan“ für mehr."
+                f"No credits left on the {cfg['label']} plan - each new listing "
+                f"found uses 1 credit. Credits reset on {reset_str}. "
+                "Upgrade at /billing for more."
             )
 
         # 2. Recurring-search slots.
@@ -196,18 +195,16 @@ async def create_scrape(
             active = count_active_recurring(db, user.id)
             if active >= cfg["max_active_searches"]:
                 return _flash_error(
-                    f"Dein {cfg['label']}-Plan erlaubt {cfg['max_active_searches']} "
-                    "aktive wiederkehrende Suchen. Beende eine oder mache ein Upgrade "
-                    "unter „Plan“."
+                    f"Your {cfg['label']} plan allows {cfg['max_active_searches']} "
+                    "active recurring searches. Cancel one or upgrade at /billing."
                 )
 
             # 3. Interval floor per plan.
             if interval_v < cfg["min_interval_seconds"]:
                 minutes = cfg["min_interval_seconds"] // 60
                 return _flash_error(
-                    f"Der {cfg['label']}-Plan erlaubt Abfrageintervalle von "
-                    f"{minutes} Minuten oder mehr. Upgrade unter „Plan“ für "
-                    "schnellere Abfragen."
+                    f"The {cfg['label']} plan allows check intervals of "
+                    f"{minutes} minutes or more. Upgrade at /billing for faster checks."
                 )
 
     # Enforce global minimum interval outside dev
@@ -530,7 +527,7 @@ async def delete_scrape(
     db.commit()
 
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie("flash_success", ascii_cookie(f"Suche #{task_id} und alle Ergebnisse gelöscht."), max_age=5)
+    response.set_cookie("flash_success", ascii_cookie(f"Search #{task_id} and all results deleted."), max_age=5)
     return response
 
 
@@ -604,5 +601,5 @@ async def cancel_scrape(
     db.commit()
 
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie("flash_success", ascii_cookie(f"Suche #{task_id} abgebrochen."), max_age=5)
+    response.set_cookie("flash_success", ascii_cookie(f"Scrape job #{task_id} cancelled."), max_age=5)
     return response

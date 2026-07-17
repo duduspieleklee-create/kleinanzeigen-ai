@@ -318,32 +318,19 @@ def test_get_suggestions_cache_hit(sss, monkeypatch):
 
 # ── API-Endpoint ───────────────────────────────────────────────────────────
 def test_api_endpoint_returns_suggestions(monkeypatch):
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from sqlalchemy.pool import StaticPool
-    from starlette.requests import Request
-
-    from app.shared.database import Base
     from app.api.routers.smart_search import get_search_suggestions
+    from starlette.requests import Request
 
     monkeypatch.setattr("app.ai.smart_search_suggestions.requests.get", lambda *a, **k: SimpleNamespace(
         raise_for_status=lambda: None, json=lambda: []
     ))
-
-    eng = create_engine("sqlite:///:memory:",
-                        connect_args={"check_same_thread": False},
-                        poolclass=StaticPool)
-    Base.metadata.create_all(eng)
-    db = sessionmaker(bind=eng, expire_on_commit=False)()
-
     scope = {"type": "http", "method": "GET", "path": "/api/search-suggestions", "headers": []}
     request = Request(scope)
-    resp = get_search_suggestions(request, "Auto kaufen", current_user={"id": 1, "is_admin": False}, db=db)
+    resp = get_search_suggestions(request, "Auto kaufen", current_user={"id": 1, "is_admin": False})
     assert resp["query"] == "Auto kaufen"
     assert isinstance(resp["suggestions"], dict)
     # data/trends.json liefert Trends für "Auto" ohne Netz
     assert "Aktuelle Trends für 'Auto'" in resp["suggestions"]
-    db.close()
 
 
 # ── Persistenz (search_suggestions DB) ─────────────────────────────────────
