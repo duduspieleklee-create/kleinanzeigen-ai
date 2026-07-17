@@ -10,7 +10,6 @@ from app.ai.ai_search import parse_query, extract_keywords_for_search, generate_
 from app.ai.ai_search_chat import build_chat_response, format_results_as_chat, GREETING
 from app.shared.database import get_db
 from app.api.config import Settings
-import httpx
 from app.shared.models import ScrapeResult
 
 router = APIRouter(prefix="/api", tags=["ai_search"])
