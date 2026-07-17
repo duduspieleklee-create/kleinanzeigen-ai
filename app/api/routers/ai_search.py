@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.ai.ai_search import parse_query, extract_keywords_for_search, generate_search_text, rank_results
-from app.ai.ai_search_chat import build_chat_response, format_results_as_chat, GREETING
+from app.ai.ai_search_chat import build_chat_response, format_results_as_chat, GREETING, _fetch_trending_suggestions, _trending_explanation_for
 from app.shared.database import get_db
 from app.api.config import Settings
 from app.api.dependencies import get_current_user
@@ -43,6 +43,8 @@ class ChatResponse(BaseModel):
     llm_connected: bool = False
     model_name: str = ""
     llm_error: str = ""
+    suggestions: list[str] = []
+    suggestion_hint: str = ""
 
 
 
@@ -92,6 +94,15 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db), current_
 
     chat_result = build_chat_response(msgs)
 
+    # Trend-aware improvement suggestions based on the user's topic.
+    # Cheap, offline lookup; surface to the front-end so it can render
+    # clickable chips ("Auch nach E-Bike suchen?").
+    merged_query = " ".join(
+        m["content"] for m in msgs if m.get("role") == "user" and m.get("content")
+    )
+    trends = _fetch_trending_suggestions(merged_query)
+    suggestion_hint = _trending_explanation_for(merged_query) if trends else ""
+
     # LLM connectivity is inferred from whether the chat response came from the
     # LLM or from the deterministic fallback.
     llm_connected = bool(
@@ -113,8 +124,25 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db), current_
         ranked = rank_results(results, chat_result["search_text"])
 
         reply = format_results_as_chat(ranked[:15], len(ranked))
-        return ChatResponse(reply=reply, search_text=chat_result["search_text"], results=ranked[:15], total=len(ranked), llm_connected=llm_connected, model_name=model_name, llm_error="")
-    return ChatResponse(reply=chat_result["reply"], llm_connected=llm_connected, model_name=model_name, llm_error="")
+        return ChatResponse(
+            reply=reply,
+            search_text=chat_result["search_text"],
+            results=ranked[:15],
+            total=len(ranked),
+            llm_connected=llm_connected,
+            model_name=model_name,
+            llm_error="",
+            suggestions=trends,
+            suggestion_hint=suggestion_hint,
+        )
+    return ChatResponse(
+        reply=chat_result["reply"],
+        llm_connected=llm_connected,
+        model_name=model_name,
+        llm_error="",
+        suggestions=trends,
+        suggestion_hint=suggestion_hint,
+    )
 
 def _fetch_matching_results(keyword: str, db: Session) -> list[dict]:
     if not keyword:

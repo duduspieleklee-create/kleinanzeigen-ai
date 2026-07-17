@@ -2749,6 +2749,10 @@
 .chat-msg{padding:10px 14px;border-radius:12px;max-width:85%;line-height:1.5;white-space:pre-wrap}
 .chat-msg.user{background:var(--color-accent,#2fbf71);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .chat-msg.assistant{background:#f0f2f5;color:#333;align-self:flex-start;border-bottom-left-radius:4px}
+.chat-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:6px 14px;align-self:flex-start;max-width:90%}
+.chat-suggestion-chip{display:inline-block;padding:5px 11px;border:1px solid var(--color-accent,#2fbf71);border-radius:14px;background:#fff;color:var(--color-accent-hover,#1f8a52);font-size:12px;cursor:pointer;transition:all .15s}
+.chat-suggestion-chip:hover{background:var(--color-accent,#2fbf71);color:#fff}
+.chat-suggestion-hint{font-size:11px;color:#888;padding:2px 14px;align-self:flex-start;font-style:italic}
 .chat-result-card{border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin:6px 0;display:flex;gap:10px;background:#fff;cursor:pointer;transition:box-shadow .15s}
 .chat-result-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
 .chat-result-img{width:64px;height:64px;border-radius:6px;background:#f5f5f5;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:#ccc}
@@ -2871,6 +2875,27 @@ function renderChat() {
         div.className = 'chat-msg ' + (m.role === 'user' ? 'user' : 'assistant');
         div.textContent = m.content;
         el.appendChild(div);
+        // Trend-aware suggestion hint ("Aktuell beliebt fuer X: ...").
+        if (m.suggestion_hint) {
+            var hint = document.createElement('div');
+            hint.className = 'chat-suggestion-hint';
+            hint.textContent = m.suggestion_hint;
+            el.appendChild(hint);
+        }
+        // Clickable chips for suggested trending terms.
+        if (m.suggestions && m.suggestions.length) {
+            var wrap = document.createElement('div');
+            wrap.className = 'chat-suggestions';
+            m.suggestions.forEach(function(term) {
+                var chip = document.createElement('span');
+                chip.className = 'chat-suggestion-chip';
+                chip.textContent = '+ ' + term;
+                chip.title = 'Suche auch nach "' + term + '"';
+                chip.onclick = function() { applySuggestion(term); };
+                wrap.appendChild(chip);
+            });
+            el.appendChild(wrap);
+        }
         // Results nach der Nachricht anzeigen
         if (m.results && m.results.length) {
             m.results.forEach(function(r) {
@@ -2966,6 +2991,22 @@ function refineChatSearch() {
         });
 }
 
+function applySuggestion(term) {
+    // Append a trending term to the user's last message (or input box) and
+    // re-send the conversation so the search now includes the term.
+    if (chatBusy) return;
+    var input = document.getElementById('ai-chat-input');
+    var userTurns = chatMessages.filter(function(m) { return m.role === 'user'; });
+    var lastUser = userTurns.length ? userTurns[userTurns.length - 1] : null;
+    if (lastUser) {
+        lastUser.content = (lastUser.content || '').trim() + ' + ' + term;
+    }
+    if (input) input.value = '';
+    chatMessages.push({role: 'user', content: 'auch nach ' + term + ' suchen'});
+    renderChat();
+    sendChatMsg();
+}
+
 function sendChatMsg() {
     if (chatBusy) return;
     var input = document.getElementById('ai-chat-input');
@@ -3004,6 +3045,8 @@ function sendChatMsg() {
             chatMessages = chatMessages.filter(function(m) { return m !== typing; });
             var msg = {role: 'assistant', content: data.reply || 'Keine Antwort erhalten.'};
             if (data.results && data.results.length) msg.results = data.results;
+            if (data.suggestions && data.suggestions.length) msg.suggestions = data.suggestions;
+            if (data.suggestion_hint) msg.suggestion_hint = data.suggestion_hint;
             chatMessages.push(msg);
             if (data.llm_connected) {
                 setChatStatus(data.model_name ? ('LLM · ' + data.model_name) : 'LLM verbunden', '#e8fff0');

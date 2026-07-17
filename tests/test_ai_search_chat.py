@@ -9,9 +9,35 @@ from app.ai.ai_search_chat import (
     _user_messages_text,
     _sanitize_messages,
     _use_llm_reply,
+    _fetch_trending_suggestions,
+    _trending_explanation_for,
     _MISSING_KEYWORDS,
     _MISSING_PRICE,
 )
+
+
+def test_trending_suggestions_fahrrad():
+    """Fahrrad -> E-Bike etc as trending cousins."""
+    out = _fetch_trending_suggestions("Fahrrad")
+    assert "E-Bike" in out
+
+
+def test_trending_suggestions_empty_query():
+    """Empty query returns empty list."""
+    assert _fetch_trending_suggestions("") == []
+    assert _fetch_trending_suggestions("xyzzy-nonsense") == []
+
+
+def test_trending_explanation_for_fahrrad():
+    """Explanation builds a German hint line."""
+    hint = _trending_explanation_for("Fahrrad")
+    assert "Fahrrad" in hint
+    assert "E-Bike" in hint
+
+
+def test_trending_explanation_for_unknown_returns_empty():
+    """Unknown topic -> empty hint."""
+    assert _trending_explanation_for("xyzzy-nonsense") == ""
 
 
 def test_greeting_non_empty():

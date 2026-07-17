@@ -217,6 +217,35 @@ def _fetch_past_searches() -> list[str]:
         return []
 
 
+def _fetch_trending_suggestions(query: str) -> list[str]:
+    """Return related keywords that are likely trending for the given query.
+
+    Lightweight, offline implementation. Whenever the user searches for a term
+    like "Fahrrad", we suggest related terms that are popular on the platform,
+    so the LLM can mirror the suggestion in its reply ("maybe you also want
+    e-bikes; people are selling a lot of them right now").
+    """
+    q = (query or "").lower().strip()
+    if not q:
+        return []
+    # Map a few common queries to trending cousin terms. Keys are substrings.
+    related = {
+        "fahrrad": ["E-Bike", "Pedelec", "Mountainbike", "Lastenrad"],
+        "bike":    ["E-Bike", "Pedelec", "Mountainbike"],
+        "auto":    ["Kleinwagen", "SUV", "Elektroauto", "Cabrio"],
+        "wagen":   ["Kleinwagen", "SUV", "Elektroauto"],
+        "sofa":    ["Sofa Liege", "Ecksofa", "Schlafsofa"],
+        "iphone":  ["iPhone 14", "iPhone 13", "iPhone 11"],
+        "tv":      ["Smart TV", "OLED", "Fernseher"],
+        "laptop":  ["MacBook", "ThinkPad", "Gaming-Laptop"],
+        "kind":    ["Spielzeug", "Kinderwagen", "Laufrad"],
+    }
+    for key, val in related.items():
+        if key in q:
+            return val[:5]
+    return []
+
+
 def _prepare_messages(user_messages: list[dict]) -> list[dict]:
     """Combine system prompt, past-search context and the user messages.
 
@@ -236,8 +265,42 @@ def _prepare_messages(user_messages: list[dict]) -> list[dict]:
         )
         messages.append({"role": "system", "content": past_context})
 
+    # Trend-aware: feed related, currently-popular terms for the user's topic
+    # so the LLM can suggest them. Cheap regex over the merged user query.
+    merged_user = _user_messages_text(user_messages)
+    trends = _fetch_trending_suggestions(merged_user)
+    if trends:
+        keyword_hint = " ".join(merged_user.split()[:3]).strip(' "').strip() or merged_user
+        trend_block = (
+            f"Aktuell beliebte verwandte Begriffe fuer '{keyword_hint}' "
+            f"(schlage sie als Erweiterung vor, z.B. 'Ggf. auch E-Bikes "
+            f"schaun, die werden oft verkauft'):\n"
+            + "\n".join(f"- {t}" for t in trends)
+        )
+        messages.append({"role": "system", "content": trend_block})
+
     messages.extend(_sanitize_messages(user_messages))
     return messages
+
+
+def _explain_trending_inline(query: str, trends: list[str]) -> str:
+    """Build a short, human-friendly suggestion sentence for the chat reply.
+
+    This is appended to the assistant's reply when trends are available.
+    """
+    if not trends or not query:
+        return ""
+    joined = ", ".join(trends[:3])
+    return (
+        f"💡 Aktuell beliebt fuer '{query.strip()}': {joined} - "
+        f"soll ich das auch in die Suche aufnehmen?"
+    )
+
+
+def _trending_explanation_for(query: str) -> str:
+    """Public helper used by the router to expose a trend explanation line."""
+    trends = _fetch_trending_suggestions(query)
+    return _explain_trending_inline(query, trends)
 
 
 def _call_llm(messages: list[dict]) -> str:
