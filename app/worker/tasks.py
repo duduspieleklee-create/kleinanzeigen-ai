@@ -248,6 +248,7 @@ def _send_push_notifications(
         summary["configured"] = False
         summary["errors"].append("VAPID keys are not configured on the server.")
         return summary
+    logger.info(f"Push: vapid_email={settings.vapid_email} private_key_len={len(settings.vapid_private_key)} public_key_len={len(settings.vapid_public_key)}")
     try:
         from pywebpush import webpush
     except ImportError:
@@ -355,7 +356,7 @@ def _send_push_notifications(
     push_policy = {"max_attempts": 3, "backoff_cap": 60}
     for sub in subs:
         def _do_push() -> None:
-            webpush(
+            resp = webpush(
                 subscription_info={
                     "endpoint": sub.endpoint,
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
@@ -365,6 +366,7 @@ def _send_push_notifications(
                 vapid_claims={"sub": sub_claim},
                 ttl=86400,  # 24h — FCM will retry delivery if device is offline
             )
+            logger.info(f"Push sub={sub.id} resp={resp.status_code} body={resp.text[:200]}")
 
         ok, last = _retry_with_backoff(push_policy, f"webpush(subs={sub.id})", _do_push)
         if ok:
