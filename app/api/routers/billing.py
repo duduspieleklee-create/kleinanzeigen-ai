@@ -30,12 +30,14 @@ from app.api.dependencies import get_current_user
 from app.api.version import register_globals
 from app.shared.database import SessionLocal, get_db
 from app.shared.cookies import ascii_cookie
-from app.shared.models import BillingEvent, User
+from app.shared.models import BillingEvent, CreditPurchase, User
 from app.shared.plans import (
     PLANS,
+    PAYG_PACKAGES,
     enforce_plan_limits,
     ensure_weekly_credits,
     grant_plan,
+    payg_enabled,
 )
 
 logger = logging.getLogger("kleinanzeigen-ai")
@@ -336,6 +338,111 @@ async def checkout_success():
     )
 
 
+def _payg_price_map() -> dict:
+    """Map PAYG package IDs to Stripe Price IDs from settings."""
+    return {
+        "credits_500": settings.stripe_price_credits_500,
+        "credits_1500": settings.stripe_price_credits_1500,
+        "credits_5000": settings.stripe_price_credits_5000,
+    }
+
+
+@router.get("/credits", name="credits_page")
+async def credits_page(request: Request, db: Session = Depends(get_db)):
+    current = _require_web_user(request, db)
+    if current is None:
+        return RedirectResponse(url="/", status_code=303)
+
+    user = db.query(User).filter(User.id == current["id"]).first()
+    ensure_weekly_credits(db, user)
+
+    packages = []
+    price_map = _payg_price_map()
+    stripe.api_key = settings.stripe_secret_key
+    for pkg_id, pkg_info in PAYG_PACKAGES.items():
+        price_id = price_map.get(pkg_id, "")
+        pkg = dict(pkg_info, package_id=pkg_id, price_id=price_id)
+        if price_id:
+            try:
+                p = stripe.Price.retrieve(price_id)
+                pkg["amount"] = p["unit_amount"]
+                pkg["currency"] = (p["currency"] or "eur").upper()
+            except stripe.error.StripeError:
+                pkg["amount"] = int(float(pkg_info["display_price"]) * 100)
+                pkg["currency"] = "EUR"
+        else:
+            pkg["amount"] = int(float(pkg_info["display_price"]) * 100)
+            pkg["currency"] = "EUR"
+        packages.append(pkg)
+
+    response = templates.TemplateResponse(
+        "credits_purchase.html",
+        {
+            "request": request,
+            "credits": user.credits,
+            "credits_paid": user.credits_paid or 0,
+            "packages": packages,
+            "payg_enabled": payg_enabled(),
+        },
+    )
+    return response
+
+
+@router.post("/checkout-credits")
+async def create_credit_checkout(
+    request: Request,
+    package_id: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    current = _require_web_user(request, db)
+    if current is None:
+        return RedirectResponse(url="/", status_code=303)
+
+    if package_id not in PAYG_PACKAGES:
+        return _flash_redirect("/billing/credits", error="Unknown credit package.")
+
+    price_id = _payg_price_map().get(package_id, "")
+    if not price_id:
+        return _flash_redirect(
+            "/billing/credits",
+            error="Credit purchases are not configured yet.",
+        )
+
+    user = db.query(User).filter(User.id == current["id"]).first()
+
+    stripe.api_key = settings.stripe_secret_key
+
+    try:
+        if not user.stripe_customer_id:
+            customer = stripe.Customer.create(
+                email=user.email if "@" in (user.email or "") else None,
+                metadata={"user_id": str(user.id), "username": user.username},
+            )
+            user.stripe_customer_id = customer["id"]
+            db.commit()
+
+        base = _base_url(request)
+        session = stripe.checkout.Session.create(
+            customer=user.stripe_customer_id,
+            mode="payment",
+            line_items=[{"price": price_id, "quantity": 1}],
+            success_url=f"{base}/billing/credits?success=1",
+            cancel_url=f"{base}/billing/credits",
+            metadata={
+                "user_id": str(user.id),
+                "package_id": package_id,
+                "credits_amount": str(PAYG_PACKAGES[package_id]["credits"]),
+            },
+        )
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe credit checkout failed for user {user.id}: {e}")
+        return _flash_redirect(
+            "/billing/credits", error="Could not start checkout. Please try again."
+        )
+
+    return RedirectResponse(url=session["url"], status_code=303)
+
+
 @router.post("/portal")
 async def billing_portal(request: Request, db: Session = Depends(get_db)):
     current = _require_web_user(request, db)
@@ -399,8 +506,11 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     try:
         if etype == "checkout.session.completed":
-            user_id = (obj.get("metadata") or {}).get("user_id")
-            plan = (obj.get("metadata") or {}).get("plan")
+            metadata = obj.get("metadata") or {}
+            user_id = metadata.get("user_id")
+            plan = metadata.get("plan")
+            package_id = metadata.get("package_id")
+            credits_amount_str = metadata.get("credits_amount", "0")
             try:
                 user_id_int = int(user_id)
             except (TypeError, ValueError):
@@ -421,6 +531,27 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 user.trial_used = True
                 grant_plan(db, user, plan)
                 enforce_plan_limits(db, user)
+                logger.info(f"Billing: user {user.id} upgraded to {plan}")
+            elif user and package_id:
+                user.stripe_customer_id = obj.get("customer") or user.stripe_customer_id
+                billing_event.stripe_customer_id = user.stripe_customer_id
+                billing_event.user_id = user.id
+                try:
+                    credits_amount = int(credits_amount_str)
+                except (TypeError, ValueError):
+                    credits_amount = PAYG_PACKAGES.get(package_id, {}).get("credits", 0)
+                user.credits_paid = (user.credits_paid or 0) + credits_amount
+                purchase = CreditPurchase(
+                    user_id=user.id,
+                    stripe_payment_intent_id=obj.get("payment_intent"),
+                    package_id=package_id,
+                    credits_amount=credits_amount,
+                    amount_paid=obj.get("amount_total", 0),
+                    currency=(obj.get("currency") or "eur").upper(),
+                    status="completed",
+                )
+                db.add(purchase)
+                logger.info(f"Billing: user {user.id} purchased {credits_amount} paid credits")
                 logger.info(f"Billing: user {user.id} upgraded to {plan}")
 
         elif etype == "customer.subscription.updated":

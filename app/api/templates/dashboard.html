@@ -235,15 +235,15 @@
             <div class="credits-hero">
                 <div class="ch-main">
                     <span class="ch-label">Credits</span>
-                    <span class="ch-value">{{ credits }}</span>
-                    <span class="ch-tag">Pay-as-you-go</span>
+                    <span class="ch-value">{{ credits + credits_paid }}</span>
+                    <span class="ch-tag">{% if credits_paid > 0 %}{{ credits_paid }} gekauft{% else %}Wöchentlich{% endif %}</span>
                 </div>
                 <div class="ch-side">
                     <div class="ch-mini">
                         <span class="ch-mini-num">{{ active_searches }}<span class="ch-mini-den">/{{ max_active_searches }}</span></span>
                         <span class="ch-mini-cap">Aktive Suchen</span>
                     </div>
-                    <a href="/billing" class="ch-topup">Credits aufladen →</a>
+                    <a href="/billing/credits" class="ch-topup">Credits aufladen →</a>
                 </div>
             </div>
 

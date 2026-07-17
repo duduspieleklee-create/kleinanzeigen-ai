@@ -427,6 +427,7 @@ async def _build_dashboard(
             "plan_name": plan_name,
             "plan_label": cfg["label"],
             "credits": credits,
+            "credits_paid": db_user.credits_paid if db_user else 0,
             "credits_reset_at": credits_reset_at,
             "active_searches": active_searches,
             "max_active_searches": cfg["max_active_searches"],

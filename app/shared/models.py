@@ -26,6 +26,9 @@ class User(Base):
     # week (plans.ensure_weekly_credits).
     credits = Column(Integer, nullable=False, server_default="0")
     credits_reset_at = Column(DateTime(timezone=True))
+    # Pay-as-you-go purchased credits — consumed AFTER weekly credits run out,
+    # giving Basic users a way to extend usage without a subscription.
+    credits_paid = Column(Integer, nullable=False, server_default="0")
     # Stripe billing references (set once the user has been through checkout).
     stripe_customer_id = Column(String(100), index=True)
     stripe_subscription_id = Column(String(100))
@@ -58,6 +61,7 @@ class User(Base):
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     token_usages = relationship("TokenUsage", back_populates="user", cascade="all, delete-orphan")
     notification_deliveries = relationship("NotificationDelivery", back_populates="user", cascade="all, delete-orphan")
+    credit_purchases = relationship("CreditPurchase", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}')>"
@@ -337,3 +341,25 @@ class SearchSuggestion(Base):
 
     def __repr__(self):
         return f"<SearchSuggestion(keyword='{self.keyword}', suggestion='{self.suggestion}', type='{self.suggestion_type}', count={self.usage_count}, clicks={self.click_count})>"
+
+
+class CreditPurchase(Base):
+    """Tracks one-off credit purchases (pay-as-you-go via Stripe Checkout).
+
+    Purchased credits are added to user.credits_paid and consumed after weekly
+    plan credits run out. One credit = one new listing found.
+    """
+
+    __tablename__ = "credit_purchases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    stripe_payment_intent_id = Column(String(120), index=True)
+    package_id = Column(String(50), nullable=False)
+    credits_amount = Column(Integer, nullable=False)
+    amount_paid = Column(Integer, nullable=False)
+    currency = Column(String(10), nullable=False, server_default="EUR")
+    status = Column(String(20), nullable=False, server_default="pending")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="credit_purchases")

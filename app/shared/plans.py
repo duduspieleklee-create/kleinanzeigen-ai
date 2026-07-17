@@ -72,6 +72,15 @@ PLANS = {
 DEFAULT_PLAN = "basic"
 PAID_PLANS = ("core", "pro")
 
+# Pay-as-you-go credit packages: package_id -> display info.
+# credits_amount and display_price are fallbacks shown when Stripe prices
+# aren't configured — actual prices come from Stripe one-time Price objects.
+PAYG_PACKAGES = {
+    "credits_500": {"credits": 500, "display_price": "5.00", "label": "500 Credits"},
+    "credits_1500": {"credits": 1500, "display_price": "12.99", "label": "1500 Credits"},
+    "credits_5000": {"credits": 5000, "display_price": "34.99", "label": "5000 Credits"},
+}
+
 
 def plan_config(plan: str | None) -> dict:
     """Return the config dict for a plan name, falling back to basic."""
@@ -191,3 +200,56 @@ def enforce_plan_limits(db, user) -> dict:
         db.commit()
 
     return {"cancelled": cancelled, "slowed": slowed}
+
+
+def payg_enabled() -> bool:
+    """True when at least one PAYG price ID is configured."""
+    from app.api.config import settings
+    return bool(
+        settings.stripe_secret_key
+        and (
+            settings.stripe_price_credits_500
+            or settings.stripe_price_credits_1500
+            or settings.stripe_price_credits_5000
+        )
+    )
+
+
+def add_paid_credits(user, credits_amount: int) -> None:
+    """Add purchased credits to the user's balance."""
+    user.credits_paid = (user.credits_paid or 0) + credits_amount
+
+
+def consume_credit(db, user) -> bool:
+    """Consume 1 credit: weekly credits first, then paid credits.
+
+    Returns True if a credit was consumed, False if the user is out of credits.
+    Admin users are exempt (always returns True).
+    """
+    if getattr(user, "is_admin", False):
+        return True
+
+    from app.shared.models import User
+
+    # Try weekly credits first
+    spent = (
+        db.query(User)
+        .filter(User.id == user.id, User.credits > 0)
+        .update(
+            {User.credits: User.credits - 1},
+            synchronize_session=False,
+        )
+    )
+    if spent:
+        return True
+
+    # Fall back to paid credits
+    spent = (
+        db.query(User)
+        .filter(User.id == user.id, User.credits_paid > 0)
+        .update(
+            {User.credits_paid: User.credits_paid - 1},
+            synchronize_session=False,
+        )
+    )
+    return bool(spent)

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credits aufladen - kleinanzeigen-ai</title>
+    <meta name="description" content="Kaufe Pay-as-you-go Credits für deine automatische Suchüberwachung auf kleinanzeigen.de. Credits verfallen nie.">
+    <link rel="canonical" href="https://kleeblatt.space/billing/credits">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#007bff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="/static/style.css?v={{ build_info.commit_short }}">
+</head>
+<body class="dashboard-page">
+    <div class="container">
+        <div class="header-row">
+            <h2 style="margin:0">Credits aufladen</h2>
+            <a class="logout-link" href="/dashboard">&larr; Zurück zum Dashboard</a>
+        </div>
+
+        {% include "email_status_banner.html" %}
+
+        <div class="credits-hero" style="margin-bottom:24px">
+            <div class="ch-main">
+                <span class="ch-label">Dein Guthaben</span>
+                <span class="ch-value">{{ credits + credits_paid }}</span>
+                <span class="ch-tag">Gesamt-Credits</span>
+            </div>
+            <div class="ch-side" style="gap:8px">
+                <div class="ch-mini">
+                    <span class="ch-mini-num">{{ credits }}</span>
+                    <span class="ch-mini-cap">Wöchentlich</span>
+                </div>
+                <div class="ch-mini">
+                    <span class="ch-mini-num">{{ credits_paid }}</span>
+                    <span class="ch-mini-cap">Gekauft</span>
+                </div>
+            </div>
+        </div>
+
+        {% if not payg_enabled %}
+        <div class="flash-error">
+            Die Zahlungseinrichtung ist noch nicht abgeschlossen &mdash;
+            Credit-Käufe sind momentan nicht verfügbar.
+        </div>
+        {% endif %}
+
+        <div class="pricing-grid">
+            {% for pkg in packages %}
+            <div class="plan-card{% if loop.index == 2 %} plan-featured{% endif %}">
+                {% if loop.index == 2 %}<div class="plan-ribbon">Beliebt</div>{% endif %}
+                <h3>{{ pkg.label }}</h3>
+                <div class="plan-price">
+                    {{ '%.2f' | format(pkg.amount / 100) }} {{ pkg.currency.upper() }}
+                    <span class="plan-per">einmalig</span>
+                </div>
+                <ul class="plan-features">
+                    <li><strong>{{ pkg.credits }}</strong> Credits</li>
+                    <li>Keine Ablaufzeit &mdash; Credits verfallen nie</li>
+                    <li>Werden nach deinen Wochen-Credits genutzt</li>
+                    <li>Einmalzahlung, kein Abo</li>
+                </ul>
+                <form action="/billing/checkout-credits" method="post">
+                    <input type="hidden" name="package_id" value="{{ pkg.package_id }}">
+                    <button type="submit" class="plan-btn"{% if not payg_enabled or not pkg.price_id %} disabled{% endif %}>
+                        {% if pkg.price_id %}Jetzt kaufen{% else %}Nicht verfügbar{% endif %}
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card" style="margin-top:24px">
+            <h3>So funktionieren gekaufte Credits</h3>
+            <ul class="plan-features">
+                <li>Gekaufte Credits werden <strong>nach</strong> deinen wöchentlichen Gratis-Credits verwendet.</li>
+                <li>1 Credit = 1 neues Suchergebnis, das du entdeckst. Wiederholte Funde kosten nichts.</li>
+                <li>Credits haben <strong>kein Ablaufdatum</strong> &mdash; sie bleiben, bis du sie verbrauchst.</li>
+                <li>Für weitere Fragen besuche die <a href="/billing">Tarif-Übersicht</a>.</li>
+            </ul>
+        </div>
+    </div>
+    {% include "pwa_install.html" %}
+</body>
+</html>

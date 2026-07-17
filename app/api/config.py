@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     # Recurring Price IDs (price_...) for the Core and Pro plans
     stripe_price_core: str = ""
     stripe_price_pro: str = ""
+    # One-time Price IDs for pay-as-you-go credit packages.
+    # Credits never expire — they're consumed after weekly plan credits run out.
+    stripe_price_credits_500: str = ""  # e.g. 5.00 EUR for 500 credits
+    stripe_price_credits_1500: str = ""  # e.g. 12.99 EUR for 1500 credits
+    stripe_price_credits_5000: str = ""  # e.g. 34.99 EUR for 5000 credits
     # Public origin used for Stripe redirect URLs, e.g. https://app.example.com.
     # Falls back to the request base URL when empty.
     public_base_url: str = ""

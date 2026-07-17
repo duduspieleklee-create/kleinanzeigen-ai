@@ -118,6 +118,16 @@
                 <li>Das Löschen oder Abbrechen einer wiederkehrenden Suche gibt sofort einen deiner Suchslots frei.</li>
                 <li>Upgrades treten sofort in Kraft &mdash; Downgrades erst am Ende deines aktuellen Abrechnungszeitraums.</li>
             </ul>
+            {% if is_authenticated %}
+            <div style="text-align:center;margin-top:16px">
+                <a href="/billing/credits" class="plan-btn plan-btn-secondary">
+                    Credits einzeln kaufen (Pay-as-you-go) &rarr;
+                </a>
+                <p style="color:#666;margin-top:8px;font-size:0.875rem">
+                    Kein Abo nötig &mdash; Credits verfallen nie.
+                </p>
+            </div>
+            {% endif %}
             {% if has_subscription %}
             <form action="/billing/portal" method="post" style="margin-top:12px">
                 <button type="submit" class="plan-btn plan-btn-secondary">Abrechnung verwalten (Rechnungen, Zahlungsmethode, Kündigung)</button>

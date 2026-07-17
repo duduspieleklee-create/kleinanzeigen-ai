@@ -23,7 +23,7 @@ from app.shared.metrics_prom import job_duration
 from app.shared.models import AdminSearch, NotificationDelivery, PushSubscription, ScrapeTask, ScrapeResult, User
 from app.shared.smart_alerts import build_smart_summary, build_push_notification
 from app.shared.category_profiles import NO_PRICE_PROFILES, resolve_profile
-from app.shared.plans import ensure_weekly_credits, plan_config
+from app.shared.plans import ensure_weekly_credits, plan_config, consume_credit
 from app.shared.pricing import deal_badge, median_price, parse_price, calculate_trust_score
 from app.shared.proxy import proxies_for_requests
 from app.shared.token_tracking import log_token_usage
@@ -713,21 +713,7 @@ def scrape_kleinanzeigen(self, parameters: dict, task_id: int | None = None):
                 if key in seen_keys:
                     continue  # already seen on a previous run — not new
                 if metered and not is_baseline:
-                    # Spend 1 credit atomically BEFORE saving. The conditional
-                    # UPDATE (credits > 0) runs inside the same transaction as
-                    # the result inserts: the first decrement takes a row lock
-                    # on the user, so concurrent tasks for the same user are
-                    # serialized and can never spend more credits than exist.
-                    # Rollback on failure undoes both results and decrements.
-                    spent = (
-                        db.query(User)
-                        .filter(User.id == owner.id, User.credits > 0)
-                        .update(
-                            {User.credits: User.credits - 1},
-                            synchronize_session=False,
-                        )
-                    )
-                    if not spent:
+                    if not consume_credit(db, owner):
                         logger.info(
                             f"Credits exhausted for user {owner.id} "
                             f"(task_id={resolved_task_id}) — skipping remaining new listings"
