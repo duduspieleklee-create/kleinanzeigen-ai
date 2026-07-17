@@ -80,44 +80,25 @@ def ai_search_feedback(payload: AISearchFeedback, db: Session = Depends(get_db))
 def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
     """Chat: User unterhält sich, KI fragt nach, sucht, zeigt Ergebnisse."""
     msgs = [{"role": m.role, "content": m.content} for m in payload.messages]
-
-    # Determine if the LLM is reachable/enabled
     settings = Settings()
-    llm_connected = False
-    model_name = ""
-    llm_error = ""
-    if settings.custom_model_enabled:
-        model_name = settings.custom_model_name or ""
-        try:
-            if settings.custom_model_provider == "ollama":
-                # Ollama's /api/tags lives at the base URL, not under /v1.
-                # CUSTOM_MODEL_ENDPOINT typically points at the OpenAI-compatible
-                # /v1 root, so strip it before appending the native Ollama path.
-                base_url = settings.custom_model_endpoint_resolved.rstrip("/")
-                if base_url.endswith("/v1"):
-                    base_url = base_url[:-3]
-                health_url = f"{base_url}/api/tags"
-                resp = httpx.get(health_url, timeout=5.0)
-            else:
-                health_url = f"{settings.custom_model_endpoint_resolved}/v1/models"
-                resp = httpx.post(health_url, timeout=5.0)
-            resp.raise_for_status()
-            llm_connected = True
-        except Exception as e:
-            llm_connected = False
-            llm_error = f"LLM connection failed: {str(e)}"
-
+    model_name = settings.custom_model_name or ""
 
     if not msgs:
         return ChatResponse(
             reply=GREETING,
-            llm_connected=llm_connected,
+            llm_connected=settings.custom_model_enabled,
             model_name=model_name,
-            llm_error=llm_error,
         )
 
-
     chat_result = build_chat_response(msgs)
+
+    # LLM connectivity is inferred from whether the chat response came from the
+    # LLM or from the deterministic fallback.
+    llm_connected = bool(
+        settings.custom_model_enabled
+        and chat_result["reply"]
+        and not chat_result["reply"].startswith("[")
+    )
 
     if chat_result["search_text"]:
         parsed = parse_query(" ".join(m["content"] for m in msgs if m["role"] == "user"))
@@ -126,8 +107,8 @@ def ai_search_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         ranked = rank_results(results, chat_result["search_text"])
 
         reply = format_results_as_chat(ranked[:15], len(ranked))
-        return ChatResponse(reply=reply, search_text=chat_result["search_text"], results=ranked[:15], total=len(ranked), llm_connected=llm_connected, model_name=model_name, llm_error=llm_error)
-    return ChatResponse(reply=chat_result["reply"], llm_connected=llm_connected, model_name=model_name, llm_error=llm_error)
+        return ChatResponse(reply=reply, search_text=chat_result["search_text"], results=ranked[:15], total=len(ranked), llm_connected=llm_connected, model_name=model_name, llm_error="")
+    return ChatResponse(reply=chat_result["reply"], llm_connected=llm_connected, model_name=model_name, llm_error="")
 
 def _fetch_matching_results(keyword: str, db: Session) -> list[dict]:
     if not keyword:

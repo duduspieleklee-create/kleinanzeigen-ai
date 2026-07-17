@@ -124,7 +124,7 @@ class Settings(BaseSettings):
     custom_model_temperature: float = 0.7
     custom_model_top_p: float = 0.9
     custom_model_repeat_penalty: float = 1.2
-    custom_model_max_tokens: int = 256
+    custom_model_max_tokens: int = 128
 
     # Preset → default (endpoint, needs_api_key). Explicit config overrides these.
     _PROVIDER_PRESETS = {
