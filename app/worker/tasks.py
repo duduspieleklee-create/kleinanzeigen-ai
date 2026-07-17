@@ -363,6 +363,7 @@ def _send_push_notifications(
                 data=payload,
                 vapid_private_key=private_key,
                 vapid_claims={"sub": sub_claim},
+                ttl=86400,  # 24h — FCM will retry delivery if device is offline
             )
 
         ok, last = _retry_with_backoff(push_policy, f"webpush(subs={sub.id})", _do_push)

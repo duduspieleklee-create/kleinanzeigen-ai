@@ -163,3 +163,17 @@ def send_test_push(
         "status": "success" if summary["sent"] > 0 else "no_subscriptions",
         "summary": summary,
     }
+
+
+@router.post("/unsubscribe-all")
+def unsubscribe_all(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    count = (
+        db.query(PushSubscription)
+        .filter(PushSubscription.user_id == current_user["id"])
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return {"deleted": count}

@@ -88,6 +88,14 @@
             <div class="settings-item">
                 <button class="test-notification-btn" onclick="sendTestNotification()">📬 Test-Benachrichtigung senden</button>
             </div>
+
+            <div class="settings-item">
+                <button class="test-notification-btn" onclick="resetAndResubscribe()" style="background:#f0f0f0;color:#333">🔄 Push-Abo zurücksetzen &amp; neu abonnieren</button>
+                <small style="color:#666;margin-top:4px">
+                    Hilft wenn Push-Benachrichtigungen nicht ankommen (z.B. nach Server-Update).
+                    Löscht alte Geräte-Abos und erstellt ein frisches.
+                </small>
+            </div>
         </div>
 
         <!-- Plan & Quota Section -->
@@ -477,13 +485,34 @@
                     if (data.status === 'success') {
                         alert('✓ Test notification sent! Check your device.');
                     } else {
-                        alert('⚠ Test notification could not be sent. Make sure push notifications are enabled.');
+                        alert('⚠ Test notification could not be sent. Make sure push notifications are enabled. Subscriptions: ' + (data.summary?.total || 0));
                     }
                 })
                 .catch(err => {
                     console.error('Test notification error:', err);
                     alert('Error sending test notification');
                 });
+        }
+
+        async function resetAndResubscribe() {
+            if (!confirm('Altes Push-Abo löschen und neu abonnieren? Du musst danach Benachrichtigungen erlauben.')) return;
+            try {
+                if ('serviceWorker' in navigator) {
+                    var regs = await navigator.serviceWorker.getRegistrations();
+                    for (var r of regs) { await r.unregister(); }
+                }
+                // Clear old subscriptions from the server
+                await fetch('/push/unsubscribe-all', { method: 'POST' }).catch(function(){});
+                // Clear cache
+                if (caches) {
+                    var keys = await caches.keys();
+                    for (var k of keys) { await caches.delete(k); }
+                }
+                alert('✓ Alte Abos gelöscht. Seite lädt neu — erlaube dann Benachrichtigungen.');
+                location.reload();
+            } catch(e) {
+                alert('Fehler: ' + e.message);
+            }
         }
 
         // Delete account — requires typing the exact confirmation phrase,
