@@ -72,6 +72,7 @@ def _context(is_admin: bool = False):
         "plan_name": "basic",
         "plan_label": "Basic",
         "credits": 0,
+        "credits_paid": 0,
         "credits_reset_at": None,
         "active_searches": 0,
         "max_active_searches": 1,
