@@ -66,6 +66,20 @@ class Settings(BaseSettings):
     public_base_url: str = ""
 
     # ── Email sending via Resend (verification emails) ────────────────────────
+    # Alternate SendGrid email sending. Provide API key and a verified from address.
+    sendgrid_api_key: str = ""
+    sendgrid_email_from: str = ""
+
+    # Alternate free email sending via a LambdaFunctionURL (generic HTTP endpoint).
+    # Provide the full URL (including any query parameters or auth token) in the
+    # environment variable LAMBDA_EMAIL_URL. The lambda is expected to accept a
+    # JSON payload compatible with Resend (keys: from, to, subject, html, text).
+    # Leave empty to disable the fallback.
+    lambda_email_url: str = ""
+    # End of email settings block.
+    
+    # Build/version metadata — injected at image build time via Docker build args.
+    app_version: str = "dev"
     # API key from https://resend.com/api-keys. Leave empty to disable email
     # sending — in dev, password signups are then auto-verified for convenience;
     # outside dev they stay unverified (and cannot search) until a key is set.
