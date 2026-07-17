@@ -203,8 +203,6 @@ jobs:
             }
             upsert_env SENDGRID_API_KEY "${{ secrets.SENDGRID_API_KEY }}"
             upsert_env EMAIL_FROM "${{ secrets.EMAIL_FROM }}"
-            upsert_env SMTP_HOST "${{ secrets.SMTP_HOST }}"
-            upsert_env SMTP_PORT "${{ secrets.SMTP_PORT }}"
             upsert_env TURNSTILE_SITE_KEY "${{ secrets.TURNSTILE_SITE_KEY }}"
             upsert_env TURNSTILE_SECRET_KEY "${{ secrets.TURNSTILE_SECRET_KEY }}"
             upsert_env CUSTOM_MODEL_PROVIDER "ollama"

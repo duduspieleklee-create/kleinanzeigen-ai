@@ -1,22 +1,21 @@
 """Email notification system for new search results.
 
-Sends via SendGrid SMTP relay using the same credentials
+Sends via SendGrid HTTP API using the same credentials
 (`settings.sendgrid_api_key`) already used for verification emails in
 app/api/emailer.py.
 """
 import html
 import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
 from dataclasses import dataclass
+
+import requests
 
 from app.api.config import settings
 
 logger = logging.getLogger("kleinanzeigen-ai")
 
-SENDGRID_USERNAME = "apikey"
+SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
 
 
 @dataclass
@@ -34,7 +33,7 @@ def email_configured() -> bool:
 
 
 def send_email_notification(notification: EmailNotification) -> bool:
-    """Send an email notification via SendGrid SMTP. Never raises.
+    """Send an email notification via SendGrid HTTP API. Never raises.
 
     Returns True if sent successfully, False otherwise (and logs why).
     """
@@ -45,27 +44,31 @@ def send_email_notification(notification: EmailNotification) -> bool:
         )
         return False
 
-    from_addr = f"kleinanzeigen-ai <{settings.email_from}>"
-    msg = MIMEMultipart("alternative")
-    msg["From"] = from_addr
-    msg["To"] = notification.recipient
-    msg["Subject"] = notification.subject
-    msg.attach(MIMEText(notification.body_text or "", "plain", "utf-8"))
-    msg.attach(MIMEText(notification.body_html, "html", "utf-8"))
+    payload = {
+        "personalizations": [{"to": [{"email": notification.recipient}]}],
+        "from": {"email": settings.email_from, "name": "kleinanzeigen-ai"},
+        "subject": notification.subject,
+        "content": [
+            {"type": "text/plain", "value": notification.body_text or ""},
+            {"type": "text/html", "value": notification.body_html},
+        ],
+    }
 
     try:
-        server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15)
-        server.starttls()
-        server.login(SENDGRID_USERNAME, settings.sendgrid_api_key)
-        server.sendmail(from_addr, [notification.recipient], msg.as_string())
-        server.quit()
-    except smtplib.SMTPException as exc:
+        resp = requests.post(
+            SENDGRID_API_URL,
+            json=payload,
+            headers={"Authorization": f"Bearer {settings.sendgrid_api_key}"},
+            timeout=15,
+        )
+    except requests.RequestException as exc:
         logger.error("New-results email to %s failed: %s",
                      notification.recipient, exc)
         return False
-    except Exception as exc:
-        logger.error("New-results email to %s failed: %s",
-                     notification.recipient, exc)
+
+    if resp.status_code >= 400:
+        logger.error("New-results email to %s rejected (%s): %s",
+                     notification.recipient, resp.status_code, resp.text[:500])
         return False
 
     logger.info("New-results email sent to %s", notification.recipient)
