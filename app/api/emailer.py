@@ -13,21 +13,24 @@ from app.api.config import settings
 
 logger = logging.getLogger(__name__)
 
-RESEND_API_URL = "https://api.resend.com/emails"
-SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
-
-
 def email_configured() -> bool:
-    """True when a Resend API key **or** a LambdaFunctionURL endpoint is set.
-    The lambda endpoint can be used as a free fallback for verification emails.
+    """True when any email backend is properly configured.
+
+    Supported backends:
+    - Resend (RESEND_API_KEY)
+    - SendGrid via SMTP (SMTP host/user/password + valid FROM address)
+    - LambdaFunctionURL fallback
     """
-    # Primary: Resend key
     if settings.resend_api_key:
         return True
-    # SendGrid key
-    if settings.sendgrid_api_key:
+    # SendGrid SMTP backend
+    if (
+        settings.sendgrid_smtp_host
+        and settings.sendgrid_smtp_user
+        and settings.sendgrid_smtp_password
+        and settings.sendgrid_email_from
+    ):
         return True
-    # Fallback: LambdaFunctionURL endpoint
     return bool(settings.lambda_email_url)
 
 
