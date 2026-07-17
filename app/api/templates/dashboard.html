@@ -168,9 +168,9 @@
                 <span class="plan-badge plan-{{ plan_name|lower }}">{{ plan_label }}</span>
             </div>
             <div style="display:flex;align-items:center;gap:16px">
-                <div class="credit-pill" title="Verbleibende Credits diese Woche">
+                <div class="credit-pill" title="Verbleibende Credits">
                     <span class="credit-icon">⚡</span>
-                    <span class="credit-count">{{ credits }}</span>
+                    <span class="credit-count">{{ credits + credits_paid }}</span>
                     <span class="credit-label">Credits</span>
                 </div>
                 <a href="/settings" class="notif-icon" title="Einstellungen">⚙️</a>

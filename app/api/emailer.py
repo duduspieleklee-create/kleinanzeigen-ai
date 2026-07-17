@@ -59,16 +59,20 @@ def send_verification_email(to_email: str, username: str, verify_url: str) -> tu
     Never raises: network/API failures are logged and returned so the caller
     can show an honest error and offer a resend.
     """
+    import html as html_module
     if not email_configured():
         return False, "Email sending is not configured (SENDGRID_API_KEY is empty)"
 
+    safe_username = html_module.escape(username)
+    safe_url = html_module.escape(verify_url)
+
     html_body = (
-        f"<p>Hi {username},</p>"
+        f"<p>Hi {safe_username},</p>"
         "<p>Welcome to kleinanzeigen-ai! Please confirm your email address "
         "to activate searching on your account:</p>"
-        f'<p><a href="{verify_url}">Verify my email</a></p>'
+        f'<p><a href="{safe_url}">Verify my email</a></p>'
         "<p>Or open this link:</p>"
-        f"<p>{verify_url}</p>"
+        f"<p>{safe_url}</p>"
         "<p>The link is valid for 24 hours. If you did not create this "
         "account, you can ignore this email.</p>"
     )
