@@ -247,34 +247,9 @@
                 </div>
             </div>
 
-            <!-- Primary action: start a new search -->
-            <button type="button" class="new-search-cta" onclick="goToNewSearchTab()">
-                <span class="ns-plus">+</span> Neue Suche erstellen
-            </button>
 
-            <!-- KI-Agent — message the agent directly, right here -->
-            <div class="agent-card">
-                <div class="agent-head">
-                    <span class="agent-icon">🤖</span>
-                    <div class="agent-head-text">
-                        <span class="agent-title">KI-Agent{% if not show_smart_search %} <span class="ft-badge ft-locked">Pro</span>{% endif %}</span>
-                        <span class="agent-sub">Beschreib einfach, was du suchst — der Agent durchsucht Kleinanzeigen live für dich.</span>
-                    </div>
-                </div>
-                {% if show_smart_search %}
-                <form class="agent-input-row" onsubmit="return askAgent(event)">
-                    <input id="agent-inline-input" type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" autocomplete="off">
-                    <button type="submit" class="agent-send" aria-label="Agent fragen">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                    </button>
-                </form>
-                {% else %}
-                <div class="agent-input-row">
-                    <input type="text" placeholder="z. B. Eichensofa unter 200 € in Berlin" disabled>
-                    <a href="/billing" class="agent-send agent-upsell">Pro freischalten</a>
-                </div>
-                {% endif %}
-            </div>
+
+
 
             <!-- Feature overview: every capability at a glance -->
             <div class="features-head">
@@ -2790,10 +2765,10 @@
 }
 </style>
 
-<button id="ai-chat-btn" onclick="toggleChat()">💬</button>
+<button id="ai-chat-btn" onclick="toggleChat()">🤖</button>
 <div id="ai-chat-panel">
   <div id="ai-chat-header">
-    <span>🤖 KI-Suche</span>
+    <span>🤖 KI-Agent</span>
     <span onclick="toggleChat()" style="cursor:pointer;opacity:.8">✕</span>
   </div>
   <div id="ai-chat-messages"></div>
@@ -2803,7 +2778,7 @@
   </div>
 </div>
 <script>
-var chatMessages = [{role:'assistant', content:''}];  // greeting loaded dynamically
+var chatMessages = [{role:'assistant', content:'Hallo! Ich bin dein KI-Agent. Wie kann ich dir helfen?'}, {role:'assistant', content:''}];  // greeting loaded dynamically
 var chatLiked = [];
 var chatDisliked = [];
 
