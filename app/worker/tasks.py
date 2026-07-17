@@ -300,8 +300,8 @@ def _send_push_notifications(
     payload_data = {
         "title": title_text,
         "body": body,
-        "icon": "/static/icon-192x192.png",
-        "badge": "/static/badge-72x72.png",
+        "icon": "/static/icons/icon-192.png",
+        "badge": "/static/icons/icon-72.png",
         "tag": effective_tag,  # Group by search, or unique per test click
         "requireInteraction": True,  # Keep notification visible
         "data": {
@@ -317,16 +317,14 @@ def _send_push_notifications(
             {
                 "action": "view-results",
                 "title": "Ansehen",
-                "icon": "/static/icon-view.png"
             },
             {
                 "action": "open-search",
                 "title": "Suche öffnen",
-                "icon": "/static/icon-search.png"
             },
             {
                 "action": "dismiss",
-                "title": "Ausblenden"
+                "title": "Ausblenden",
             }
         ]
     }
