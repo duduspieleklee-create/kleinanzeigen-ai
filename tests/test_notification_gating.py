@@ -31,19 +31,19 @@ _pywebpush = types.ModuleType("pywebpush")
 
 
 def _webpush_stub(subscription_info=None, data=None, vapid_private_key=None,
-                  vapid_claims=None):
+                  vapid_claims=None, ttl=None, **kwargs):
     _webpush_stub.calls.append(data)
     if _webpush_stub.raise_410:
-        # Simulate an expired/unsubscribed push endpoint (HTTP 410 Gone).
-        # pywebpush raises WebPushException with a `.response` carrying the
-        # status code; we emulate that shape (the retry wrapper and the
-        # outer handler both need to see a 410).
         class _Resp:
             status_code = 410
+            text = ""
         exc = Exception("Push failed: 410 Gone")
         exc.response = _Resp()
         raise exc
-    return None
+    class _Resp:
+        status_code = 201
+        text = ""
+    return _Resp()
 
 
 _webpush_stub.calls = []
