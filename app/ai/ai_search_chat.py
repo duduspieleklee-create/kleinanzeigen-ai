@@ -28,15 +28,16 @@ _CONFIRM_SEARCH = (
 )
 _NO_RESULTS = "Ich habe leider nichts passendes gefunden. Versuch es mit anderen Angaben!"
 _RESULTS_FOUND = "Ich habe {count} passende Treffer gefunden:"
-SYSTEM_PROMPT = """
-You are a helpful, concise AI assistant for the Kleinanzeigen‑AI web app.
-- Keep answers under 3 sentences unless the user asks for details.
-- For project/Docker/OAuth questions, answer directly and briefly.
-- Never fabricate data; if you don't know, say so.
+SYSTEM_PROMPT = """You are a helpful, concise AI assistant for the Kleinanzeigen‑AI web app.
+Rules:
+- Answer in 1‑2 short sentences. Never more than 50 words.
+- Do not output code blocks, SSH commands, or file paths unless explicitly asked.
+- For project/Docker/OAuth questions, give only the single most important command or step.
+- Never invent listings, prices, URLs, or contact details. If you don't know, say so.
 """
 
-_MAX_DOC_SNIPPET_CHARS = 2000
-_MAX_MATCHED_DOCS = 2
+_MAX_DOC_SNIPPET_CHARS = 500
+_MAX_MATCHED_DOCS = 1
 
 
 def _fetch_relevant_docs(query: str) -> list[dict]:
